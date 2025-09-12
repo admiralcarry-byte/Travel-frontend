@@ -26,6 +26,19 @@ const UserForm = () => {
   useEffect(() => {
     if (isEditing) {
       fetchUser();
+    } else {
+      // Reset form when creating a new user
+      setFormData({
+        username: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        firstName: '',
+        lastName: '',
+        role: 'seller',
+        phone: '',
+        timezone: 'UTC'
+      });
     }
   }, [id, isEditing]);
 
@@ -155,6 +168,14 @@ const UserForm = () => {
     navigate('/users');
   };
 
+  const dismissError = () => {
+    setError('');
+  };
+
+  const dismissSuccess = () => {
+    setSuccess('');
+  };
+
   if (loading && isEditing) {
     return (
       <div className="min-h-screen">
@@ -191,13 +212,24 @@ const UserForm = () => {
         {/* Error Message */}
         {error && (
           <div className="notification">
-            <div className="flex items-center space-x-4">
-              <div className="icon-container bg-error-500">
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="icon-container bg-error-500">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <span className="text-error-400 font-medium text-lg">{error}</span>
               </div>
-              <span className="text-error-400 font-medium text-lg">{error}</span>
+              <button
+                onClick={dismissError}
+                className="text-error-400 hover:text-error-300 transition-colors p-1"
+                aria-label="Dismiss error message"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           </div>
         )}
@@ -205,20 +237,31 @@ const UserForm = () => {
         {/* Success Message */}
         {success && (
           <div className="notification">
-            <div className="flex items-center space-x-4">
-              <div className="icon-container bg-success-500">
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="icon-container bg-success-500">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <span className="text-success-400 font-medium text-lg">{success}</span>
               </div>
-              <span className="text-success-400 font-medium text-lg">{success}</span>
+              <button
+                onClick={dismissSuccess}
+                className="text-success-400 hover:text-success-300 transition-colors p-1"
+                aria-label="Dismiss success message"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           </div>
         )}
 
         {/* Form */}
         <div className="card p-8">
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handleSubmit} className="space-y-8" autoComplete="off">
             {/* Basic Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -232,6 +275,7 @@ const UserForm = () => {
                   onChange={handleInputChange}
                   className="input-field"
                   placeholder="Enter username"
+                  autoComplete="off"
                   required
                 />
               </div>
@@ -247,6 +291,7 @@ const UserForm = () => {
                   onChange={handleInputChange}
                   className="input-field"
                   placeholder="Enter email address"
+                  autoComplete="off"
                   required
                 />
               </div>
@@ -298,6 +343,7 @@ const UserForm = () => {
                   onChange={handleInputChange}
                   className="input-field"
                   placeholder="Enter first name"
+                  autoComplete="off"
                 />
               </div>
 
@@ -312,6 +358,7 @@ const UserForm = () => {
                   onChange={handleInputChange}
                   className="input-field"
                   placeholder="Enter last name"
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -345,6 +392,7 @@ const UserForm = () => {
                   onChange={handleInputChange}
                   className="input-field"
                   placeholder="Enter phone number"
+                  autoComplete="off"
                 />
               </div>
             </div>

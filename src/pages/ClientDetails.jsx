@@ -44,30 +44,30 @@ const ClientDetails = () => {
 
   const handlePassengerUpdated = (updatedPassenger) => {
     setPassengers(prev => 
-      prev.map(p => p.id === updatedPassenger.id ? updatedPassenger : p)
+        prev.map(p => (p._id || p.id) === (updatedPassenger._id || updatedPassenger.id) ? updatedPassenger : p)
     );
   };
 
   const handlePassengerDeleted = (passengerId) => {
-    setPassengers(prev => prev.filter(p => p.id !== passengerId));
+    setPassengers(prev => prev.filter(p => (p._id || p.id) !== passengerId));
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="text-red-600 text-lg font-medium mb-4">{error}</div>
+          <div className="text-error-400 text-lg font-medium mb-4">{error}</div>
           <button
             onClick={() => navigate('/clients')}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+            className="btn-primary"
           >
             Back to Clients
           </button>
@@ -78,12 +78,12 @@ const ClientDetails = () => {
 
   if (!client) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="text-gray-600 text-lg font-medium mb-4">Client not found</div>
+          <div className="text-dark-300 text-lg font-medium mb-4">Client not found</div>
           <button
             onClick={() => navigate('/clients')}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+            className="btn-primary"
           >
             Back to Clients
           </button>
@@ -93,88 +93,88 @@ const ClientDetails = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => navigate('/clients')}
-            className="text-indigo-600 hover:text-indigo-900 text-sm font-medium mb-4"
+            className="text-primary-400 hover:text-primary-300 text-sm font-medium mb-4"
           >
             ← Back to Clients
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">{client.fullName}</h1>
-          <p className="text-gray-600 mt-2">Client Details and Passengers</p>
+          <h1 className="text-3xl font-bold text-dark-100">{client.fullName}</h1>
+          <p className="text-dark-300 mt-2">Client Details and Passengers</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Client Information */}
           <div className="lg:col-span-1">
-            <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Client Information</h2>
+            <div className="card p-6">
+              <h2 className="text-xl font-semibold text-dark-100 mb-4">Client Information</h2>
               
               <div className="space-y-4">
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Full Name</span>
-                  <p className="text-gray-900">{client.fullName}</p>
+                  <span className="text-sm font-medium text-dark-400">Full Name</span>
+                  <p className="text-dark-100">{client.fullName}</p>
                 </div>
                 
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Email</span>
-                  <p className="text-gray-900">{client.email}</p>
+                  <span className="text-sm font-medium text-dark-400">Email</span>
+                  <p className="text-dark-100">{client.email}</p>
                 </div>
                 
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Phone</span>
-                  <p className="text-gray-900">{client.phone}</p>
+                  <span className="text-sm font-medium text-dark-400">Phone</span>
+                  <p className="text-dark-100">{client.phone}</p>
                 </div>
                 
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Date of Birth</span>
-                  <p className="text-gray-900">{new Date(client.dob).toLocaleDateString()}</p>
+                  <span className="text-sm font-medium text-dark-400">Date of Birth</span>
+                  <p className="text-dark-100">{new Date(client.dob).toLocaleDateString()}</p>
                 </div>
                 
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Passport Number</span>
-                  <p className="text-gray-900">{client.passportNumber}</p>
+                  <span className="text-sm font-medium text-dark-400">Passport Number</span>
+                  <p className="text-dark-100">{client.passportNumber}</p>
                 </div>
                 
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Nationality</span>
-                  <p className="text-gray-900">{client.nationality}</p>
+                  <span className="text-sm font-medium text-dark-400">Nationality</span>
+                  <p className="text-dark-100">{client.nationality}</p>
                 </div>
                 
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Passport Expiration</span>
-                  <p className="text-gray-900">{new Date(client.expirationDate).toLocaleDateString()}</p>
+                  <span className="text-sm font-medium text-dark-400">Passport Expiration</span>
+                  <p className="text-dark-100">{new Date(client.expirationDate).toLocaleDateString()}</p>
                 </div>
                 
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Passport Status</span>
-                  <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${
+                  <span className="text-sm font-medium text-dark-400">Passport Status</span>
+                  <span className={`ml-2 badge ${
                     client.isPassportValid 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
+                      ? 'badge-success' 
+                      : 'badge-error'
                   }`}>
                     {client.isPassportValid ? 'Valid' : 'Expired'}
                   </span>
                 </div>
                 
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Created</span>
-                  <p className="text-gray-900">{new Date(client.createdAt).toLocaleDateString()}</p>
+                  <span className="text-sm font-medium text-dark-400">Created</span>
+                  <p className="text-dark-100">{new Date(client.createdAt).toLocaleDateString()}</p>
                 </div>
               </div>
 
               {client.passportImage && (
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <span className="text-sm font-medium text-gray-500">Passport Image</span>
+                <div className="mt-6 pt-6 border-t border-white/10">
+                  <span className="text-sm font-medium text-dark-400">Passport Image</span>
                   <div className="mt-2">
                     <a
                       href={`http://localhost:5000/uploads/passports/${client.passportImage}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-indigo-600 hover:text-indigo-900 text-sm"
+                      className="text-primary-400 hover:text-primary-300 text-sm"
                     >
                       View Passport Image
                     </a>
@@ -186,14 +186,14 @@ const ClientDetails = () => {
 
           {/* Passengers Section */}
           <div className="lg:col-span-2">
-            <div className="bg-white shadow rounded-lg p-6">
+            <div className="card p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-dark-100">
                   Passengers ({passengers.length})
                 </h2>
                 <button
                   onClick={() => setShowPassengerForm(!showPassengerForm)}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium"
+                  className="btn-primary text-sm"
                 >
                   {showPassengerForm ? 'Cancel' : 'Add Passenger'}
                 </button>
@@ -213,14 +213,14 @@ const ClientDetails = () => {
               {/* Passengers List */}
               {passengers.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="text-gray-500 text-lg mb-2">No passengers added yet</div>
-                  <p className="text-gray-400 text-sm">Add passengers to this client to get started</p>
+                  <div className="text-dark-300 text-lg mb-2">No passengers added yet</div>
+                  <p className="text-dark-400 text-sm">Add passengers to this client to get started</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {passengers.map((passenger) => (
                     <PassengerCard
-                      key={passenger.id}
+                      key={passenger._id || passenger.id}
                       passenger={passenger}
                       onUpdate={handlePassengerUpdated}
                       onDelete={handlePassengerDeleted}

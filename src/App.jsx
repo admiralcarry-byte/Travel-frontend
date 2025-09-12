@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { SystemStatsProvider } from './contexts/SystemStatsContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -10,11 +11,13 @@ import ClientForm from './pages/ClientForm';
 import ClientDetails from './pages/ClientDetails';
 import ProvidersList from './pages/ProvidersList';
 import ProviderForm from './pages/ProviderForm';
+import ProviderDetails from './pages/ProviderDetails';
 import ServicesList from './pages/ServicesList';
 import ServiceForm from './pages/ServiceForm';
 import SalesList from './pages/SalesList';
 import SaleWizard from './pages/SaleWizard';
 import SaleSummary from './pages/SaleSummary';
+import ClientSalesView from './pages/ClientSalesView';
 import InventoryDashboard from './pages/InventoryDashboard';
 import InventoryCalendar from './pages/InventoryCalendar';
 import CupoForm from './pages/CupoForm';
@@ -93,6 +96,16 @@ const AppRoutes = () => {
         } 
       />
       <Route 
+        path="/providers/:providerId" 
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ProviderDetails />
+            </Layout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
         path="/services" 
         element={
           <ProtectedRoute>
@@ -118,6 +131,26 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <Layout>
               <SalesList />
+            </Layout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/sales/clients" 
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ClientSalesView />
+            </Layout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/sales/wizard" 
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <SaleWizard />
             </Layout>
           </ProtectedRoute>
         } 
@@ -261,9 +294,11 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
+        <SystemStatsProvider>
+          <Router>
+            <AppRoutes />
+          </Router>
+        </SystemStatsProvider>
       </AuthProvider>
     </ThemeProvider>
   );

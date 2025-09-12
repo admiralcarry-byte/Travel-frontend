@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useLocation } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
 const ReservationFlow = () => {
@@ -53,13 +53,18 @@ const ReservationFlow = () => {
       return;
     }
 
+    if (!cupo._id && !cupo.id) {
+      setError('Invalid inventory data. Please try again.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      const response = await axios.put(`http://localhost:5000/api/cupos/${cupo.id}/reserve`, {
+      const response = await axios.put(`http://localhost:5000/api/cupos/${cupo._id || cupo.id}/reserve`, {
         seatsToReserve: seatsToReserve,
-        clientId: selectedClient.id
+        clientId: selectedClient._id
       }, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -90,171 +95,195 @@ const ReservationFlow = () => {
 
   if (!cupo) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h1 className="text-2xl font-bold text-gray-900">Create Reservation</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Reserve seats from inventory and create a new sale
-            </p>
-          </div>
+    <div className="min-h-screen">
+      <div className="space-y-12">
+        {/* Header */}
+        <div className="text-center">
+          <h1 className="text-5xl sm:text-6xl font-bold gradient-text mb-6 font-poppins">
+            Create Reservation
+          </h1>
+          <p className="text-xl text-dark-300 max-w-3xl mx-auto mb-8">
+            Reserve seats from inventory and create a new sale
+          </p>
+        </div>
 
-          <div className="p-6 space-y-6">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
-                {error}
-              </div>
-            )}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="card">
+            <div className="p-6 space-y-6">
+              {error && (
+                <div className="notification">
+                  <div className="flex items-center space-x-4">
+                    <div className="icon-container bg-error-500">
+                      <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <span className="text-error-400 font-medium text-lg">{error}</span>
+                  </div>
+                </div>
+              )}
 
-            {success && (
-              <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-md">
-                {success}
-              </div>
-            )}
+              {success && (
+                <div className="notification">
+                  <div className="flex items-center space-x-4">
+                    <div className="icon-container bg-success-500">
+                      <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <span className="text-success-400 font-medium text-lg">{success}</span>
+                  </div>
+                </div>
+              )}
 
-            {/* Cupo Information */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-gray-900 mb-3">Inventory Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Service</label>
-                  <p className="text-gray-900">{cupo.serviceId?.title}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Provider</label>
-                  <p className="text-gray-900">{cupo.serviceId?.providerId?.name}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Date</label>
-                  <p className="text-gray-900">{cupo.formattedDate}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Available Seats</label>
-                  <p className="text-gray-900 font-semibold">{cupo.availableSeats}</p>
-                </div>
-                {cupo.metadata.roomType && (
+              {/* Cupo Information */}
+              <div className="bg-dark-700 shadow rounded-lg p-6">
+                <h3 className="text-xl font-semibold text-dark-100 mb-4">Inventory Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Room Type</label>
-                    <p className="text-gray-900">{cupo.metadata.roomType}</p>
+                    <label className="block text-sm font-medium text-dark-200">Service</label>
+                    <p className="text-dark-100">{cupo.serviceId?.title}</p>
                   </div>
-                )}
-                {cupo.metadata.flightClass && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Flight Class</label>
-                    <p className="text-gray-900">{cupo.metadata.flightClass.replace('_', ' ')}</p>
+                    <label className="block text-sm font-medium text-dark-200">Provider</label>
+                    <p className="text-dark-100">{cupo.serviceId?.providerId?.name}</p>
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Client Selection */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-3">Select Client</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-64 overflow-y-auto">
-                {clients.map(client => (
-                  <div
-                    key={client.id}
-                    onClick={() => handleClientSelect(client)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                      selectedClient?.id === client.id
-                        ? 'border-indigo-500 bg-indigo-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <h4 className="font-medium text-gray-900">
-                      {client.name} {client.surname}
-                    </h4>
-                    <p className="text-sm text-gray-600">{client.email}</p>
-                    <p className="text-sm text-gray-500">{client.phone}</p>
+                  <div>
+                    <label className="block text-sm font-medium text-dark-200">Date</label>
+                    <p className="text-dark-100">{cupo.formattedDate}</p>
                   </div>
-                ))}
+                  <div>
+                    <label className="block text-sm font-medium text-dark-200">Available Seats</label>
+                    <p className="text-dark-100 font-semibold">{cupo.availableSeats}</p>
+                  </div>
+                  {cupo.metadata.roomType && (
+                    <div>
+                      <label className="block text-sm font-medium text-dark-200">Room Type</label>
+                      <p className="text-dark-100">{cupo.metadata.roomType}</p>
+                    </div>
+                  )}
+                  {cupo.metadata.flightClass && (
+                    <div>
+                      <label className="block text-sm font-medium text-dark-200">Flight Class</label>
+                      <p className="text-dark-100">{cupo.metadata.flightClass.replace('_', ' ')}</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Seats to Reserve */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-3">Reservation Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="seatsToReserve" className="block text-sm font-medium text-gray-700">
-                    Number of Seats to Reserve *
-                  </label>
-                  <input
-                    type="number"
-                    id="seatsToReserve"
-                    value={seatsToReserve}
-                    onChange={(e) => setSeatsToReserve(parseInt(e.target.value) || 1)}
-                    min="1"
-                    max={cupo.availableSeats}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                  <p className="mt-1 text-sm text-gray-500">
-                    Maximum: {cupo.availableSeats} seats available
+              {/* Client Selection */}
+              <div className="bg-dark-600/30 border border-white/10 rounded-lg p-6">
+                <h3 className="text-xl font-semibold text-dark-100 mb-4">Select Client</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-64 overflow-y-auto">
+                  {clients.map(client => (
+                    <div
+                      key={client._id}
+                      onClick={() => handleClientSelect(client)}
+                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                        selectedClient?._id === client._id
+                          ? 'border-primary-500 bg-primary-500/20'
+                          : 'border-white/30 hover:border-white/40 bg-dark-700/70'
+                      }`}
+                    >
+                      <h4 className="font-medium text-dark-100">
+                        {client.name} {client.surname}
+                      </h4>
+                      <p className="text-sm text-dark-300">{client.email}</p>
+                      <p className="text-sm text-dark-400">{client.phone}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Seats to Reserve */}
+              <div>
+                <h3 className="text-xl font-semibold text-dark-100 mb-4">Reservation Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label htmlFor="seatsToReserve" className="block text-sm font-semibold text-dark-200 mb-4">
+                      Number of Seats to Reserve *
+                    </label>
+                    <input
+                      type="number"
+                      id="seatsToReserve"
+                      value={seatsToReserve}
+                      onChange={(e) => setSeatsToReserve(parseInt(e.target.value) || 1)}
+                      min="1"
+                      max={cupo.availableSeats}
+                      className="input-field"
+                    />
+                    <p className="mt-1 text-sm text-dark-400">
+                      Maximum: {cupo.availableSeats} seats available
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-dark-200 mb-4">
+                      Total Cost (Estimated)
+                    </label>
+                    <div className="mt-1 p-3 bg-dark-700/50 rounded-md border border-white/10">
+                      <p className="text-lg font-semibold text-dark-100">
+                        ${cupo.serviceId?.cost ? (cupo.serviceId.cost * seatsToReserve).toFixed(2) : 'N/A'}
+                      </p>
+                      <p className="text-sm text-dark-400">
+                        {cupo.serviceId?.currency || 'USD'} per seat
+                        {!cupo.serviceId?.cost && (
+                          <span className="block text-warning-400 text-xs mt-1">
+                            Cost information not available
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Selected Client Summary */}
+              {selectedClient && (
+                <div className="bg-success-500/10 border border-success-500/20 p-4 rounded-md">
+                  <h4 className="font-medium text-success-400 mb-2">Selected Client</h4>
+                  <p className="text-success-300">
+                    <strong>{selectedClient.name} {selectedClient.surname}</strong>
                   </p>
+                  <p className="text-success-400 text-sm">{selectedClient.email}</p>
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Total Cost (Estimated)
-                  </label>
-                  <div className="mt-1 p-3 bg-gray-50 rounded-md">
-                    <p className="text-lg font-semibold text-gray-900">
-                      ${(cupo.serviceId?.cost * seatsToReserve).toFixed(2)}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {cupo.serviceId?.currency || 'USD'} per seat
-                    </p>
-                  </div>
+              {/* Reservation Summary */}
+              <div className="bg-primary-500/10 border border-primary-500/20 p-4 rounded-md">
+                <h4 className="font-medium text-primary-400 mb-2">Reservation Summary</h4>
+                <div className="text-primary-300 space-y-1">
+                  <p><strong>Service:</strong> {cupo.serviceId?.title}</p>
+                  <p><strong>Date:</strong> {cupo.formattedDate}</p>
+                  <p><strong>Seats:</strong> {seatsToReserve}</p>
+                  <p><strong>Client:</strong> {selectedClient ? `${selectedClient.name} ${selectedClient.surname}` : 'Not selected'}</p>
+                  <p><strong>Estimated Total:</strong> ${cupo.serviceId?.cost ? (cupo.serviceId.cost * seatsToReserve).toFixed(2) : 'N/A'}</p>
                 </div>
               </div>
-            </div>
 
-            {/* Selected Client Summary */}
-            {selectedClient && (
-              <div className="bg-green-50 border border-green-200 p-4 rounded-md">
-                <h4 className="font-medium text-green-800 mb-2">Selected Client</h4>
-                <p className="text-green-700">
-                  <strong>{selectedClient.name} {selectedClient.surname}</strong>
-                </p>
-                <p className="text-green-600 text-sm">{selectedClient.email}</p>
+              {/* Actions */}
+              <div className="flex justify-end space-x-3 pt-6 border-t border-white/10">
+                <button
+                  onClick={() => navigate('/inventory')}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleReserve}
+                  disabled={loading || !selectedClient || seatsToReserve <= 0}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Creating Reservation...' : 'Create Reservation'}
+                </button>
               </div>
-            )}
-
-            {/* Reservation Summary */}
-            <div className="bg-indigo-50 border border-indigo-200 p-4 rounded-md">
-              <h4 className="font-medium text-indigo-800 mb-2">Reservation Summary</h4>
-              <div className="text-indigo-700 space-y-1">
-                <p><strong>Service:</strong> {cupo.serviceId?.title}</p>
-                <p><strong>Date:</strong> {cupo.formattedDate}</p>
-                <p><strong>Seats:</strong> {seatsToReserve}</p>
-                <p><strong>Client:</strong> {selectedClient ? `${selectedClient.name} ${selectedClient.surname}` : 'Not selected'}</p>
-                <p><strong>Estimated Total:</strong> ${(cupo.serviceId?.cost * seatsToReserve).toFixed(2)}</p>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
-              <button
-                onClick={() => navigate('/inventory')}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReserve}
-                disabled={loading || !selectedClient || seatsToReserve <= 0}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Creating Reservation...' : 'Create Reservation'}
-              </button>
             </div>
           </div>
         </div>

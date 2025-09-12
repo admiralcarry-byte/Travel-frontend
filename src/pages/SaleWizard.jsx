@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 
 const SaleWizard = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -39,7 +40,7 @@ const SaleWizard = () => {
 
   useEffect(() => {
     if (selectedClient) {
-      fetchPassengers(selectedClient.id);
+      fetchPassengers(selectedClient._id);
     }
   }, [selectedClient]);
 
@@ -53,6 +54,16 @@ const SaleWizard = () => {
 
       if (response.data.success) {
         setClients(response.data.data.clients);
+        
+        // Check if a client ID was passed in URL params
+        const clientId = searchParams.get('clientId');
+        if (clientId) {
+          const preSelectedClient = response.data.data.clients.find(client => client._id === clientId);
+          if (preSelectedClient) {
+            setSelectedClient(preSelectedClient);
+            setCurrentStep(2); // Skip to step 2 since client is pre-selected
+          }
+        }
       }
     } catch (error) {
       setError('Failed to fetch clients');
@@ -61,7 +72,7 @@ const SaleWizard = () => {
 
   const fetchPassengers = async (clientId) => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/passengers/client/${clientId}`, {
+      const response = await axios.get(`http://localhost:5000/api/clients/${clientId}/passengers`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -99,12 +110,12 @@ const SaleWizard = () => {
 
   const handlePassengerToggle = (passenger) => {
     setSelectedPassengers(prev => {
-      const exists = prev.find(p => p.passengerId === passenger.id);
+      const exists = prev.find(p => p.passengerId === passenger._id);
       if (exists) {
-        return prev.filter(p => p.passengerId !== passenger.id);
+        return prev.filter(p => p.passengerId !== passenger._id);
       } else {
         return [...prev, {
-          passengerId: passenger.id,
+          passengerId: passenger._id,
           price: 0,
           notes: ''
         }];
@@ -124,13 +135,13 @@ const SaleWizard = () => {
 
   const handleServiceToggle = (service) => {
     setSelectedServices(prev => {
-      const exists = prev.find(s => s.serviceId === service.id);
+      const exists = prev.find(s => s.serviceId === service._id);
       if (exists) {
-        return prev.filter(s => s.serviceId !== service.id);
+        return prev.filter(s => s.serviceId !== service._id);
       } else {
         return [...prev, {
-          serviceId: service.id,
-          providerId: service.providerId.id,
+          serviceId: service._id,
+          providerId: service.providerId._id,
           priceClient: service.cost,
           costProvider: service.cost * 0.8, // 20% markup example
           currency: service.currency || 'USD',
@@ -170,7 +181,7 @@ const SaleWizard = () => {
 
     try {
       const saleData = {
-        clientId: selectedClient.id,
+        clientId: selectedClient._id,
         passengers: selectedPassengers,
         services: selectedServices,
         notes: saleNotes,
@@ -184,6 +195,10 @@ const SaleWizard = () => {
       });
 
       if (response.data.success) {
+        console.log('Sale creation response:', response.data);
+        console.log('Sale object:', response.data.data.sale);
+        console.log('Sale ID:', response.data.data.sale.id);
+        console.log('Sale _ID:', response.data.data.sale._id);
         setSuccess('Sale created successfully!');
         setTimeout(() => {
           navigate(`/sales/${response.data.data.sale.id}`);
@@ -224,7 +239,7 @@ const SaleWizard = () => {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-dark-100">Create New Sale</h1>
         <p className="mt-1 text-sm text-dark-400">
-          Multi-step wizard to create a new sale/reservation
+          Multi-step wizard to create a new reservation
         </p>
       </div>
 
@@ -249,9 +264,12 @@ const SaleWizard = () => {
                 <p className="text-xs text-dark-400">{step.description}</p>
               </div>
               {index < steps.length - 1 && (
-                <div className={`hidden sm:block w-16 h-0.5 ml-4 ${
-                  currentStep > step.number ? 'bg-primary-600' : 'bg-white/20'
-                }`} />
+                <div 
+                  key={`connector-${step.number}`}
+                  className={`hidden sm:block w-16 h-0.5 ml-4 ${
+                    currentStep > step.number ? 'bg-primary-600' : 'bg-white/20'
+                  }`} 
+                />
               )}
             </div>
           ))}
@@ -294,10 +312,10 @@ const SaleWizard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
               {filteredClients.map(client => (
                 <div
-                  key={client.id}
+                  key={client._id}
                   onClick={() => handleClientSelect(client)}
                   className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    selectedClient?.id === client.id
+                    selectedClient?._id === client._id
                       ? 'border-primary-500 bg-primary-500/10'
                       : 'border-white/20 hover:border-white/30'
                   }`}
@@ -333,10 +351,10 @@ const SaleWizard = () => {
             ) : (
               <div className="space-y-4">
                 {availablePassengers.map(passenger => {
-                  const isSelected = selectedPassengers.find(p => p.passengerId === passenger.id);
+                  const isSelected = selectedPassengers.find(p => p.passengerId === passenger._id);
                   return (
                     <div
-                      key={passenger.id}
+                      key={passenger._id}
                       className={`p-4 border rounded-lg ${
                         isSelected ? 'border-primary-500 bg-primary-500/10' : 'border-white/20'
                       }`}
@@ -362,7 +380,7 @@ const SaleWizard = () => {
                               <input
                                 type="number"
                                 value={isSelected.price}
-                                onChange={(e) => handlePassengerPriceChange(passenger.id, e.target.value)}
+                                onChange={(e) => handlePassengerPriceChange(passenger._id, e.target.value)}
                                 className="w-24 px-2 py-1 border border-white/20 rounded text-sm bg-dark-800/50 text-dark-100"
                                 placeholder="0.00"
                               />
@@ -395,10 +413,10 @@ const SaleWizard = () => {
             
             <div className="space-y-4">
               {services.map(service => {
-                const isSelected = selectedServices.find(s => s.serviceId === service.id);
+                const isSelected = selectedServices.find(s => s.serviceId === service._id);
                 return (
                   <div
-                    key={service.id}
+                    key={service._id}
                     className={`p-4 border rounded-lg ${
                       isSelected ? 'border-primary-500 bg-primary-500/10' : 'border-white/20'
                     }`}
@@ -423,7 +441,7 @@ const SaleWizard = () => {
                               <input
                                 type="number"
                                 value={isSelected.priceClient}
-                                onChange={(e) => handleServicePriceChange(service.id, 'priceClient', e.target.value)}
+                                onChange={(e) => handleServicePriceChange(service._id, 'priceClient', e.target.value)}
                                 className="w-20 px-2 py-1 border border-white/20 rounded text-sm bg-dark-800/50 text-dark-100"
                               />
                             </div>
@@ -434,7 +452,7 @@ const SaleWizard = () => {
                               <input
                                 type="number"
                                 value={isSelected.costProvider}
-                                onChange={(e) => handleServicePriceChange(service.id, 'costProvider', e.target.value)}
+                                onChange={(e) => handleServicePriceChange(service._id, 'costProvider', e.target.value)}
                                 className="w-20 px-2 py-1 border border-white/20 rounded text-sm bg-dark-800/50 text-dark-100"
                               />
                             </div>
@@ -445,7 +463,7 @@ const SaleWizard = () => {
                               <input
                                 type="number"
                                 value={isSelected.quantity}
-                                onChange={(e) => handleServicePriceChange(service.id, 'quantity', e.target.value)}
+                                onChange={(e) => handleServicePriceChange(service._id, 'quantity', e.target.value)}
                                 className="w-16 px-2 py-1 border border-white/20 rounded text-sm bg-dark-800/50 text-dark-100"
                                 min="1"
                               />
@@ -487,9 +505,9 @@ const SaleWizard = () => {
             <div className="bg-dark-700/50 p-4 rounded-lg border border-white/10">
               <h4 className="font-medium text-dark-100 mb-2">Passengers ({selectedPassengers.length})</h4>
               {selectedPassengers.map((passengerSale, index) => {
-                const passenger = availablePassengers.find(p => p.id === passengerSale.passengerId);
+                const passenger = availablePassengers.find(p => p._id === passengerSale.passengerId);
                 return (
-                  <div key={index} className="flex justify-between text-sm">
+                  <div key={passengerSale.passengerId} className="flex justify-between text-sm">
                     <span className="text-dark-200">{passenger?.name} {passenger?.surname}</span>
                     <span className="text-dark-100">${passengerSale.price.toFixed(2)}</span>
                   </div>
@@ -501,9 +519,9 @@ const SaleWizard = () => {
             <div className="bg-dark-700/50 p-4 rounded-lg border border-white/10">
               <h4 className="font-medium text-dark-100 mb-2">Services ({selectedServices.length})</h4>
               {selectedServices.map((serviceSale, index) => {
-                const service = services.find(s => s.id === serviceSale.serviceId);
+                const service = services.find(s => s._id === serviceSale.serviceId);
                 return (
-                  <div key={index} className="text-sm">
+                  <div key={serviceSale.serviceId} className="text-sm">
                     <div className="flex justify-between">
                       <span className="text-dark-200">{service?.title} (x{serviceSale.quantity})</span>
                       <span className="text-dark-100">${(serviceSale.priceClient * serviceSale.quantity).toFixed(2)}</span>

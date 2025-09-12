@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import PaymentForm from './PaymentForm';
+import Modal from './Modal';
 
 const PaymentsTable = ({ saleId, onPaymentAdded }) => {
   const [payments, setPayments] = useState([]);
@@ -8,6 +9,14 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
   const [error, setError] = useState('');
   const [showClientForm, setShowClientForm] = useState(false);
   const [showProviderForm, setShowProviderForm] = useState(false);
+  const [columnWidths, setColumnWidths] = useState({
+    type: 'w-28',
+    method: 'w-24', 
+    amount: 'w-32',
+    date: 'w-24',
+    receipt: 'w-20',
+    notes: 'w-32'
+  });
 
   useEffect(() => {
     fetchPayments();
@@ -16,6 +25,14 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
   const fetchPayments = async () => {
     try {
       setLoading(true);
+      
+      // Don't fetch if saleId is undefined or invalid
+      if (!saleId || saleId === 'undefined') {
+        setPayments([]);
+        setLoading(false);
+        return;
+      }
+      
       const response = await axios.get(`http://localhost:5000/api/payments?saleId=${saleId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -48,8 +65,8 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
 
   const getPaymentTypeColor = (type) => {
     return type === 'client' 
-      ? 'bg-green-100 text-green-800' 
-      : 'bg-blue-100 text-blue-800';
+      ? 'bg-success-500/20 text-success-400 border border-success-500/30' 
+      : 'bg-primary-500/20 text-primary-400 border border-primary-500/30';
   };
 
   const getReceiptIcon = (filename) => {
@@ -58,6 +75,27 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
     if (['pdf'].includes(extension)) return '📄';
     if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) return '🖼️';
     return '📎';
+  };
+
+  const handleColumnResize = (column) => {
+    const widthMap = {
+      type: ['w-20', 'w-24', 'w-28', 'w-32'],
+      method: ['w-20', 'w-24', 'w-28', 'w-32'],
+      amount: ['w-24', 'w-32', 'w-40', 'w-48'],
+      date: ['w-20', 'w-24', 'w-28', 'w-32'],
+      receipt: ['w-16', 'w-20', 'w-24', 'w-28'],
+      notes: ['w-24', 'w-32', 'w-40', 'w-48']
+    };
+
+    const currentWidth = columnWidths[column];
+    const availableWidths = widthMap[column];
+    const currentIndex = availableWidths.indexOf(currentWidth);
+    const nextIndex = (currentIndex + 1) % availableWidths.length;
+    
+    setColumnWidths(prev => ({
+      ...prev,
+      [column]: availableWidths[nextIndex]
+    }));
   };
 
   if (loading) {
@@ -72,7 +110,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
     <div className="space-y-6">
       {/* Payment Actions */}
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium text-gray-900">Payments</h3>
+        <h3 className="text-lg font-medium text-white">Payments</h3>
         <div className="flex space-x-3">
           <button
             onClick={() => setShowClientForm(true)}
@@ -95,109 +133,156 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
         </div>
       )}
 
-      {/* Payment Forms */}
-      {showClientForm && (
-        <div className="border border-gray-200 rounded-lg p-4">
-          <PaymentForm
-            saleId={saleId}
-            paymentType="client"
-            onPaymentAdded={handlePaymentAdded}
-            onCancel={() => setShowClientForm(false)}
-          />
-        </div>
-      )}
+      {/* Payment Modals */}
+      <Modal
+        isOpen={showClientForm}
+        onClose={() => setShowClientForm(false)}
+        title="Record Client Payment"
+        size="lg"
+      >
+        <PaymentForm
+          saleId={saleId}
+          paymentType="client"
+          onPaymentAdded={handlePaymentAdded}
+          onCancel={() => setShowClientForm(false)}
+        />
+      </Modal>
 
-      {showProviderForm && (
-        <div className="border border-gray-200 rounded-lg p-4">
-          <PaymentForm
-            saleId={saleId}
-            paymentType="provider"
-            onPaymentAdded={handlePaymentAdded}
-            onCancel={() => setShowProviderForm(false)}
-          />
-        </div>
-      )}
+      <Modal
+        isOpen={showProviderForm}
+        onClose={() => setShowProviderForm(false)}
+        title="Record Provider Payment"
+        size="lg"
+      >
+        <PaymentForm
+          saleId={saleId}
+          paymentType="provider"
+          onPaymentAdded={handlePaymentAdded}
+          onCancel={() => setShowProviderForm(false)}
+        />
+      </Modal>
 
       {/* Payments Table */}
       {payments.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-dark-400">
           <p>No payments recorded yet</p>
           <p className="text-sm">Add client or provider payments to track balances</p>
         </div>
       ) : (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="space-y-2">
+          <div className="text-xs text-dark-400 bg-dark-800/50 px-3 py-2 rounded-md">
+            💡 <strong>Tip:</strong> Double-click any column header to resize it. Text that doesn't fit will show "..." - hover to see the full content.
+          </div>
+          <div className="overflow-x-auto">
+          <table className="w-full divide-y divide-white/10 table-fixed">
+            <thead className="bg-dark-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th 
+                  className={`${columnWidths.type} px-3 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider cursor-pointer hover:bg-dark-600 transition-colors`}
+                  onDoubleClick={() => handleColumnResize('type')}
+                  title="Double-click to resize column"
+                >
                   Type
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th 
+                  className={`${columnWidths.method} px-3 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider cursor-pointer hover:bg-dark-600 transition-colors`}
+                  onDoubleClick={() => handleColumnResize('method')}
+                  title="Double-click to resize column"
+                >
                   Method
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th 
+                  className={`${columnWidths.amount} px-3 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider cursor-pointer hover:bg-dark-600 transition-colors`}
+                  onDoubleClick={() => handleColumnResize('amount')}
+                  title="Double-click to resize column"
+                >
                   Amount
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th 
+                  className={`${columnWidths.date} px-3 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider cursor-pointer hover:bg-dark-600 transition-colors`}
+                  onDoubleClick={() => handleColumnResize('date')}
+                  title="Double-click to resize column"
+                >
                   Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th 
+                  className={`${columnWidths.receipt} px-3 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider cursor-pointer hover:bg-dark-600 transition-colors`}
+                  onDoubleClick={() => handleColumnResize('receipt')}
+                  title="Double-click to resize column"
+                >
                   Receipt
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th 
+                  className={`${columnWidths.notes} px-3 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider cursor-pointer hover:bg-dark-600 transition-colors`}
+                  onDoubleClick={() => handleColumnResize('notes')}
+                  title="Double-click to resize column"
+                >
                   Notes
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {payments.map((payment) => (
-                <tr key={payment.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPaymentTypeColor(payment.type)}`}>
-                      {payment.type.charAt(0).toUpperCase() + payment.type.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {payment.method}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {formatCurrency(payment.amount, payment.currency)}
+            <tbody className="divide-y divide-white/10">
+              {payments.map((payment, index) => (
+                <tr key={payment.id || payment._id || `payment-${index}`} className="hover:bg-white/5 transition-colors">
+                  <td className="px-3 py-4">
+                    <div className="truncate">
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPaymentTypeColor(payment.type)}`}>
+                        {payment.type.charAt(0).toUpperCase() + payment.type.slice(1)}
+                      </span>
                     </div>
-                    {payment.exchangeRate && payment.baseCurrency && (
-                      <div className="text-xs text-gray-500">
-                        ≈ {formatCurrency(payment.amount * payment.exchangeRate, payment.baseCurrency)}
-                        <span className="ml-1">(Rate: {payment.exchangeRate.toFixed(4)})</span>
+                  </td>
+                  <td className="px-3 py-4">
+                    <div className="truncate text-sm text-dark-100" title={payment.method}>
+                      {payment.method}
+                    </div>
+                  </td>
+                  <td className="px-3 py-4">
+                    <div className="truncate">
+                      <div className="text-sm font-medium text-dark-100 truncate" title={formatCurrency(payment.amount, payment.currency)}>
+                        {formatCurrency(payment.amount, payment.currency)}
                       </div>
-                    )}
+                      {payment.exchangeRate && payment.baseCurrency && (
+                        <div className="text-xs text-dark-400 truncate" title={`≈ ${formatCurrency(payment.amount * payment.exchangeRate, payment.baseCurrency)} (Rate: ${payment.exchangeRate.toFixed(4)})`}>
+                          ≈ {formatCurrency(payment.amount * payment.exchangeRate, payment.baseCurrency)}
+                          <span className="ml-1">(Rate: {payment.exchangeRate.toFixed(4)})</span>
+                        </div>
+                      )}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(payment.date).toLocaleDateString()}
+                  <td className="px-3 py-4">
+                    <div className="truncate text-sm text-dark-300" title={new Date(payment.date).toLocaleDateString()}>
+                      {new Date(payment.date).toLocaleDateString()}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {payment.receiptImage ? (
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg">{getReceiptIcon(payment.receiptImage)}</span>
-                        <a
-                          href={`http://localhost:5000${payment.receiptImage}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-indigo-600 hover:text-indigo-800"
-                        >
-                          View
-                        </a>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">No receipt</span>
-                    )}
+                  <td className="px-3 py-4">
+                    <div className="truncate text-sm text-dark-300">
+                      {payment.receiptImage ? (
+                        <div className="flex items-center space-x-1">
+                          <span className="text-lg">{getReceiptIcon(payment.receiptImage)}</span>
+                          <a
+                            href={`http://localhost:5000${payment.receiptImage}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary-400 hover:text-primary-300 text-xs"
+                          >
+                            View
+                          </a>
+                        </div>
+                      ) : (
+                        <span className="text-dark-400">No receipt</span>
+                      )}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                    {payment.notes || '-'}
+                  <td className="px-3 py-4">
+                    <div className="truncate text-sm text-dark-300" title={payment.notes || '-'}>
+                      {payment.notes || '-'}
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

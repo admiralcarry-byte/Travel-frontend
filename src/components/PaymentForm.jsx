@@ -17,16 +17,15 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
   const [convertedAmount, setConvertedAmount] = useState(null);
 
   const paymentMethods = [
-    'Cash',
-    'Credit Card',
-    'Debit Card',
-    'Bank Transfer',
-    'PayPal',
-    'Stripe',
-    'Check',
-    'Wire Transfer',
-    'Cryptocurrency',
-    'Other'
+    { label: 'Cash', value: 'cash' },
+    { label: 'Credit Card', value: 'credit_card' },
+    { label: 'Debit Card', value: 'debit_card' },
+    { label: 'Bank Transfer', value: 'bank_transfer' },
+    { label: 'PayPal', value: 'paypal' },
+    { label: 'Stripe', value: 'stripe' },
+    { label: 'Check', value: 'check' },
+    { label: 'Wire Transfer', value: 'wire_transfer' },
+    { label: 'Cryptocurrency', value: 'cryptocurrency' }
   ];
 
   useEffect(() => {
@@ -144,13 +143,10 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow">
-      <h3 className="text-lg font-medium text-gray-900 mb-4">
-        Record {paymentType === 'client' ? 'Client' : 'Provider'} Payment
-      </h3>
+    <div className="space-y-4">
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md mb-4">
+        <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-md mb-4">
           {error}
         </div>
       )}
@@ -158,7 +154,7 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="method" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="method" className="block text-sm font-medium text-dark-200 mb-2">
               Payment Method *
             </label>
             <select
@@ -167,19 +163,19 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
               value={formData.method}
               onChange={handleChange}
               required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input-field"
             >
               <option value="">Select payment method</option>
               {paymentMethods.map(method => (
-                <option key={method} value={method}>
-                  {method}
+                <option key={method.value} value={method.value}>
+                  {method.label}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label htmlFor="date" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="date" className="block text-sm font-medium text-dark-200 mb-2">
               Payment Date *
             </label>
             <input
@@ -189,14 +185,14 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
               value={formData.date}
               onChange={handleChange}
               required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input-field"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="amount" className="block text-sm font-medium text-dark-200 mb-2">
               Amount *
             </label>
             <input
@@ -208,11 +204,11 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
               required
               min="0"
               step="0.01"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input-field"
               placeholder="Enter amount"
             />
             {convertedAmount && (
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-dark-400">
                 ≈ ${convertedAmount.toFixed(2)} USD
                 {exchangeRate && (
                   <span className="ml-2 text-xs">
@@ -224,7 +220,7 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
           </div>
 
           <div>
-            <label htmlFor="currency" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="currency" className="block text-sm font-medium text-dark-200 mb-2">
               Currency *
             </label>
             <select
@@ -233,7 +229,7 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
               value={formData.currency}
               onChange={handleChange}
               required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input-field"
             >
               {currencies.map(currency => (
                 <option key={currency.code} value={currency.code}>
@@ -245,7 +241,7 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
         </div>
 
         <div>
-          <label htmlFor="receipt" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="receipt" className="block text-sm font-medium text-dark-200 mb-2">
             Receipt (Optional)
           </label>
           <input
@@ -254,15 +250,15 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
             name="receipt"
             onChange={handleFileChange}
             accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
-            className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+            className="block w-full text-sm text-dark-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-500/20 file:text-primary-400 hover:file:bg-primary-500/30"
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-dark-400">
             PDF, JPG, PNG, GIF, WebP (max 5MB)
           </p>
         </div>
 
         <div>
-          <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="notes" className="block text-sm font-medium text-dark-200 mb-2">
             Notes (Optional)
           </label>
           <textarea
@@ -271,23 +267,23 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
             value={formData.notes}
             onChange={handleChange}
             rows={3}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            className="input-field"
             placeholder="Add any additional notes..."
           />
         </div>
 
-        <div className="flex justify-end space-x-3 pt-4">
+        <div className="flex justify-end space-x-3 pt-4 border-t border-white/10">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+            className="px-6 py-2 text-sm font-medium text-dark-300 bg-dark-600 hover:bg-dark-500 rounded-lg transition-all duration-200"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Recording...' : 'Record Payment'}
           </button>

@@ -8,7 +8,8 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
     dob: '',
     passportNumber: '',
     nationality: '',
-    expirationDate: ''
+    expirationDate: '',
+    gender: ''
   });
   const [passportImage, setPassportImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -117,19 +118,19 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
   };
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Passenger</h3>
+    <div className="card p-6">
+      <h3 className="text-lg font-medium text-dark-100 mb-4">Add New Passenger</h3>
       
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md mb-4">
+        <div className="bg-error-500/10 border border-error-500/20 text-error-400 px-4 py-3 rounded-md mb-4">
           {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Passport Image Upload */}
-        <div className="bg-white p-4 rounded-lg border">
-          <h4 className="text-sm font-medium text-gray-700 mb-3">Passport Image (Optional)</h4>
+        <div className="card p-4">
+          <h4 className="text-sm font-medium text-dark-400 mb-3">Passport Image (Optional)</h4>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -137,7 +138,7 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
                 type="file"
                 accept="image/*"
                 onChange={handleImageUpload}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                className="block w-full text-sm text-dark-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-500 file:text-white hover:file:bg-primary-600"
               />
               
               {passportImage && (
@@ -145,7 +146,7 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
                   type="button"
                   onClick={handleOcrExtraction}
                   disabled={ocrLoading}
-                  className="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="mt-2 w-full btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {ocrLoading ? 'Extracting...' : 'Extract Data with OCR'}
                 </button>
@@ -157,7 +158,7 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
                 <img
                   src={imagePreview}
                   alt="Passport preview"
-                  className="max-w-full h-32 object-contain border rounded"
+                  className="max-w-full h-32 object-contain border border-white/10 rounded"
                 />
               </div>
             )}
@@ -167,7 +168,7 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
         {/* Passenger Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-dark-400 mb-1">
               First Name *
             </label>
             <input
@@ -176,12 +177,12 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
               value={formData.name}
               onChange={handleChange}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input-field text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-dark-400 mb-1">
               Last Name *
             </label>
             <input
@@ -190,12 +191,12 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
               value={formData.surname}
               onChange={handleChange}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input-field text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-dark-400 mb-1">
               Date of Birth *
             </label>
             <input
@@ -204,12 +205,30 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
               value={formData.dob}
               onChange={handleChange}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input-field text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-dark-400 mb-1">
+              Gender *
+            </label>
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={handleChange}
+              required
+              className="input-field text-sm"
+            >
+              <option value="">Select Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-400 mb-1">
               Passport Number *
             </label>
             <input
@@ -218,12 +237,12 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
               value={formData.passportNumber}
               onChange={handleChange}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input-field text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-dark-400 mb-1">
               Nationality *
             </label>
             <input
@@ -232,12 +251,12 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
               value={formData.nationality}
               onChange={handleChange}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input-field text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-dark-400 mb-1">
               Expiration Date *
             </label>
             <input
@@ -246,7 +265,7 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
               value={formData.expirationDate}
               onChange={handleChange}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input-field text-sm"
             />
           </div>
         </div>
@@ -256,14 +275,14 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+            className="btn-secondary text-sm"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Adding...' : 'Add Passenger'}
           </button>

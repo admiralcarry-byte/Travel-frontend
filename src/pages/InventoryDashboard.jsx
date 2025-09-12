@@ -35,6 +35,20 @@ const InventoryDashboard = () => {
     currentPageRef.current = currentPage;
   }, [currentPage]);
 
+  // Auto-dismiss error after 3 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  const dismissError = () => {
+    setError('');
+  };
+
   const statusOptions = useMemo(() => [
     { value: '', label: 'All Statuses' },
     { value: 'active', label: 'Active' },
@@ -49,10 +63,15 @@ const InventoryDashboard = () => {
         setLoading(true);
       }
       
+      // Filter out empty values from filters
+      const activeFilters = Object.fromEntries(
+        Object.entries(debouncedFiltersRef.current).filter(([_, value]) => value !== '')
+      );
+      
       const params = new URLSearchParams({
         page: currentPageRef.current,
         limit: 12,
-        ...debouncedFiltersRef.current
+        ...activeFilters
       });
 
       const response = await axios.get(`http://localhost:5000/api/cupos?${params}`, {
@@ -108,10 +127,9 @@ const InventoryDashboard = () => {
 
   // Search and filter effect
   useEffect(() => {
-    if (Object.values(debouncedFilters).some(f => f) || currentPage !== 1) {
-      fetchCupos(false);
-    }
-  }, [currentPage, debouncedFilters, fetchCupos]);
+    if (loading) return; // Don't fetch if still on initial load
+    fetchCupos(false);
+  }, [currentPage, debouncedFilters, fetchCupos, loading]);
 
   const handleFilterChange = useCallback((field, value) => {
     setFilters(prev => ({
@@ -186,13 +204,24 @@ const InventoryDashboard = () => {
 
         {error && (
           <div className="notification">
-            <div className="flex items-center space-x-4">
-              <div className="icon-container bg-error-500">
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="icon-container bg-error-500">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <span className="text-error-400 font-medium text-lg">{error}</span>
               </div>
-              <span className="text-error-400 font-medium text-lg">{error}</span>
+              <button
+                onClick={dismissError}
+                className="text-error-400 hover:text-error-300 transition-colors p-1 rounded-full hover:bg-error-500/10"
+                title="Dismiss error"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
             </div>
           </div>
         )}
@@ -210,8 +239,8 @@ const InventoryDashboard = () => {
                 className="input-field"
               >
                 <option value="">All Services</option>
-                {services.map(service => (
-                  <option key={service.id} value={service.id}>
+                {services.map((service, index) => (
+                  <option key={service._id || service.id || `service-${index}`} value={service._id || service.id}>
                     {service.title}
                   </option>
                 ))}
@@ -227,8 +256,8 @@ const InventoryDashboard = () => {
                 onChange={(e) => handleFilterChange('status', e.target.value)}
                 className="input-field"
               >
-                {statusOptions.map(option => (
-                  <option key={option.value} value={option.value}>
+                {statusOptions.map((option, index) => (
+                  <option key={option.value || `status-${index}`} value={option.value}>
                     {option.label}
                   </option>
                 ))}
@@ -301,8 +330,8 @@ const InventoryDashboard = () => {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {cupos.map((cupo) => (
-                <div key={cupo.id} className="card hover-lift">
+              {cupos.map((cupo, index) => (
+                <div key={cupo.id || cupo._id || `cupo-${index}`} className="card hover-lift">
                   {/* Service Header */}
                   <div className="p-6 border-b border-white/10">
                     <div className="flex items-start justify-between">
@@ -317,12 +346,12 @@ const InventoryDashboard = () => {
                           {cupo.serviceId?.type} • {cupo.formattedDate}
                         </p>
                       </div>
-                      <div className="flex flex-col space-y-1">
-                        <span className={`badge ${cupo.status === 'active' ? 'badge-success' : cupo.status === 'inactive' ? 'badge-warning' : 'badge-error'}`}>
+                      <div className="flex flex-col space-y-1 min-w-0">
+                        <span className={`badge ${cupo.status === 'active' ? 'badge-success' : cupo.status === 'inactive' ? 'badge-warning' : 'badge-error'} justify-center`}>
                           {cupo.status.replace('_', ' ')}
                         </span>
-                        <span className={`badge ${cupo.availabilityStatus === 'available' ? 'badge-success' : cupo.availabilityStatus === 'limited_availability' ? 'badge-warning' : 'badge-error'}`}>
-                          {cupo.availabilityStatus.replace('_', ' ')}
+                        <span className={`badge ${cupo.availabilityStatus === 'available' ? 'badge-success' : cupo.availabilityStatus === 'limited_availability' ? 'badge-warning' : 'badge-error'} justify-center`}>
+                          {cupo.availabilityStatus === 'limited_availability' ? 'LIMITED AVAIL...' : cupo.availabilityStatus.replace('_', ' ')}
                         </span>
                       </div>
                     </div>

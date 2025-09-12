@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useSystemStats } from '../contexts/SystemStatsContext';
 
 const UsersList = () => {
   const navigate = useNavigate();
+  const { refreshStats } = useSystemStats();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -36,9 +38,7 @@ const UsersList = () => {
 
   // Search and filter effect
   useEffect(() => {
-    if (debouncedSearchTerm !== '' || roleFilter !== '' || currentPage !== 1) {
-      fetchUsers(false);
-    }
+    fetchUsers(false);
   }, [currentPage, debouncedSearchTerm, roleFilter]);
 
   const fetchUsers = useCallback(async (isInitialLoad = false) => {
@@ -91,6 +91,8 @@ const UsersList = () => {
         
         // Refresh the list
         fetchUsers();
+        // Refresh system stats to update analytics
+        refreshStats();
         setError('');
       } catch (error) {
         setError(error.response?.data?.message || 'Failed to delete user');

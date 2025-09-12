@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useSystemStats } from '../contexts/SystemStatsContext';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { systemStats, businessStats, fetchSystemStats, fetchBusinessStats, refreshStats } = useSystemStats();
 
   // User Management State
   const [users, setUsers] = useState([]);
@@ -15,43 +17,43 @@ const AdminDashboard = () => {
     email: '',
     role: ''
   });
-
-  // Business Analytics State
-  const [businessStats, setBusinessStats] = useState({
-    totalSales: 0,
-    totalRevenue: 0,
-    totalClients: 0,
-    totalServices: 0,
-    activeUsers: 0,
-    monthlyGrowth: 0
-  });
-
-  // System Analytics State
-  const [systemStats, setSystemStats] = useState({
-    totalUsers: 0,
-    totalSales: 0,
-    totalClients: 0,
-    totalServices: 0,
-    totalProviders: 0,
-    systemUptime: '99.9%'
-  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [totalUsers, setTotalUsers] = useState(0);
 
   // Recent Activity State
   const [recentActivity, setRecentActivity] = useState([]);
+  const [activityCurrentPage, setActivityCurrentPage] = useState(1);
+  const [activityRowsPerPage, setActivityRowsPerPage] = useState(5);
+  const [totalActivities, setTotalActivities] = useState(0);
+
+  // System Management State
+  const [systemHealth, setSystemHealth] = useState(null);
+  const [systemLoading, setSystemLoading] = useState(false);
+  const [systemMessage, setSystemMessage] = useState('');
+  const [systemMessageType, setSystemMessageType] = useState('');
 
   useEffect(() => {
     fetchAllData();
   }, []);
 
+  // Effect for activity pagination
+  useEffect(() => {
+    if (!loading) {
+      fetchRecentActivity();
+    }
+  }, [activityCurrentPage, activityRowsPerPage, loading]);
+
   const fetchAllData = async () => {
     try {
       setLoading(true);
-      await Promise.all([
-        fetchUsers(),
-        fetchBusinessStats(),
-        fetchSystemStats(),
-        fetchRecentActivity()
-      ]);
+      // Fetch users first and get the result
+      const usersData = await fetchUsers();
+      await fetchRecentActivity();
+      // Fetch stats using context methods
+      await fetchSystemStats();
+      // Fetch business stats with the fetched users
+      await fetchBusinessStats(usersData);
     } catch (error) {
       setError('Failed to load dashboard data');
     } finally {
@@ -61,109 +63,46 @@ const AdminDashboard = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/users', {
+      const response = await axios.get('http://localhost:5000/api/users?limit=100', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
       if (response.data.success) {
-        setUsers(response.data.data.users);
+        const usersData = response.data.data.users;
+        setUsers(usersData);
+        setTotalUsers(usersData.length);
+        return usersData;
       }
+      return [];
     } catch (error) {
       console.error('Error fetching users:', error);
+      return [];
     }
   };
 
-  const fetchBusinessStats = async () => {
-    try {
-      const [salesRes, clientsRes, servicesRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/reports/kpis', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        axios.get('http://localhost:5000/api/clients?limit=1', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        axios.get('http://localhost:5000/api/services?limit=1', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        })
-      ]);
-
-      if (salesRes.data.success) {
-        setBusinessStats({
-          totalSales: salesRes.data.data.saleCount || 0,
-          totalRevenue: salesRes.data.data.totalSales || 0,
-          totalClients: clientsRes.data.data?.total || 0,
-          totalServices: servicesRes.data.data?.total || 0,
-          activeUsers: users.filter(u => u.role === 'seller').length,
-          monthlyGrowth: 12.5 // Mock data - would come from analytics
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching business stats:', error);
-    }
-  };
-
-  const fetchSystemStats = async () => {
-    try {
-      const [usersRes, salesRes, clientsRes, servicesRes, providersRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/users', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        axios.get('http://localhost:5000/api/sales?limit=1', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        axios.get('http://localhost:5000/api/clients?limit=1', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        axios.get('http://localhost:5000/api/services?limit=1', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        axios.get('http://localhost:5000/api/providers?limit=1', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        })
-      ]);
-
-      setSystemStats({
-        totalUsers: usersRes.data.data?.users?.length || 0,
-        totalSales: salesRes.data.data?.total || 0,
-        totalClients: clientsRes.data.data?.total || 0,
-        totalServices: servicesRes.data.data?.total || 0,
-        totalProviders: providersRes.data.data?.total || 0,
-        systemUptime: '99.9%'
-      });
-    } catch (error) {
-      console.error('Error fetching system stats:', error);
-    }
-  };
 
   const fetchRecentActivity = async () => {
     try {
-      // Mock recent activity data - in real app, this would come from audit logs
-      setRecentActivity([
-        {
-          id: 1,
-          user: 'John Doe',
-          action: 'Created new sale',
-          timestamp: new Date(Date.now() - 1000 * 60 * 5), // 5 minutes ago
-          type: 'sale'
-        },
-        {
-          id: 2,
-          user: 'Jane Smith',
-          action: 'Updated client information',
-          timestamp: new Date(Date.now() - 1000 * 60 * 15), // 15 minutes ago
-          type: 'client'
-        },
-        {
-          id: 3,
-          user: 'Bob Johnson',
-          action: 'Added new service',
-          timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-          type: 'service'
+      const response = await axios.get(`http://localhost:5000/api/activity-logs?page=${activityCurrentPage}&limit=${activityRowsPerPage}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
-      ]);
+      });
+      
+      if (response.data.success) {
+        setRecentActivity(response.data.data.activities);
+        setTotalActivities(response.data.data.pagination.totalCount);
+      } else {
+        // Fallback to empty array if API fails
+        setRecentActivity([]);
+        setTotalActivities(0);
+      }
     } catch (error) {
       console.error('Error fetching recent activity:', error);
+      // Fallback to empty array if API fails
+      setRecentActivity([]);
+      setTotalActivities(0);
     }
   };
 
@@ -193,11 +132,203 @@ const AdminDashboard = () => {
       try {
         await axios.delete(`http://localhost:5000/api/users/${userId}`);
         fetchUsers();
+        // Refresh system stats to update analytics
+        refreshStats();
       } catch (error) {
         setError('Failed to delete user');
         console.error('Error deleting user:', error);
       }
     }
+  };
+
+  const handleRowsPerPageChange = (newRowsPerPage) => {
+    setRowsPerPage(newRowsPerPage);
+    setCurrentPage(1); // Reset to first page when changing rows per page
+  };
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+  };
+
+  const getTotalPages = () => {
+    return Math.ceil(totalUsers / rowsPerPage);
+  };
+
+  // Activity pagination handlers
+  const handleActivityRowsPerPageChange = (newRowsPerPage) => {
+    setActivityRowsPerPage(newRowsPerPage);
+    setActivityCurrentPage(1); // Reset to first page when changing rows per page
+  };
+
+  const handleActivityPageChange = (newPage) => {
+    setActivityCurrentPage(newPage);
+  };
+
+  const getActivityTotalPages = () => {
+    return Math.ceil(totalActivities / activityRowsPerPage);
+  };
+
+  const getPaginatedUsers = () => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    return users.slice(startIndex, endIndex);
+  };
+
+  // System Management Functions
+  const showSystemMessage = (message, type = 'success') => {
+    setSystemMessage(message);
+    setSystemMessageType(type);
+    setTimeout(() => {
+      setSystemMessage('');
+      setSystemMessageType('');
+    }, 2500); // Reduced to 2.5 seconds for better UX
+  };
+
+  const handleSystemHealthCheck = async () => {
+    try {
+      setSystemLoading(true);
+      showSystemMessage('Starting system health check...', 'info');
+      
+      const response = await axios.get('http://localhost:5000/api/system/health', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.data.success) {
+        setSystemHealth(response.data.data);
+        const healthData = response.data.data;
+        const status = healthData.status === 'healthy' ? 'healthy' : 'issues detected';
+        showSystemMessage(
+          `System health check completed: ${status.toUpperCase()}. Database: ${healthData.database.status}, Collections: ${healthData.collections.found}/${healthData.collections.expected}`, 
+          healthData.status === 'healthy' ? 'success' : 'warning'
+        );
+      }
+    } catch (error) {
+      console.error('System health check error:', error);
+      const errorMsg = error.response?.data?.message || error.message || 'Unknown error';
+      showSystemMessage(`System health check failed: ${errorMsg}`, 'error');
+    } finally {
+      setSystemLoading(false);
+    }
+  };
+
+  const handleBackupDatabase = async () => {
+    if (!window.confirm('This will create a backup of the entire database. Continue?')) {
+      return;
+    }
+    
+    try {
+      setSystemLoading(true);
+      showSystemMessage('Creating database backup...', 'info');
+      
+      const response = await axios.post('http://localhost:5000/api/system/backup', {}, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.data.success) {
+        const backupInfo = response.data.data;
+        showSystemMessage(
+          `Database backup SUCCESS: Created ${backupInfo.backupFile} (${backupInfo.sizeFormatted}) at ${new Date().toLocaleTimeString()}`, 
+          'success'
+        );
+      }
+    } catch (error) {
+      console.error('Database backup error:', error);
+      const errorMsg = error.response?.data?.message || error.message || 'Unknown error';
+      showSystemMessage(`Database backup FAILED: ${errorMsg}`, 'error');
+    } finally {
+      setSystemLoading(false);
+    }
+  };
+
+  const handleResetDatabase = async () => {
+    const confirmMessage = 'WARNING: This will permanently delete ALL data from the database including users, clients, sales, and all other records. This action cannot be undone. Are you absolutely sure?';
+    
+    if (!window.confirm(confirmMessage)) {
+      showSystemMessage('Database reset cancelled by user', 'info');
+      return;
+    }
+    
+    const doubleConfirm = window.confirm('This is your final warning. ALL DATA WILL BE LOST. Type "RESET" in the next prompt to confirm.');
+    if (!doubleConfirm) {
+      showSystemMessage('Database reset cancelled by user', 'info');
+      return;
+    }
+    
+    const finalConfirm = window.prompt('Type "RESET" to confirm database reset:');
+    if (finalConfirm !== 'RESET') {
+      showSystemMessage('Database reset cancelled - confirmation text did not match', 'error');
+      return;
+    }
+    
+    try {
+      setSystemLoading(true);
+      showSystemMessage('WARNING: Resetting database - ALL DATA WILL BE DELETED...', 'warning');
+      
+      const response = await axios.post('http://localhost:5000/api/system/reset', {}, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.data.success) {
+        const resetInfo = response.data.data;
+        showSystemMessage(
+          `Database reset COMPLETED: Removed ${resetInfo.totalDocumentsRemoved} documents from all collections at ${new Date().toLocaleTimeString()}`, 
+          'success'
+        );
+        // Refresh all data after reset
+        setTimeout(() => {
+          fetchAllData();
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Database reset error:', error);
+      const errorMsg = error.response?.data?.message || error.message || 'Unknown error';
+      showSystemMessage(`Database reset FAILED: ${errorMsg}`, 'error');
+    } finally {
+      setSystemLoading(false);
+    }
+  };
+
+  const handleClearCache = async () => {
+    if (!window.confirm('This will clear temporary files and cache. Continue?')) {
+      showSystemMessage('Cache clear cancelled by user', 'info');
+      return;
+    }
+    
+    try {
+      setSystemLoading(true);
+      showSystemMessage('Clearing system cache...', 'info');
+      
+      const response = await axios.post('http://localhost:5000/api/system/clear-cache', {}, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.data.success) {
+        const cacheInfo = response.data.data;
+        showSystemMessage(
+          `Cache clear SUCCESS: Removed ${cacheInfo.cleared.length} items at ${new Date().toLocaleTimeString()}`, 
+          'success'
+        );
+      }
+    } catch (error) {
+      console.error('Clear cache error:', error);
+      const errorMsg = error.response?.data?.message || error.message || 'Unknown error';
+      showSystemMessage(`Cache clear FAILED: ${errorMsg}`, 'error');
+    } finally {
+      setSystemLoading(false);
+    }
+  };
+
+  const handleCloseSystemHealthReport = () => {
+    setSystemHealth(null);
+    showSystemMessage('System health report closed', 'info');
   };
 
   if (loading) {
@@ -241,6 +372,44 @@ const AdminDashboard = () => {
                 </svg>
               </div>
               <span className="text-error-400 font-medium text-lg">{error}</span>
+            </div>
+          </div>
+        )}
+
+        {/* System Message Display */}
+        {systemMessage && (
+          <div className="notification animate-fade-in-up">
+            <div className="flex items-center space-x-4">
+              <div className={`icon-container ${
+                systemMessageType === 'success' ? 'bg-success-500' : 
+                systemMessageType === 'error' ? 'bg-error-500' :
+                systemMessageType === 'warning' ? 'bg-warning-500' :
+                systemMessageType === 'info' ? 'bg-primary-500' : 'bg-dark-300'
+              }`}>
+                {systemMessageType === 'success' ? (
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : systemMessageType === 'error' ? (
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                ) : systemMessageType === 'warning' ? (
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+              </div>
+              <span className={`${
+                systemMessageType === 'success' ? 'text-success-400' : 
+                systemMessageType === 'error' ? 'text-error-400' :
+                systemMessageType === 'warning' ? 'text-warning-400' :
+                systemMessageType === 'info' ? 'text-primary-400' : 'text-dark-300'
+              } font-medium text-lg`}>{systemMessage}</span>
             </div>
           </div>
         )}
@@ -471,14 +640,280 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                     <div className="text-sm text-dark-400">
-                      {activity.timestamp.toLocaleTimeString()}
+                      {new Date(activity.timestamp).toLocaleTimeString()}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Activity Pagination Controls */}
+            {totalActivities > 0 && (
+              <div className="px-6 py-4 border-t border-white/10">
+                <div className="flex items-center justify-between">
+                  {/* Rows per page selector */}
+                  <div className="flex items-center space-x-4">
+                    <span className="text-sm text-dark-300">Rows per page:</span>
+                    <select
+                      value={activityRowsPerPage}
+                      onChange={(e) => handleActivityRowsPerPageChange(Number(e.target.value))}
+                      className="input-field text-sm py-1 px-2 w-16"
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                    </select>
+                  </div>
+
+                  {/* Page info */}
+                  <div className="text-sm text-dark-300">
+                    Showing {((activityCurrentPage - 1) * activityRowsPerPage) + 1} to {Math.min(activityCurrentPage * activityRowsPerPage, totalActivities)} of {totalActivities} activities
+                  </div>
+
+                  {/* Pagination buttons */}
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleActivityPageChange(activityCurrentPage - 1)}
+                      disabled={activityCurrentPage === 1}
+                      className="btn-secondary text-sm px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-sm text-dark-300 px-2">
+                      Page {activityCurrentPage} of {getActivityTotalPages()}
+                    </span>
+                    <button
+                      onClick={() => handleActivityPageChange(activityCurrentPage + 1)}
+                      disabled={activityCurrentPage === getActivityTotalPages()}
+                      className="btn-secondary text-sm px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* System Settings Section */}
+        <div className="mb-12">
+          <h3 className="text-3xl font-bold text-dark-100 mb-8 flex items-center">
+            <div className="icon-container bg-warning-500 mr-4">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            System Settings
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Database Management */}
+            <div className="card hover-lift p-6">
+              <div className="flex items-center space-x-4 mb-4">
+                <div className="icon-container bg-primary-500">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-dark-100">Database Management</h4>
+                  <p className="text-sm text-dark-300">Manage database operations</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <button 
+                  className="w-full btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleBackupDatabase}
+                  disabled={systemLoading}
+                >
+                  <span className="flex items-center justify-center space-x-2">
+                    {systemLoading ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-200 border-t-primary-500"></div>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                    )}
+                    <span>{systemLoading ? 'Backing up...' : 'Backup Database'}</span>
+                  </span>
+                </button>
+                <button 
+                  className="w-full btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleResetDatabase}
+                  disabled={systemLoading}
+                >
+                  <span className="flex items-center justify-center space-x-2">
+                    {systemLoading ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-200 border-t-primary-500"></div>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    )}
+                    <span>{systemLoading ? 'Resetting...' : 'Reset Database'}</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* System Maintenance */}
+            <div className="card hover-lift p-6">
+              <div className="flex items-center space-x-4 mb-4">
+                <div className="icon-container bg-success-500">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-dark-100">System Maintenance</h4>
+                  <p className="text-sm text-dark-300">System health and maintenance</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <button 
+                  className="w-full btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleSystemHealthCheck}
+                  disabled={systemLoading}
+                >
+                  <span className="flex items-center justify-center space-x-2">
+                    {systemLoading ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-200 border-t-primary-500"></div>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                    )}
+                    <span>{systemLoading ? 'Checking...' : 'System Health Check'}</span>
+                  </span>
+                </button>
+                <button 
+                  className="w-full btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleClearCache}
+                  disabled={systemLoading}
+                >
+                  <span className="flex items-center justify-center space-x-2">
+                    {systemLoading ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-200 border-t-primary-500"></div>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    )}
+                    <span>{systemLoading ? 'Clearing...' : 'Clear Cache'}</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* System Health Display */}
+        {systemHealth && (
+          <div className="mb-12">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-3xl font-bold text-dark-100 flex items-center">
+                <div className="icon-container bg-success-500 mr-4">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                System Health Report
+              </h3>
+              <button
+                onClick={handleCloseSystemHealthReport}
+                className="btn-secondary text-sm px-4 py-2 flex items-center space-x-2 hover:bg-error-500/20 hover:border-error-500/50 transition-all duration-200"
+                title="Close System Health Report"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span>Close</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Database Status */}
+              <div className="card hover-lift p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-semibold text-dark-100">Database</h4>
+                  <span className={`badge ${systemHealth.database.connected ? 'badge-success' : 'badge-error'}`}>
+                    {systemHealth.database.status}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-dark-300">Collections:</span>
+                    <span className="text-dark-100">{systemHealth.collections.found}/{systemHealth.collections.expected}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-dark-300">Status:</span>
+                    <span className={`${systemHealth.status === 'healthy' ? 'text-success-400' : 'text-error-400'}`}>
+                      {systemHealth.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Collections Overview */}
+              <div className="card hover-lift p-6">
+                <h4 className="text-lg font-semibold text-dark-100 mb-4">Collections</h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {Object.entries(systemHealth.collections.counts || {}).map(([collection, count]) => (
+                    <div key={collection} className="flex justify-between">
+                      <span className="text-dark-300 capitalize">{collection}:</span>
+                      <span className="text-dark-100">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* System Info */}
+              <div className="card hover-lift p-6">
+                <h4 className="text-lg font-semibold text-dark-100 mb-4">System Info</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-dark-300">Uptime:</span>
+                    <span className="text-dark-100">{Math.floor(systemHealth.system.uptime / 3600)}h</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-dark-300">Memory:</span>
+                    <span className="text-dark-100">{Math.round(systemHealth.system.memory.used / 1024 / 1024)}MB</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-dark-300">Node:</span>
+                    <span className="text-dark-100">{systemHealth.system.nodeVersion}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Relationship Health */}
+            {systemHealth.relationships && systemHealth.relationships.checks && (
+              <div className="mt-6">
+                <h4 className="text-xl font-semibold text-dark-100 mb-4">Relationship Health</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {systemHealth.relationships.checks.map((check, index) => (
+                    <div key={index} className="card p-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-dark-100 font-medium">{check.name}</span>
+                        <span className={`badge ${check.status === 'healthy' ? 'badge-success' : 'badge-error'}`}>
+                          {check.status}
+                        </span>
+                      </div>
+                      {check.invalidReferences > 0 && (
+                        <p className="text-error-400 text-sm mt-2">
+                          {check.invalidReferences} invalid references found
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* User Management */}
         <div className="mb-12">
@@ -496,7 +931,7 @@ const AdminDashboard = () => {
               <div className="flex items-center justify-between">
                 <h4 className="text-lg font-medium text-dark-100">System Users</h4>
                 <button
-                  onClick={() => navigate('/users')}
+                  onClick={() => navigate('/users/new')}
                   className="btn-primary text-sm"
                 >
                   <span className="flex items-center space-x-2">
@@ -510,7 +945,7 @@ const AdminDashboard = () => {
             </div>
 
             <div className="divide-y divide-white/10">
-              {users.map((user) => (
+              {getPaginatedUsers().map((user) => (
                 <div key={user.id} className="px-6 py-4 hover:bg-white/5 transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
@@ -568,87 +1003,53 @@ const AdminDashboard = () => {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
 
-        {/* System Settings Section */}
-        <div className="mb-12">
-          <h3 className="text-3xl font-bold text-dark-100 mb-8 flex items-center">
-            <div className="icon-container bg-warning-500 mr-4">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            System Settings
-          </h3>
+            {/* Pagination Controls */}
+            {totalUsers > 0 && (
+              <div className="px-6 py-4 border-t border-white/10">
+                <div className="flex items-center justify-between">
+                  {/* Rows per page selector */}
+                  <div className="flex items-center space-x-4">
+                    <span className="text-sm text-dark-300">Rows per page:</span>
+                    <select
+                      value={rowsPerPage}
+                      onChange={(e) => handleRowsPerPageChange(Number(e.target.value))}
+                      className="input-field text-sm py-1 px-2 w-16"
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                    </select>
+                  </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Database Management */}
-            <div className="card hover-lift p-6">
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="icon-container bg-primary-500">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
-                  </svg>
-                </div>
-                <div>
-                  <h4 className="text-lg font-semibold text-dark-100">Database Management</h4>
-                  <p className="text-sm text-dark-300">Manage database operations</p>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <button className="w-full btn-secondary text-sm">
-                  <span className="flex items-center justify-center space-x-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    <span>Backup Database</span>
-                  </span>
-                </button>
-                <button className="w-full btn-secondary text-sm">
-                  <span className="flex items-center justify-center space-x-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    <span>Reset Database</span>
-                  </span>
-                </button>
-              </div>
-            </div>
+                  {/* Page info */}
+                  <div className="text-sm text-dark-300">
+                    Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, totalUsers)} of {totalUsers} users
+                  </div>
 
-            {/* System Maintenance */}
-            <div className="card hover-lift p-6">
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="icon-container bg-success-500">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h4 className="text-lg font-semibold text-dark-100">System Maintenance</h4>
-                  <p className="text-sm text-dark-300">System health and maintenance</p>
+                  {/* Pagination buttons */}
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="btn-secondary text-sm px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-sm text-dark-300 px-2">
+                      Page {currentPage} of {getTotalPages()}
+                    </span>
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === getTotalPages()}
+                      className="btn-secondary text-sm px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div className="space-y-3">
-                <button className="w-full btn-secondary text-sm">
-                  <span className="flex items-center justify-center space-x-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    <span>System Health Check</span>
-                  </span>
-                </button>
-                <button className="w-full btn-secondary text-sm">
-                  <span className="flex items-center justify-center space-x-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    <span>Clear Cache</span>
-                  </span>
-                </button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 

@@ -20,6 +20,7 @@ const ClientForm = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
+  const [createSaleAfterClient, setCreateSaleAfterClient] = useState(false);
 
   const navigate = useNavigate();
 
@@ -256,10 +257,19 @@ const ClientForm = () => {
       });
 
       if (response.data.success) {
+        const clientId = response.data.data.client._id;
         setSuccess('Client created successfully!');
-        setTimeout(() => {
-          navigate('/clients');
-        }, 2000);
+        
+        if (createSaleAfterClient) {
+          // Navigate to sale wizard with the new client pre-selected
+          setTimeout(() => {
+            navigate(`/sales/wizard?clientId=${clientId}`);
+          }, 2000);
+        } else {
+          setTimeout(() => {
+            navigate('/clients');
+          }, 2000);
+        }
       }
     } catch (error) {
       if (error.response?.data?.errors) {
@@ -525,6 +535,22 @@ const ClientForm = () => {
                 {validationErrors.expirationDate && (
                   <p className="mt-1 text-sm text-red-400">{validationErrors.expirationDate}</p>
                 )}
+              </div>
+            </div>
+
+            {/* Additional Options */}
+            <div className="pt-6 border-t border-white/10">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="createSaleAfterClient"
+                  checked={createSaleAfterClient}
+                  onChange={(e) => setCreateSaleAfterClient(e.target.checked)}
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-white/20 rounded bg-dark-800/50"
+                />
+                <label htmlFor="createSaleAfterClient" className="ml-2 block text-sm text-dark-200">
+                  Create a sale for this client after creation (will appear in sales table)
+                </label>
               </div>
             </div>
 

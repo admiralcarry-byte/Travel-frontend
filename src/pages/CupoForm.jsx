@@ -195,12 +195,12 @@ const CupoForm = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="metadata.date" className="block text-sm font-medium text-dark-200">
+                  <label htmlFor="metadata-date" className="block text-sm font-medium text-dark-200">
                     Date *
                   </label>
                   <input
                     type="date"
-                    id="metadata.date"
+                    id="metadata-date"
                     name="metadata.date"
                     value={formData.metadata.date}
                     onChange={handleChange}
@@ -210,11 +210,11 @@ const CupoForm = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="metadata.flightClass" className="block text-sm font-medium text-dark-200">
+                  <label htmlFor="metadata-flightClass" className="block text-sm font-medium text-dark-200">
                     Flight Class
                   </label>
                   <select
-                    id="metadata.flightClass"
+                    id="metadata-flightClass"
                     name="metadata.flightClass"
                     value={formData.metadata.flightClass}
                     onChange={handleChange}
@@ -231,12 +231,12 @@ const CupoForm = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="metadata.roomType" className="block text-sm font-medium text-dark-200">
+                  <label htmlFor="metadata-roomType" className="block text-sm font-medium text-dark-200">
                     Room Type
                   </label>
                   <input
                     type="text"
-                    id="metadata.roomType"
+                    id="metadata-roomType"
                     name="metadata.roomType"
                     value={formData.metadata.roomType}
                     onChange={handleChange}
@@ -246,12 +246,12 @@ const CupoForm = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="metadata.providerRef" className="block text-sm font-medium text-dark-200">
+                  <label htmlFor="metadata-providerRef" className="block text-sm font-medium text-dark-200">
                     Provider Reference
                   </label>
                   <input
                     type="text"
-                    id="metadata.providerRef"
+                    id="metadata-providerRef"
                     name="metadata.providerRef"
                     value={formData.metadata.providerRef}
                     onChange={handleChange}
@@ -262,11 +262,11 @@ const CupoForm = () => {
               </div>
 
               <div>
-                <label htmlFor="metadata.notes" className="block text-sm font-medium text-dark-200">
-                  Notes
-                </label>
-                <textarea
-                  id="metadata.notes"
+                  <label htmlFor="metadata-notes" className="block text-sm font-medium text-dark-200">
+                    Notes
+                  </label>
+                  <textarea
+                    id="metadata-notes"
                   name="metadata.notes"
                   value={formData.metadata.notes}
                   onChange={handleChange}

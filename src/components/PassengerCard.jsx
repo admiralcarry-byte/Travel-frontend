@@ -27,7 +27,7 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
 
     try {
       const response = await axios.put(
-        `http://localhost:5000/api/passengers/${passenger.id}`,
+        `http://localhost:5000/api/passengers/${passenger._id}`,
         formData,
         {
           headers: {
@@ -63,12 +63,12 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this passenger?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/passengers/${passenger.id}`, {
+        await axios.delete(`http://localhost:5000/api/passengers/${passenger._id}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
-        onDelete(passenger.id);
+        onDelete(passenger._id);
       } catch (error) {
         setError(error.response?.data?.message || 'Failed to delete passenger');
       }
@@ -76,19 +76,19 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+    <div className="card p-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-md mb-4 text-sm">
+        <div className="bg-error-500/10 border border-error-500/20 text-error-400 px-3 py-2 rounded-md mb-4 text-sm">
           {error}
         </div>
       )}
 
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="text-lg font-medium text-gray-900">
+          <h3 className="text-lg font-medium text-dark-100">
             {passenger.fullName}
           </h3>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-dark-300">
             Passport: {passenger.passportNumber}
           </p>
         </div>
@@ -97,13 +97,13 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
             <>
               <button
                 onClick={() => setIsEditing(true)}
-                className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+                className="text-primary-400 hover:text-primary-300 text-sm font-medium"
               >
                 Edit
               </button>
               <button
                 onClick={handleDelete}
-                className="text-red-600 hover:text-red-900 text-sm font-medium"
+                className="text-error-400 hover:text-error-300 text-sm font-medium"
               >
                 Delete
               </button>
@@ -113,13 +113,13 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               <button
                 onClick={handleSave}
                 disabled={loading}
-                className="text-green-600 hover:text-green-900 text-sm font-medium disabled:opacity-50"
+                className="text-success-400 hover:text-success-300 text-sm font-medium disabled:opacity-50"
               >
                 {loading ? 'Saving...' : 'Save'}
               </button>
               <button
                 onClick={handleCancel}
-                className="text-gray-600 hover:text-gray-900 text-sm font-medium"
+                className="text-dark-400 hover:text-dark-300 text-sm font-medium"
               >
                 Cancel
               </button>
@@ -131,7 +131,7 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
       {isEditing ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-dark-400 mb-1">
               First Name
             </label>
             <input
@@ -139,12 +139,12 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               name="name"
               value={formData.name}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input-field text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-dark-400 mb-1">
               Last Name
             </label>
             <input
@@ -152,12 +152,12 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               name="surname"
               value={formData.surname}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input-field text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-dark-400 mb-1">
               Date of Birth
             </label>
             <input
@@ -165,12 +165,12 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               name="dob"
               value={formData.dob}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input-field text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-dark-400 mb-1">
               Passport Number
             </label>
             <input
@@ -178,12 +178,12 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               name="passportNumber"
               value={formData.passportNumber}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input-field text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-dark-400 mb-1">
               Nationality
             </label>
             <input
@@ -191,12 +191,12 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               name="nationality"
               value={formData.nationality}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input-field text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-dark-400 mb-1">
               Expiration Date
             </label>
             <input
@@ -204,34 +204,34 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               name="expirationDate"
               value={formData.expirationDate}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="input-field text-sm"
             />
           </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
-            <span className="font-medium text-gray-700">Date of Birth:</span>
-            <span className="ml-2 text-gray-900">
+            <span className="font-medium text-dark-400">Date of Birth:</span>
+            <span className="ml-2 text-dark-100">
               {new Date(passenger.dob).toLocaleDateString()}
             </span>
           </div>
           <div>
-            <span className="font-medium text-gray-700">Nationality:</span>
-            <span className="ml-2 text-gray-900">{passenger.nationality}</span>
+            <span className="font-medium text-dark-400">Nationality:</span>
+            <span className="ml-2 text-dark-100">{passenger.nationality}</span>
           </div>
           <div>
-            <span className="font-medium text-gray-700">Expiration Date:</span>
-            <span className="ml-2 text-gray-900">
+            <span className="font-medium text-dark-400">Expiration Date:</span>
+            <span className="ml-2 text-dark-100">
               {new Date(passenger.expirationDate).toLocaleDateString()}
             </span>
           </div>
           <div>
-            <span className="font-medium text-gray-700">Status:</span>
-            <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${
+            <span className="font-medium text-dark-400">Status:</span>
+            <span className={`ml-2 badge ${
               passenger.isPassportValid 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-red-100 text-red-800'
+                ? 'badge-success' 
+                : 'badge-error'
             }`}>
               {passenger.isPassportValid ? 'Valid' : 'Expired'}
             </span>
@@ -240,14 +240,14 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
       )}
 
       {passenger.passportImage && (
-        <div className="mt-4 pt-4 border-t border-gray-200">
+        <div className="mt-4 pt-4 border-t border-white/10">
           <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-gray-700">Passport Image:</span>
+            <span className="text-sm font-medium text-dark-400">Passport Image:</span>
             <a
               href={`http://localhost:5000/uploads/passports/${passenger.passportImage}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-indigo-600 hover:text-indigo-900 text-sm"
+              className="text-primary-400 hover:text-primary-300 text-sm"
             >
               View Image
             </a>

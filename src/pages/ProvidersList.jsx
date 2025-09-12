@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -6,13 +6,14 @@ const ProvidersList = () => {
   const navigate = useNavigate();
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const isInitialLoad = useRef(true);
 
   const providerTypes = [
     { value: '', label: 'All Types' },
@@ -35,26 +36,26 @@ const ProvidersList = () => {
   // Initial load effect
   useEffect(() => {
     fetchProviders(true);
+    isInitialLoad.current = false;
   }, []);
 
   // Search and filter effect
   useEffect(() => {
-    if (debouncedSearchTerm !== '' || typeFilter !== '' || currentPage !== 1) {
+    // Only fetch when filters change after initial load
+    if (!isInitialLoad.current) {
       fetchProviders(false);
     }
-  }, [currentPage, debouncedSearchTerm, typeFilter]);
+  }, [currentPage, debouncedSearchTerm, typeFilter, rowsPerPage]);
 
   const fetchProviders = useCallback(async (isInitialLoad = false) => {
     try {
       if (isInitialLoad) {
         setLoading(true);
-      } else {
-        setSearchLoading(true);
       }
       
       const params = new URLSearchParams({
         page: currentPage,
-        limit: 10,
+        limit: rowsPerPage,
         search: debouncedSearchTerm,
         type: typeFilter
       });
@@ -75,11 +76,9 @@ const ProvidersList = () => {
     } finally {
       if (isInitialLoad) {
         setLoading(false);
-      } else {
-        setSearchLoading(false);
       }
     }
-  }, [currentPage, debouncedSearchTerm, typeFilter]);
+  }, [currentPage, debouncedSearchTerm, typeFilter, rowsPerPage]);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
@@ -88,6 +87,11 @@ const ProvidersList = () => {
 
   const handleTypeFilter = (e) => {
     setTypeFilter(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleRowsPerPageChange = (newRowsPerPage) => {
+    setRowsPerPage(newRowsPerPage);
     setCurrentPage(1);
   };
 
@@ -153,12 +157,6 @@ const ProvidersList = () => {
 
         {/* Search and Filters */}
         <div className="card-glass p-6">
-          {searchLoading && (
-            <div className="flex items-center justify-center mb-4">
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-200 border-t-primary-500 mr-2"></div>
-              <span className="text-sm text-dark-300">Searching...</span>
-            </div>
-          )}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <label htmlFor="search" className="block text-sm font-semibold text-dark-200 mb-4">
@@ -232,32 +230,32 @@ const ProvidersList = () => {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-white/10">
+              <div className="overflow-hidden">
+                <table className="w-full divide-y divide-white/10">
                   <thead className="bg-dark-700">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider w-1/5">
                         Provider
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider w-1/6">
                         Type
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider w-1/4">
                         Contact
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider w-1/3">
                         Address
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider w-1/6">
                         Created
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
-                    {providers.map((provider) => (
+                    {providers.map((provider, index) => (
                       <tr
-                        key={provider.id}
-                        onClick={() => handleProviderClick(provider.id)}
+                        key={provider.id || provider._id || index}
+                        onClick={() => handleProviderClick(provider.id || provider._id)}
                         className="table-row cursor-pointer"
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -272,13 +270,16 @@ const ProvidersList = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
-                            <div className="text-sm text-dark-100">{provider.contactInfo.email}</div>
-                            <div className="text-sm text-dark-400">{provider.contactInfo.phone}</div>
+                            <div className="text-sm text-dark-100">{provider.contactInfo?.email || 'No email'}</div>
+                            <div className="text-sm text-dark-400">{provider.contactInfo?.phone || 'No phone'}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-dark-100 max-w-xs truncate">
-                            {provider.contactInfo.address}
+                          <div className="text-sm text-dark-100 max-w-48 truncate">
+                            {provider.contactInfo?.address ? 
+                              `${provider.contactInfo.address.street || ''}, ${provider.contactInfo.address.city || ''}, ${provider.contactInfo.address.state || ''} ${provider.contactInfo.address.zipCode || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ',') :
+                              'No address'
+                            }
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-400">
@@ -291,52 +292,68 @@ const ProvidersList = () => {
               </div>
 
               {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-                  <div className="flex-1 flex justify-between sm:hidden">
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                      className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                      className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
+              <div className="bg-dark-700 px-4 py-3 flex items-center justify-between border-t border-white/10 sm:px-6">
+                <div className="flex-1 flex justify-between sm:hidden">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-4 py-2 border border-white/20 text-sm font-medium rounded-md text-dark-200 bg-dark-600 hover:bg-dark-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-white/20 text-sm font-medium rounded-md text-dark-200 bg-dark-600 hover:bg-dark-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                  <div className="flex items-center space-x-6">
+                    <p className="text-sm text-dark-300">
+                      Page <span className="font-medium text-dark-100">{currentPage}</span> of{' '}
+                      <span className="font-medium text-dark-100">{totalPages}</span>
+                    </p>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-dark-300">Rows per page:</span>
+                      <div className="flex space-x-1">
+                        {[5, 10, 20].map((count) => (
+                          <button
+                            key={count}
+                            onClick={() => handleRowsPerPageChange(count)}
+                            className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                              rowsPerPage === count
+                                ? 'bg-primary-500 text-white'
+                                : 'bg-dark-600 text-dark-200 hover:bg-dark-500'
+                            }`}
+                          >
+                            {count}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm text-gray-700">
-                        Page <span className="font-medium">{currentPage}</span> of{' '}
-                        <span className="font-medium">{totalPages}</span>
-                      </p>
-                    </div>
-                    <div>
-                      <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                        <button
-                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                          disabled={currentPage === 1}
-                          className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Previous
-                        </button>
-                        <button
-                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                          disabled={currentPage === totalPages}
-                          className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Next
-                        </button>
-                      </nav>
-                    </div>
+                  <div>
+                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-white/20 bg-dark-600 text-sm font-medium text-dark-300 hover:bg-dark-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-white/20 bg-dark-600 text-sm font-medium text-dark-300 hover:bg-dark-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </nav>
                   </div>
                 </div>
-              )}
+              </div>
             </>
           )}
         </div>

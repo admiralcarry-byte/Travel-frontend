@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -10,6 +10,8 @@ const SalesList = () => {
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [totalSales, setTotalSales] = useState(0);
   const [filters, setFilters] = useState({
     status: '',
     minProfit: '',
@@ -24,6 +26,24 @@ const SalesList = () => {
     startDate: '',
     endDate: ''
   });
+  
+  // Refs to track current values for stable fetchSales function
+  const currentPageRef = useRef(currentPage);
+  const rowsPerPageRef = useRef(rowsPerPage);
+  const debouncedFiltersRef = useRef(debouncedFilters);
+  
+  // Update refs when values change
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+  
+  useEffect(() => {
+    rowsPerPageRef.current = rowsPerPage;
+  }, [rowsPerPage]);
+  
+  useEffect(() => {
+    debouncedFiltersRef.current = debouncedFilters;
+  }, [debouncedFilters]);
 
   const statusOptions = [
     { value: '', label: 'All Statuses' },
@@ -41,18 +61,6 @@ const SalesList = () => {
     return () => clearTimeout(timer);
   }, [filters]);
 
-  // Initial load effect
-  useEffect(() => {
-    fetchSales(true);
-  }, []);
-
-  // Search and filter effect
-  useEffect(() => {
-    if (Object.values(debouncedFilters).some(f => f) || currentPage !== 1) {
-      fetchSales(false);
-    }
-  }, [currentPage, debouncedFilters]);
-
   const fetchSales = useCallback(async (isInitialLoad = false) => {
     try {
       if (isInitialLoad) {
@@ -61,10 +69,11 @@ const SalesList = () => {
         setSearchLoading(true);
       }
       
+      // Get current values from refs
       const params = new URLSearchParams({
-        page: currentPage,
-        limit: 10,
-        ...debouncedFilters
+        page: currentPageRef.current,
+        limit: rowsPerPageRef.current,
+        ...debouncedFiltersRef.current
       });
 
       const response = await axios.get(`http://localhost:5000/api/sales?${params}`, {
@@ -76,6 +85,7 @@ const SalesList = () => {
       if (response.data.success) {
         setSales(response.data.data.sales);
         setTotalPages(response.data.data.pages);
+        setTotalSales(response.data.data.total);
         setError('');
       }
     } catch (error) {
@@ -87,7 +97,18 @@ const SalesList = () => {
         setSearchLoading(false);
       }
     }
-  }, [currentPage, debouncedFilters]);
+  }, []);
+
+  // Initial load effect
+  useEffect(() => {
+    fetchSales(true);
+  }, []); // Only run on mount
+
+  // Search and filter effect
+  useEffect(() => {
+    if (loading) return; // Don't fetch if still on initial load
+    fetchSales(false);
+  }, [currentPage, debouncedFilters, rowsPerPage, loading]);
 
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({
@@ -106,6 +127,15 @@ const SalesList = () => {
       endDate: ''
     });
     setCurrentPage(1);
+  };
+
+  const handleRowsPerPageChange = (newRowsPerPage) => {
+    setRowsPerPage(newRowsPerPage);
+    setCurrentPage(1); // Reset to first page when changing rows per page
+  };
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
   };
 
   const getStatusColor = (status) => {
@@ -291,53 +321,53 @@ const SalesList = () => {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-white/10">
+              <div className="w-full">
+                <table className="w-full divide-y divide-white/10 table-fixed">
                   <thead className="bg-dark-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                      <th className="w-24 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
                         Sale ID
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                      <th className="w-48 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
                         Client
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                      <th className="w-24 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
                         Passengers
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                      <th className="w-24 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
                         Services
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                      <th className="w-32 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
                         Total Sale
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                      <th className="w-32 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
                         Profit
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                      <th className="w-24 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                      <th className="w-24 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
                         Created
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                      <th className="w-24 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
                     {sales.map((sale) => (
-                      <tr key={sale.id} className="table-row cursor-pointer">
+                      <tr key={sale.id || sale._id || Math.random()} className="table-row cursor-pointer">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-dark-100">
-                            #{sale.id.slice(-8)}
+                            #{(sale.id || sale._id || 'unknown').toString().slice(-8)}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-4">
                           <div>
-                            <div className="text-sm font-medium text-dark-100">
+                            <div className="text-sm font-medium text-dark-100 truncate">
                               {sale.clientId?.name} {sale.clientId?.surname}
                             </div>
-                            <div className="text-sm text-dark-400">
+                            <div className="text-sm text-dark-400 truncate">
                               {sale.clientId?.email}
                             </div>
                           </div>
@@ -368,7 +398,7 @@ const SalesList = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="badge badge-primary">
+                          <span className="badge badge-primary w-24 justify-center">
                             {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
                           </span>
                         </td>
@@ -377,7 +407,7 @@ const SalesList = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <button
-                            onClick={() => navigate(`/sales/${sale.id}`)}
+                            onClick={() => navigate(`/sales/${sale.id || sale._id}`)}
                             className="text-primary-400 hover:text-primary-300"
                           >
                             View Details
@@ -389,49 +419,48 @@ const SalesList = () => {
                 </table>
               </div>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="bg-dark-700 px-4 py-3 flex items-center justify-between border-t border-white/10 sm:px-6">
-                  <div className="flex-1 flex justify-between sm:hidden">
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                      className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                      className="ml-3 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
-                  </div>
-                  <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm text-dark-300">
-                        Page <span className="font-medium">{currentPage}</span> of{' '}
-                        <span className="font-medium">{totalPages}</span>
-                      </p>
+              {/* Pagination Controls */}
+              {totalSales > 0 && (
+                <div className="px-6 py-4 border-t border-white/10">
+                  <div className="flex items-center justify-between">
+                    {/* Rows per page selector */}
+                    <div className="flex items-center space-x-4">
+                      <span className="text-sm text-dark-300">Rows per page:</span>
+                      <select
+                        value={rowsPerPage}
+                        onChange={(e) => handleRowsPerPageChange(Number(e.target.value))}
+                        className="input-field text-sm py-1 px-2 w-16"
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                      </select>
                     </div>
-                    <div>
-                      <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                        <button
-                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                          disabled={currentPage === 1}
-                          className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Previous
-                        </button>
-                        <button
-                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                          disabled={currentPage === totalPages}
-                          className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Next
-                        </button>
-                      </nav>
+
+                    {/* Page info */}
+                    <div className="text-sm text-dark-300">
+                      Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, totalSales)} of {totalSales} sales
+                    </div>
+
+                    {/* Pagination buttons */}
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="btn-secondary text-sm px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <span className="text-sm text-dark-300 px-2">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="btn-secondary text-sm px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
                     </div>
                   </div>
                 </div>
