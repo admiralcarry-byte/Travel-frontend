@@ -4,7 +4,7 @@ import { apiConfig } from '../config/api';
 // Create axios instance with base configuration
 const api = axios.create({
   baseURL: apiConfig.baseURL,
-  timeout: 30000, // Increased timeout to 30 seconds
+  timeout: 60000, // Increased timeout to 60 seconds for OCR processing
   headers: {
     'Content-Type': 'application/json',
   },
