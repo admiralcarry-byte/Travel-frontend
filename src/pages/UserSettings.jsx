@@ -6,7 +6,7 @@ import ResponsiveGrid from '../components/ResponsiveGrid';
 import api from '../utils/api';
 
 const UserSettings = () => {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, isAdmin, isSeller } = useAuth();
   const { theme, toggleTheme, setLightTheme, setDarkTheme, applySystemTheme } = useTheme();
   
   const [activeTab, setActiveTab] = useState('profile');
@@ -140,6 +140,18 @@ const UserSettings = () => {
     'UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
     'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Asia/Tokyo', 'Asia/Shanghai'
   ];
+
+  // Check if user has permission to access settings
+  if (!user || (!isAdmin && !isSeller)) {
+    return (
+      <div className="space-y-6">
+        <div className="card p-6">
+          <h1 className="text-2xl font-bold text-dark-100 mb-2">Access Denied</h1>
+          <p className="text-dark-300">You don't have permission to access this page.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
