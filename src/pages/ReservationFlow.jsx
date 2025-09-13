@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const ReservationFlow = () => {
   const navigate = useNavigate();
@@ -24,11 +24,7 @@ const ReservationFlow = () => {
 
   const fetchClients = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/clients?limit=100', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get('/api/clients?limit=100');
 
       if (response.data.success) {
         setClients(response.data.data.clients);
@@ -62,13 +58,9 @@ const ReservationFlow = () => {
     setError('');
 
     try {
-      const response = await axios.put(`http://localhost:5000/api/cupos/${cupo._id || cupo.id}/reserve`, {
+      const response = await api.put(`/api/cupos/${cupo._id || cupo.id}/reserve`, {
         seatsToReserve: seatsToReserve,
         clientId: selectedClient._id
-      }, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
       });
 
       if (response.data.success) {

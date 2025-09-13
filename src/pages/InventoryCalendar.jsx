@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const InventoryCalendar = () => {
   const navigate = useNavigate();
@@ -40,11 +40,7 @@ const InventoryCalendar = () => {
         endDate: endDate.toISOString().split('T')[0]
       });
 
-      const response = await axios.get(`http://localhost:5000/api/cupos/calendar?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/cupos/calendar?${params}`);
 
       if (response.data.success) {
         setCalendarData(response.data.data.calendarData);

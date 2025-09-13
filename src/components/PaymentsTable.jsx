@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import PaymentForm from './PaymentForm';
 import Modal from './Modal';
 
@@ -33,11 +33,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
         return;
       }
       
-      const response = await axios.get(`http://localhost:5000/api/payments?saleId=${saleId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/payments?saleId=${saleId}`);
 
       if (response.data.success) {
         setPayments(response.data.data.payments);
@@ -260,7 +256,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
                         <div className="flex items-center space-x-1">
                           <span className="text-lg">{getReceiptIcon(payment.receiptImage)}</span>
                           <a
-                            href={`http://localhost:5000${payment.receiptImage}`}
+                            href={`${api.getUri()}${payment.receiptImage}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-primary-400 hover:text-primary-300 text-xs"

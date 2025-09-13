@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const ClientSalesView = () => {
   const navigate = useNavigate();
@@ -75,11 +75,7 @@ const ClientSalesView = () => {
         ...debouncedFiltersRef.current
       });
 
-      const response = await axios.get(`http://localhost:5000/api/clients/with-sales?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/clients/with-sales?${params}`);
 
       if (response.data.success) {
         setClients(response.data.data.clients);

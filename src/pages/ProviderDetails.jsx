@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const ProviderDetails = () => {
   const { providerId } = useParams();
@@ -16,11 +16,7 @@ const ProviderDetails = () => {
   const fetchProvider = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:5000/api/providers/${providerId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/providers/${providerId}`);
 
       if (response.data.success) {
         setProvider(response.data.data.provider);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const ClientsList = () => {
   const navigate = useNavigate();
@@ -44,14 +44,11 @@ const ClientsList = () => {
         setSearchLoading(true);
       }
       
-      const response = await axios.get('http://localhost:5000/api/clients', {
+      const response = await api.get('/api/clients', {
         params: {
           page: currentPage,
           limit: rowsPerPage,
           search: debouncedSearchTerm
-        },
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
       setClients(response.data.data.clients || []);

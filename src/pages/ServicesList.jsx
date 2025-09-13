@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const ServicesList = () => {
   const navigate = useNavigate();
@@ -70,11 +70,7 @@ const ServicesList = () => {
         params.append('providerId', providerFilter);
       }
 
-      const response = await axios.get(`http://localhost:5000/api/services?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/services?${params}`);
 
       if (response.data.success) {
         // Filter services to only show the 5 valid service types
@@ -99,11 +95,7 @@ const ServicesList = () => {
 
   const fetchProviders = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/providers?limit=100', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get('/api/providers?limit=100');
 
       if (response.data.success) {
         setProviders(response.data.data.providers);

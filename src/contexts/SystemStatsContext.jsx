@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 
 const SystemStatsContext = createContext();
 
@@ -42,21 +42,11 @@ export const SystemStatsProvider = ({ children }) => {
       }
 
       const [usersRes, salesRes, clientsRes, servicesRes, providersRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/users?limit=100', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        axios.get('http://localhost:5000/api/sales?limit=1', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        axios.get('http://localhost:5000/api/clients?limit=1', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        axios.get('http://localhost:5000/api/services?limit=1', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        axios.get('http://localhost:5000/api/providers?limit=1', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+        api.get('/api/users?limit=100'),
+        api.get('/api/sales?limit=1'),
+        api.get('/api/clients?limit=1'),
+        api.get('/api/services?limit=1'),
+        api.get('/api/providers?limit=1')
       ]);
 
       // Log the responses for debugging
@@ -101,15 +91,9 @@ export const SystemStatsProvider = ({ children }) => {
       }
 
       const [salesRes, clientsRes, servicesRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/reports/kpis', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        axios.get('http://localhost:5000/api/clients?limit=1', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        axios.get('http://localhost:5000/api/services?limit=1', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+        api.get('/api/reports/kpis'),
+        api.get('/api/clients?limit=1'),
+        api.get('/api/services?limit=1')
       ]);
 
       // Log the responses for debugging

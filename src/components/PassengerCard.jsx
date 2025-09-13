@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 
 const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -26,14 +26,9 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
     setError('');
 
     try {
-      const response = await axios.put(
-        `http://localhost:5000/api/passengers/${passenger._id}`,
-        formData,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
+      const response = await api.put(
+        `/api/passengers/${passenger._id}`,
+        formData
       );
 
       if (response.data.success) {
@@ -63,11 +58,7 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this passenger?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/passengers/${passenger._id}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
+      await api.delete(`/api/passengers/${passenger._id}`);
         onDelete(passenger._id);
       } catch (error) {
         setError(error.response?.data?.message || 'Failed to delete passenger');
@@ -244,7 +235,7 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
           <div className="flex items-center space-x-2">
             <span className="text-sm font-medium text-dark-400">Passport Image:</span>
             <a
-              href={`http://localhost:5000/uploads/passports/${passenger.passportImage}`}
+                        href={`${api.getUri()}/uploads/passports/${passenger.passportImage}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary-400 hover:text-primary-300 text-sm"

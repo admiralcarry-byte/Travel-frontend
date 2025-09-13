@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 
 const ClientNotificationSettings = ({ clientId, onClose }) => {
   const [preferences, setPreferences] = useState({
@@ -21,11 +21,7 @@ const ClientNotificationSettings = ({ clientId, onClose }) => {
 
   const fetchClientPreferences = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/clients/${clientId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/clients/${clientId}`);
 
       if (response.data.success && response.data.data.client.notificationPreferences) {
         setPreferences(response.data.data.client.notificationPreferences);
@@ -42,14 +38,9 @@ const ClientNotificationSettings = ({ clientId, onClose }) => {
     setSuccess('');
 
     try {
-      const response = await axios.put(
-        `http://localhost:5000/api/notifications/clients/${clientId}/notifications`,
-        { notificationPreferences: preferences },
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
+      const response = await api.put(
+        `/api/notifications/clients/${clientId}/notifications`,
+        { notificationPreferences: preferences }
       );
 
       if (response.data.success) {

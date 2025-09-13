@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import ResponsiveCard from '../components/ResponsiveCard';
 import ResponsiveGrid from '../components/ResponsiveGrid';
-import axios from 'axios';
+import api from '../utils/api';
 
 const UserSettings = () => {
   const { user, updateUser } = useAuth();
@@ -68,11 +68,7 @@ const UserSettings = () => {
     setLoading(true);
     
     try {
-      const response = await axios.put('http://localhost:5000/api/auth/profile', profileData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.put('/api/auth/profile', profileData);
       updateUser(response.data.data.user);
       showMessage('Profile updated successfully!', 'success');
     } catch (error) {
@@ -94,13 +90,9 @@ const UserSettings = () => {
     setLoading(true);
     
     try {
-      await axios.put('http://localhost:5000/api/auth/password', {
+      await api.put('/api/auth/password', {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword
-      }, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
       });
       showMessage('Password updated successfully!', 'success');
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });

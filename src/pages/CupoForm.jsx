@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const CupoForm = () => {
   const navigate = useNavigate();
@@ -41,11 +41,7 @@ const CupoForm = () => {
 
   const fetchServices = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/services?limit=100', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get('/api/services?limit=100');
 
       if (response.data.success) {
         setServices(response.data.data.services);
@@ -82,11 +78,7 @@ const CupoForm = () => {
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:5000/api/cupos', formData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.post('/api/cupos', formData);
 
       if (response.data.success) {
         setSuccess('Cupo created successfully!');

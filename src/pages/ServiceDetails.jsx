@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const ServiceDetails = () => {
   const { id } = useParams();
@@ -24,11 +24,7 @@ const ServiceDetails = () => {
         return;
       }
       
-      const response = await axios.get(`http://localhost:5000/api/services/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/services/${id}`);
 
       if (response.data.success) {
         setService(response.data.data.service);

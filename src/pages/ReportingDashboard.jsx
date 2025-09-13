@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import KPICard from '../components/KPICard';
 import LineChart from '../components/LineChart';
@@ -40,11 +40,7 @@ const ReportingDashboard = () => {
 
   const fetchSellers = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/users/sellers', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await api.get('/api/users/sellers');
 
       if (response.data.success) {
         setSellers(response.data.data.sellers);
@@ -74,22 +70,22 @@ const ReportingDashboard = () => {
       };
 
       console.log('🌐 Making API calls to:');
-      console.log('  📊 KPIs:', `http://localhost:5000/api/reports/kpis?${params}`);
-      console.log('  📈 Sales:', `http://localhost:5000/api/reports/sales?${params}`);
-      console.log('  💵 Profit:', `http://localhost:5000/api/reports/profit?${params}`);
-      console.log('  ⚖️ Balances:', `http://localhost:5000/api/reports/balances?${params}`);
-      console.log('  👥 Client Balance:', `http://localhost:5000/api/reports/client-balance?${params}`);
-      console.log('  🏭 Provider Balance:', `http://localhost:5000/api/reports/provider-balance?${params}`);
-      console.log('  🏆 Top Services:', `http://localhost:5000/api/reports/top-services?${params}`);
+      console.log('  📊 KPIs:', `/api/reports/kpis?${params}`);
+      console.log('  📈 Sales:', `/api/reports/sales?${params}`);
+      console.log('  💵 Profit:', `/api/reports/profit?${params}`);
+      console.log('  ⚖️ Balances:', `/api/reports/balances?${params}`);
+      console.log('  👥 Client Balance:', `/api/reports/client-balance?${params}`);
+      console.log('  🏭 Provider Balance:', `/api/reports/provider-balance?${params}`);
+      console.log('  🏆 Top Services:', `/api/reports/top-services?${params}`);
 
       const [kpisRes, salesRes, profitRes, balancesRes, clientBalanceRes, providerBalanceRes, topServicesRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/reports/kpis?${params}`, { headers }),
-        axios.get(`http://localhost:5000/api/reports/sales?${params}`, { headers }),
-        axios.get(`http://localhost:5000/api/reports/profit?${params}`, { headers }),
-        axios.get(`http://localhost:5000/api/reports/balances?${params}`, { headers }),
-        axios.get(`http://localhost:5000/api/reports/client-balance?${params}`, { headers }),
-        axios.get(`http://localhost:5000/api/reports/provider-balance?${params}`, { headers }),
-        axios.get(`http://localhost:5000/api/reports/top-services?${params}`, { headers })
+        api.get(`/api/reports/kpis?${params}`),
+        api.get(`/api/reports/sales?${params}`),
+        api.get(`/api/reports/profit?${params}`),
+        api.get(`/api/reports/balances?${params}`),
+        api.get(`/api/reports/client-balance?${params}`),
+        api.get(`/api/reports/provider-balance?${params}`),
+        api.get(`/api/reports/top-services?${params}`)
       ]);
 
       if (kpisRes.data.success) {

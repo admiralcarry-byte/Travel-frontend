@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const ServiceForm = () => {
   const navigate = useNavigate();
@@ -79,11 +79,7 @@ const ServiceForm = () => {
   const fetchService = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:5000/api/services/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/services/${id}`);
 
       if (response.data.success) {
         const service = response.data.data.service;
@@ -107,11 +103,7 @@ const ServiceForm = () => {
   const fetchProviders = async () => {
     try {
       setProvidersLoading(true);
-      const response = await axios.get('http://localhost:5000/api/providers?limit=100', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get('/api/providers?limit=100');
 
       if (response.data.success) {
         console.log('Providers fetched:', response.data.data.providers);
@@ -152,17 +144,9 @@ const ServiceForm = () => {
 
       let response;
       if (isEditing) {
-        response = await axios.put(`http://localhost:5000/api/services/${id}`, serviceData, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
+        response = await api.put(`/api/services/${id}`, serviceData);
       } else {
-        response = await axios.post('http://localhost:5000/api/services', serviceData, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
+        response = await api.post('/api/services', serviceData);
       }
 
       if (response.data.success) {

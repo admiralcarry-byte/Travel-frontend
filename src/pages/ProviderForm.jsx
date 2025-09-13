@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const ProviderForm = () => {
   const [formData, setFormData] = useState({
@@ -92,11 +92,7 @@ const ProviderForm = () => {
     }
 
     try {
-      const response = await axios.post('http://localhost:5000/api/providers', formData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.post('/api/providers', formData);
 
       if (response.data.success) {
         setSuccess('Provider created successfully!');

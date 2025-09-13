@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 
 const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -43,11 +43,7 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
 
   const fetchCurrencies = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/payments/currencies', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get('/api/payments/currencies');
 
       if (response.data.success) {
         setCurrencies(response.data.data.currencies);
@@ -59,11 +55,7 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
 
   const fetchExchangeRate = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/payments/exchange-rate?from=${formData.currency}&to=USD`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/payments/exchange-rate?from=${formData.currency}&to=USD`);
 
       if (response.data.success) {
         setExchangeRate(response.data.data.rate);
@@ -111,12 +103,11 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
       }
 
       const endpoint = paymentType === 'client' 
-        ? 'http://localhost:5000/api/payments/client'
-        : 'http://localhost:5000/api/payments/provider';
+        ? '/api/payments/client'
+        : '/api/payments/provider';
 
-      const response = await axios.post(endpoint, submitData, {
+      const response = await api.post(endpoint, submitData, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'multipart/form-data'
         }
       });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 import PassengerCard from '../components/PassengerCard';
 import PassengerForm from '../components/PassengerForm';
 
@@ -20,11 +20,7 @@ const ClientDetails = () => {
   const fetchClientData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:5000/api/clients/${clientId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/clients/${clientId}`);
 
       if (response.data.success) {
         setClient(response.data.data.client);
@@ -171,7 +167,7 @@ const ClientDetails = () => {
                   <span className="text-sm font-medium text-dark-400">Passport Image</span>
                   <div className="mt-2">
                     <a
-                      href={`http://localhost:5000/uploads/passports/${client.passportImage}`}
+                        href={`${api.getUri()}/uploads/passports/${client.passportImage}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary-400 hover:text-primary-300 text-sm"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 import { useSystemStats } from '../contexts/SystemStatsContext';
 
 const UsersList = () => {
@@ -62,11 +62,7 @@ const UsersList = () => {
         params.append('role', roleFilter);
       }
 
-      const response = await axios.get(`http://localhost:5000/api/users?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/users?${params}`);
 
       if (response.data.success) {
         setUsers(response.data.data.users);
@@ -83,11 +79,7 @@ const UsersList = () => {
   const handleDeleteUser = async (userId, username) => {
     if (window.confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
       try {
-        await axios.delete(`http://localhost:5000/api/users/${userId}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
+        await api.delete(`/api/users/${userId}`);
         
         // Refresh the list
         fetchUsers();

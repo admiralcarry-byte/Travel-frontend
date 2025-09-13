@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const SaleWizard = () => {
   const navigate = useNavigate();
@@ -46,11 +46,7 @@ const SaleWizard = () => {
 
   const fetchClients = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/clients?limit=100', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get('/api/clients?limit=100');
 
       if (response.data.success) {
         setClients(response.data.data.clients);
@@ -72,11 +68,7 @@ const SaleWizard = () => {
 
   const fetchPassengers = async (clientId) => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/clients/${clientId}/passengers`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/clients/${clientId}/passengers`);
 
       if (response.data.success) {
         setAvailablePassengers(response.data.data.passengers);
@@ -88,11 +80,7 @@ const SaleWizard = () => {
 
   const fetchServices = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/services?limit=100', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get('/api/services?limit=100');
 
       if (response.data.success) {
         setServices(response.data.data.services);
@@ -188,11 +176,7 @@ const SaleWizard = () => {
         status: 'open'
       };
 
-      const response = await axios.post('http://localhost:5000/api/sales', saleData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.post('/api/sales', saleData);
 
       if (response.data.success) {
         console.log('Sale creation response:', response.data);

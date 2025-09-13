@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const NotificationHistory = () => {
@@ -28,7 +28,7 @@ const NotificationHistory = () => {
         ...filters
       });
 
-      const response = await axios.get(`http://localhost:5000/api/notifications/history?${params}`);
+      const response = await api.get(`/api/notifications/history?${params}`);
 
       if (response.data.success) {
         setNotifications(response.data.data.notifications);

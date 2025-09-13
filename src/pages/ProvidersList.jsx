@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const ProvidersList = () => {
   const navigate = useNavigate();
@@ -60,11 +60,7 @@ const ProvidersList = () => {
         type: typeFilter
       });
 
-      const response = await axios.get(`http://localhost:5000/api/providers?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/providers?${params}`);
 
       if (response.data.success) {
         setProviders(response.data.data.providers);

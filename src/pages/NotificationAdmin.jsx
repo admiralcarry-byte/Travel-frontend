@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 
 const NotificationAdmin = () => {
   const [cronStatus, setCronStatus] = useState(null);
@@ -33,11 +33,7 @@ const NotificationAdmin = () => {
 
   const fetchCronStatus = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/notifications/cron/status', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get('/api/notifications/cron/status');
 
       if (response.data.success) {
         setCronStatus(response.data.data);
@@ -49,11 +45,7 @@ const NotificationAdmin = () => {
 
   const fetchClients = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/clients?limit=100', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get('/api/clients?limit=100');
 
       if (response.data.success) {
         setClients(response.data.data.clients);
@@ -65,11 +57,7 @@ const NotificationAdmin = () => {
 
   const fetchSales = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/sales?limit=100', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get('/api/sales?limit=100');
 
       if (response.data.success) {
         setSales(response.data.data.sales);
@@ -86,11 +74,7 @@ const NotificationAdmin = () => {
     setTestResults(null);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/notifications/test', testForm, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.post('/api/notifications/test', testForm);
 
       if (response.data.success) {
         setTestResults(response.data.data);
@@ -109,12 +93,8 @@ const NotificationAdmin = () => {
     setSuccess('');
 
     try {
-      const response = await axios.post('http://localhost:5000/api/notifications/cron/trigger', {
+      const response = await api.post('/api/notifications/cron/trigger', {
         jobType
-      }, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
       });
 
       if (response.data.success) {
@@ -135,11 +115,7 @@ const NotificationAdmin = () => {
     setSuccess('');
 
     try {
-      const response = await axios.post('http://localhost:5000/api/notifications/send', manualNotification, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.post('/api/notifications/send', manualNotification);
 
       if (response.data.success) {
         setSuccess('Manual notification sent successfully!');

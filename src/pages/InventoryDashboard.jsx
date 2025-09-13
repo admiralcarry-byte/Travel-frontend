@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const InventoryDashboard = () => {
   const navigate = useNavigate();
@@ -74,11 +74,7 @@ const InventoryDashboard = () => {
         ...activeFilters
       });
 
-      const response = await axios.get(`http://localhost:5000/api/cupos?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/cupos?${params}`);
 
       if (response.data.success) {
         setCupos(response.data.data.cupos);
@@ -96,11 +92,7 @@ const InventoryDashboard = () => {
 
   const fetchServices = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/services?limit=100', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get('/api/services?limit=100');
 
       if (response.data.success) {
         setServices(response.data.data.services);

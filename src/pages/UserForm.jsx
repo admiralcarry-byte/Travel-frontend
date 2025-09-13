@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const UserForm = () => {
   const navigate = useNavigate();
@@ -45,11 +45,7 @@ const UserForm = () => {
   const fetchUser = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:5000/api/users/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/users/${id}`);
 
       if (response.data.success) {
         const user = response.data.data.user;
@@ -138,17 +134,9 @@ const UserForm = () => {
 
       let response;
       if (isEditing) {
-        response = await axios.put(`http://localhost:5000/api/users/${id}`, submitData, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
+        response = await api.put(`/api/users/${id}`, submitData);
       } else {
-        response = await axios.post('http://localhost:5000/api/users', submitData, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
+        response = await api.post('/api/users', submitData);
       }
 
       if (response.data.success) {

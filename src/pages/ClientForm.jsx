@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const ClientForm = () => {
   const [formData, setFormData] = useState({
@@ -181,10 +181,9 @@ const ClientForm = () => {
       const formData = new FormData();
       formData.append('passportImage', passportImage);
 
-      const response = await axios.post('http://localhost:5000/api/clients/ocr', formData, {
+      const response = await api.post('/api/clients/ocr', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'multipart/form-data'
         }
       });
 
@@ -250,11 +249,7 @@ const ClientForm = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/clients', formData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.post('/api/clients', formData);
 
       if (response.data.success) {
         const clientId = response.data.data.client._id;

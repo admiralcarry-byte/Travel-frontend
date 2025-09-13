@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 
 const CupoDetails = () => {
   const { id } = useParams();
@@ -24,11 +24,7 @@ const CupoDetails = () => {
         return;
       }
       
-      const response = await axios.get(`http://localhost:5000/api/cupos/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/cupos/${id}`);
 
       if (response.data.success) {
         setCupo(response.data.data.cupo);

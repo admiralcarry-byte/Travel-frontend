@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 import PaymentsTable from '../components/PaymentsTable';
 import ProfitChart from '../components/ProfitChart';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -32,13 +32,9 @@ const SaleSummary = () => {
       }
       
       console.log('SaleSummary - ID from URL params:', id);
-      console.log('SaleSummary - API URL:', `http://localhost:5000/api/sales/${id}`);
+      console.log('SaleSummary - API URL:', `/api/sales/${id}`);
       
-      const response = await axios.get(`http://localhost:5000/api/sales/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/sales/${id}`);
 
       if (response.data.success) {
         setSale(response.data.data.sale);
@@ -87,9 +83,8 @@ const SaleSummary = () => {
       });
       formData.append('type', 'other');
 
-      const response = await axios.post(`http://localhost:5000/api/sales/${id}/upload`, formData, {
+      const response = await api.post(`/api/sales/${id}/upload`, formData, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'multipart/form-data'
         }
       });
@@ -574,7 +569,7 @@ const SaleSummary = () => {
                         </div>
                       </div>
                       <a
-                        href={`http://localhost:5000${doc.url}`}
+                        href={`${api.getUri()}${doc.url}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-indigo-600 hover:text-indigo-800 text-sm"

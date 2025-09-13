@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import axios from 'axios';
+import api from '../utils/api';
 
 const SellerDashboard = () => {
   const navigate = useNavigate();
@@ -25,18 +25,10 @@ const SellerDashboard = () => {
         const token = localStorage.getItem('token');
         
         // Fetch recent sales (limit to 3)
-        const salesResponse = await axios.get('http://localhost:5000/api/sales?limit=3', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        const salesResponse = await api.get('/api/sales?limit=3');
 
         // Fetch sales statistics
-        const statsResponse = await axios.get('http://localhost:5000/api/sales/stats', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        const statsResponse = await api.get('/api/sales/stats');
 
         if (salesResponse.data.success) {
           // Transform sales data to match component expectations

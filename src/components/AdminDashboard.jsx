@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/api';
 import { useSystemStats } from '../contexts/SystemStatsContext';
 
 const AdminDashboard = () => {
@@ -63,11 +63,7 @@ const AdminDashboard = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/users?limit=100', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get('/api/users?limit=100');
       if (response.data.success) {
         const usersData = response.data.data.users;
         setUsers(usersData);
@@ -84,11 +80,7 @@ const AdminDashboard = () => {
 
   const fetchRecentActivity = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/activity-logs?page=${activityCurrentPage}&limit=${activityRowsPerPage}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get(`/api/activity-logs?page=${activityCurrentPage}&limit=${activityRowsPerPage}`);
       
       if (response.data.success) {
         setRecentActivity(response.data.data.activities);
@@ -118,7 +110,7 @@ const AdminDashboard = () => {
   const handleUpdateUser = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`http://localhost:5000/api/users/${editingUser.id}`, editForm);
+        await api.put(`/api/users/${editingUser.id}`, editForm);
       setEditingUser(null);
       fetchUsers();
     } catch (error) {
@@ -130,7 +122,7 @@ const AdminDashboard = () => {
   const handleDeleteUser = async (userId) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/users/${userId}`);
+        await api.delete(`/api/users/${userId}`);
         fetchUsers();
         // Refresh system stats to update analytics
         refreshStats();
@@ -189,11 +181,7 @@ const AdminDashboard = () => {
       setSystemLoading(true);
       showSystemMessage('Starting system health check...', 'info');
       
-      const response = await axios.get('http://localhost:5000/api/system/health', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.get('/api/system/health');
       
       if (response.data.success) {
         setSystemHealth(response.data.data);
@@ -222,11 +210,7 @@ const AdminDashboard = () => {
       setSystemLoading(true);
       showSystemMessage('Creating database backup...', 'info');
       
-      const response = await axios.post('http://localhost:5000/api/system/backup', {}, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.post('/api/system/backup');
       
       if (response.data.success) {
         const backupInfo = response.data.data;
@@ -268,11 +252,7 @@ const AdminDashboard = () => {
       setSystemLoading(true);
       showSystemMessage('WARNING: Resetting database - ALL DATA WILL BE DELETED...', 'warning');
       
-      const response = await axios.post('http://localhost:5000/api/system/reset', {}, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.post('/api/system/reset');
       
       if (response.data.success) {
         const resetInfo = response.data.data;
@@ -304,11 +284,7 @@ const AdminDashboard = () => {
       setSystemLoading(true);
       showSystemMessage('Clearing system cache...', 'info');
       
-      const response = await axios.post('http://localhost:5000/api/system/clear-cache', {}, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.post('/api/system/clear-cache');
       
       if (response.data.success) {
         const cacheInfo = response.data.data;
