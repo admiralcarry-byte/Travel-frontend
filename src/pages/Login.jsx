@@ -26,15 +26,28 @@ const Login = () => {
     setLoading(true);
     setError('');
 
-    const result = await login(formData.email, formData.password);
-    
-    if (result.success) {
-      navigate('/dashboard');
-    } else {
-      setError(result.message);
+    try {
+      console.log('🚀 Starting login process...');
+      const result = await login(formData.email, formData.password);
+      
+      console.log('📋 Login result:', result);
+      
+      if (result.success) {
+        console.log('✅ Login successful, navigating to dashboard...');
+        // Add a small delay to ensure state is updated
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 100);
+      } else {
+        console.log('❌ Login failed:', result.message);
+        setError(result.message);
+      }
+    } catch (error) {
+      console.error('💥 Login error in component:', error);
+      setError('An unexpected error occurred during login');
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (

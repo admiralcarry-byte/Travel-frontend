@@ -42,11 +42,14 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
+      console.log('🔐 Attempting login with:', { email, endpoint: apiConfig.endpoints.auth.login });
+      
       const response = await api.post(apiConfig.endpoints.auth.login, {
         email,
         password
       });
 
+      console.log('✅ Login response received:', response.data);
       const { token: newToken, user: userData } = response.data.data;
       
       setToken(newToken);
@@ -55,7 +58,11 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true, user: userData };
     } catch (error) {
-      const message = error.response?.data?.message || 'Login failed';
+      console.error('❌ Login error:', error);
+      console.error('❌ Error response:', error.response?.data);
+      console.error('❌ Error status:', error.response?.status);
+      
+      const message = error.response?.data?.message || error.message || 'Login failed';
       return { success: false, message };
     }
   };
