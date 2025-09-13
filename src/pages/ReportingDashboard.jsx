@@ -343,28 +343,28 @@ const ReportingDashboard = () => {
               title="Total Sales"
               value={kpis.totalSales}
               subtitle={`${kpis.saleCount} sales`}
-              icon="💰"
+              icon="money"
               color="blue"
             />
             <KPICard
               title="Total Profit"
               value={kpis.totalProfit}
               subtitle={`${kpis.profitMargin}% margin`}
-              icon="📈"
+              icon="chart"
               color="green"
             />
             <KPICard
               title="Client Balances"
               value={clientBalanceData?.totalClientBalance || 0}
               subtitle="Outstanding amounts"
-              icon="👥"
+              icon="users"
               color="yellow"
             />
             <KPICard
               title="Provider Balances"
               value={Math.abs(providerBalanceData?.totalProviderBalance || 0)}
               subtitle="Amounts owed"
-              icon="🏢"
+              icon="building"
               color="red"
             />
           </div>
