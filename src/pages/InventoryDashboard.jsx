@@ -419,7 +419,7 @@ const InventoryDashboard = () => {
                         {cupo.availableSeats === 0 ? 'Sold Out' : 'Reserve'}
                       </button>
                       <button
-                        onClick={() => navigate(`/cupos/${cupo.id}`)}
+                        onClick={() => navigate(`/cupos/${cupo.id || cupo._id}`)}
                         className="px-3 py-2 bg-dark-700 text-dark-200 text-sm rounded-md hover:bg-dark-600 border border-white/10 transition-all duration-300"
                       >
                         View

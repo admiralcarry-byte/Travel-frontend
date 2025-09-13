@@ -30,18 +30,18 @@ const UserSettings = () => {
     confirmPassword: ''
   });
   
-  // Notification preferences
-  const [notifications, setNotifications] = useState({
-    emailNotifications: true,
-    pushNotifications: true,
-    smsNotifications: false,
-    marketingEmails: false
-  });
+  // Notification preferences (hidden)
+  // const [notifications, setNotifications] = useState({
+  //   emailNotifications: true,
+  //   pushNotifications: true,
+  //   smsNotifications: false,
+  //   marketingEmails: false
+  // });
 
   const tabs = [
     { id: 'profile', name: 'Profile', icon: '👤' },
     { id: 'security', name: 'Security', icon: '🔒' },
-    { id: 'notifications', name: 'Notifications', icon: '🔔' },
+    // { id: 'notifications', name: 'Notifications', icon: '🔔' }, // Hidden
     // { id: 'preferences', name: 'Preferences', icon: '⚙️' }
   ];
 
@@ -68,8 +68,12 @@ const UserSettings = () => {
     setLoading(true);
     
     try {
-      const response = await axios.put('/api/users/profile', profileData);
-      updateUser(response.data.user);
+      const response = await axios.put('http://localhost:5000/api/auth/profile', profileData, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      updateUser(response.data.data.user);
       showMessage('Profile updated successfully!', 'success');
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -90,9 +94,13 @@ const UserSettings = () => {
     setLoading(true);
     
     try {
-      await axios.put('/api/users/password', {
+      await axios.put('http://localhost:5000/api/auth/password', {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword
+      }, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       });
       showMessage('Password updated successfully!', 'success');
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -104,20 +112,21 @@ const UserSettings = () => {
     }
   };
 
-  const handleNotificationSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      await axios.put('/api/users/notifications', notifications);
-      showMessage('Notification preferences updated!', 'success');
-    } catch (error) {
-      console.error('Error updating notifications:', error);
-      showMessage('Failed to update notification preferences.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Notification submit handler (hidden)
+  // const handleNotificationSubmit = async (e) => {
+  //   e.preventDefault();
+  //   setLoading(true);
+  //   
+  //   try {
+  //     await axios.put('/api/users/notifications', notifications);
+  //     showMessage('Notification preferences updated!', 'success');
+  //   } catch (error) {
+  //     console.error('Error updating notifications:', error);
+  //     showMessage('Failed to update notification preferences.', 'error');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const timezones = [
     'UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
@@ -312,7 +321,8 @@ const UserSettings = () => {
             </form>
           )}
 
-          {activeTab === 'notifications' && (
+          {/* Notifications tab hidden */}
+          {/* {activeTab === 'notifications' && (
             <form onSubmit={handleNotificationSubmit} className="space-y-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -374,7 +384,7 @@ const UserSettings = () => {
                 </button>
               </div>
             </form>
-          )}
+          )} */}
 
           {activeTab === 'preferences' && (
             <div className="space-y-6">

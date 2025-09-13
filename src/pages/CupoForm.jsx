@@ -143,8 +143,8 @@ const CupoForm = () => {
                     className="input-field mt-1"
                   >
                     <option value="">Select service</option>
-                    {services.map(service => (
-                      <option key={service.id} value={service.id}>
+                    {services.map((service, index) => (
+                      <option key={service.id || service._id || `service-${index}`} value={service.id || service._id}>
                         {service.title} - {service.providerId?.name}
                       </option>
                     ))}
@@ -180,8 +180,8 @@ const CupoForm = () => {
                   onChange={handleChange}
                   className="input-field mt-1"
                 >
-                  {statusOptions.map(option => (
-                    <option key={option.value} value={option.value}>
+                  {statusOptions.map((option, index) => (
+                    <option key={option.value || `status-${index}`} value={option.value}>
                       {option.label}
                     </option>
                   ))}
@@ -220,8 +220,8 @@ const CupoForm = () => {
                     onChange={handleChange}
                     className="input-field mt-1"
                   >
-                    {flightClasses.map(option => (
-                      <option key={option.value} value={option.value}>
+                    {flightClasses.map((option, index) => (
+                      <option key={option.value || `flight-${index}`} value={option.value}>
                         {option.label}
                       </option>
                     ))}

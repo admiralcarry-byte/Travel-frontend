@@ -1,42 +1,82 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import axios from 'axios';
 
 const SellerDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeDropdown, setActiveDropdown] = useState(null);
-  const [sales, setSales] = useState([
-    // Mock data for demonstration - using proper MongoDB ObjectId format
-    {
-      id: '507f1f77bcf86cd799439011',
-      customer: 'John Doe',
-      destination: 'Paris, France',
-      amount: 2500,
-      date: '2024-01-15',
-      status: 'completed'
-    },
-    {
-      id: '507f1f77bcf86cd799439012',
-      customer: 'Jane Smith',
-      destination: 'Tokyo, Japan',
-      amount: 3200,
-      date: '2024-01-20',
-      status: 'pending'
-    },
-    {
-      id: '507f1f77bcf86cd799439013',
-      customer: 'Bob Johnson',
-      destination: 'New York, USA',
-      amount: 1800,
-      date: '2024-01-25',
-      status: 'completed'
-    }
-  ]);
+  const [sales, setSales] = useState([]);
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    completedSales: 0,
+    pendingSales: 0,
+    totalSales: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const totalSales = sales.reduce((sum, sale) => sum + sale.amount, 0);
-  const completedSales = sales.filter(sale => sale.status === 'completed').length;
-  const pendingSales = sales.filter(sale => sale.status === 'pending').length;
+  // Fetch sales data and statistics
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        
+        // Fetch recent sales (limit to 3)
+        const salesResponse = await axios.get('http://localhost:5000/api/sales?limit=3', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        // Fetch sales statistics
+        const statsResponse = await axios.get('http://localhost:5000/api/sales/stats', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (salesResponse.data.success) {
+          // Transform sales data to match component expectations
+          const transformedSales = salesResponse.data.data.sales.map(sale => ({
+            id: sale._id,
+            customer: sale.clientId ? `${sale.clientId.name} ${sale.clientId.surname}` : 'Unknown Client',
+            destination: sale.destination || 'N/A',
+            amount: sale.totalSalePrice || 0,
+            date: sale.createdAt,
+            status: sale.status === 'closed' ? 'completed' : sale.status === 'open' ? 'pending' : sale.status
+          }));
+          setSales(transformedSales);
+        }
+
+        if (statsResponse.data.success) {
+          const statsData = statsResponse.data.data;
+          const overview = statsData.overview;
+          const statusBreakdown = statsData.statusBreakdown;
+          
+          // Calculate completed and pending sales from status breakdown
+          const completedCount = statusBreakdown.find(s => s._id === 'closed')?.count || 0;
+          const pendingCount = statusBreakdown.find(s => s._id === 'open')?.count || 0;
+          
+          setStats({
+            totalRevenue: overview.totalRevenue || 0,
+            completedSales: completedCount,
+            pendingSales: pendingCount,
+            totalSales: overview.totalSales || 0
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        setError('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -51,6 +91,32 @@ const SellerDashboard = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [activeDropdown]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-dark-300">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-error-500 mb-4">
+            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <p className="text-dark-300">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -83,8 +149,8 @@ const SellerDashboard = () => {
             </div>
             
             <h3 className="text-2xl font-bold text-dark-100 mb-3">Total Sales</h3>
-            <p className="text-5xl font-bold text-primary-400 mb-3">${totalSales.toLocaleString()}</p>
-            <p className="text-sm text-primary-300">+12% from last month</p>
+            <p className="text-5xl font-bold text-primary-400 mb-3">${stats.totalRevenue.toLocaleString()}</p>
+            <p className="text-sm text-primary-300">From {stats.totalSales} sales</p>
           </div>
           
           {/* Completed Sales Card */}
@@ -102,7 +168,7 @@ const SellerDashboard = () => {
             </div>
             
             <h3 className="text-2xl font-bold text-dark-100 mb-3">Completed Sales</h3>
-            <p className="text-5xl font-bold text-success-400 mb-3">{completedSales}</p>
+            <p className="text-5xl font-bold text-success-400 mb-3">{stats.completedSales}</p>
             <p className="text-sm text-success-300">Successful bookings</p>
           </div>
           
@@ -121,7 +187,7 @@ const SellerDashboard = () => {
             </div>
             
             <h3 className="text-2xl font-bold text-dark-100 mb-3">Pending Sales</h3>
-            <p className="text-5xl font-bold text-warning-400 mb-3">{pendingSales}</p>
+            <p className="text-5xl font-bold text-warning-400 mb-3">{stats.pendingSales}</p>
             <p className="text-sm text-warning-300">Awaiting confirmation</p>
           </div>
         </div>
@@ -194,7 +260,24 @@ const SellerDashboard = () => {
           </div>
             
           <div className="grid gap-6">
-            {sales.map((sale, index) => (
+            {sales.length === 0 ? (
+              <div className="card p-8 text-center">
+                <div className="text-dark-400 mb-4">
+                  <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-dark-200 mb-2">No Sales Yet</h3>
+                <p className="text-dark-400 mb-4">Start by creating your first sale to see it here.</p>
+                <button 
+                  onClick={() => navigate('/sales/new')}
+                  className="btn-primary"
+                >
+                  Create First Sale
+                </button>
+              </div>
+            ) : (
+              sales.map((sale, index) => (
               <div
                 key={sale.id}
                 className="card hover-lift p-6"
@@ -293,7 +376,8 @@ const SellerDashboard = () => {
                   </div>
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

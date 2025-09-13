@@ -29,7 +29,7 @@ const ServicesList = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-    }, 300);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
@@ -42,10 +42,9 @@ const ServicesList = () => {
 
   // Search and filter effect
   useEffect(() => {
-    if (debouncedSearchTerm !== '' || typeFilter !== '' || providerFilter !== '' || currentPage !== 1) {
-      fetchServices(false);
-    }
+    fetchServices(false);
   }, [currentPage, debouncedSearchTerm, typeFilter, providerFilter]);
+
 
   const fetchServices = useCallback(async (isInitialLoad = false) => {
     try {
@@ -57,11 +56,19 @@ const ServicesList = () => {
       
       const params = new URLSearchParams({
         page: currentPage,
-        limit: 12, // Show 12 services per page for card layout
-        search: debouncedSearchTerm,
-        type: typeFilter,
-        providerId: providerFilter
+        limit: 6 // Show 6 services per page (3 rows × 2 columns)
       });
+
+      // Only add search and filter parameters if they have values
+      if (debouncedSearchTerm.trim() !== '') {
+        params.append('search', debouncedSearchTerm.trim());
+      }
+      if (typeFilter !== '') {
+        params.append('type', typeFilter);
+      }
+      if (providerFilter !== '') {
+        params.append('providerId', providerFilter);
+      }
 
       const response = await axios.get(`http://localhost:5000/api/services?${params}`, {
         headers: {
@@ -70,7 +77,12 @@ const ServicesList = () => {
       });
 
       if (response.data.success) {
-        setServices(response.data.data.services);
+        // Filter services to only show the 5 valid service types
+        const validServiceTypes = ['hotel', 'airline', 'transfer', 'excursion', 'insurance'];
+        const filteredServices = response.data.data.services.filter(service => 
+          validServiceTypes.includes(service.type)
+        );
+        setServices(filteredServices);
         setTotalPages(response.data.data.pages);
         setError('');
       }
@@ -228,7 +240,7 @@ const ServicesList = () => {
               >
                 <option value="">All Providers</option>
                 {providers.map(provider => (
-                  <option key={provider.id} value={provider.id}>
+                  <option key={provider._id || provider.id} value={provider._id || provider.id}>
                     {provider.name}
                   </option>
                 ))}
@@ -268,24 +280,117 @@ const ServicesList = () => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               {services.map((service) => (
-                <div key={service.id} className="card overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-105">
-                  {/* Service Image Placeholder */}
-                  <div className="h-48 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
-                    <div className="text-white text-center">
-                      <div className="text-4xl mb-2">
-                        {service.type === 'hotel' && '🏨'}
-                        {service.type === 'airline' && '✈️'}
-                        {service.type === 'transfer' && '🚗'}
-                        {service.type === 'excursion' && '🎯'}
-                        {service.type === 'insurance' && '🛡️'}
-                      </div>
-                      <div className="text-sm font-medium">
-                        {service.type.charAt(0).toUpperCase() + service.type.slice(1)}
+                <div key={service._id || service.id} className="card overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-105">
+                  {/* Service Image */}
+                  {service.type === 'hotel' ? (
+                    <div className="h-48 relative overflow-hidden">
+                      <img
+                        src="/hotel/1.jpg"
+                        alt="Hotel service"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback to icon if image fails to load
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center" style={{display: 'none'}}>
+                        <div className="text-white text-center">
+                          <div className="text-4xl mb-2">🏨</div>
+                          <div className="text-sm font-medium">Hotel</div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : service.type === 'airline' ? (
+                    <div className="h-48 relative overflow-hidden">
+                      <img
+                        src="/airline/1.jpg"
+                        alt="Airline service"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback to icon if image fails to load
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center" style={{display: 'none'}}>
+                        <div className="text-white text-center">
+                          <div className="text-4xl mb-2">✈️</div>
+                          <div className="text-sm font-medium">Airline</div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : service.type === 'excursion' ? (
+                    <div className="h-48 relative overflow-hidden">
+                      <img
+                        src="/excursion/1.jpg"
+                        alt="Excursion service"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback to icon if image fails to load
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center" style={{display: 'none'}}>
+                        <div className="text-white text-center">
+                          <div className="text-4xl mb-2">🎯</div>
+                          <div className="text-sm font-medium">Excursion</div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : service.type === 'transfer' ? (
+                    <div className="h-48 relative overflow-hidden">
+                      <img
+                        src="/transfer/1.jpeg"
+                        alt="Transfer service"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback to icon if image fails to load
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center" style={{display: 'none'}}>
+                        <div className="text-white text-center">
+                          <div className="text-4xl mb-2">🚗</div>
+                          <div className="text-sm font-medium">Transfer</div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : service.type === 'insurance' ? (
+                    <div className="h-48 relative overflow-hidden">
+                      <img
+                        src="/insurance/1.webp"
+                        alt="Insurance service"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback to icon if image fails to load
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center" style={{display: 'none'}}>
+                        <div className="text-white text-center">
+                          <div className="text-4xl mb-2">🛡️</div>
+                          <div className="text-sm font-medium">Insurance</div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-48 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
+                      <div className="text-white text-center">
+                        <div className="text-4xl mb-2">
+                          {/* No specific icons for other types */}
+                        </div>
+                        <div className="text-sm font-medium">
+                          {service.type.charAt(0).toUpperCase() + service.type.slice(1)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Service Content */}
                   <div className="p-6">
@@ -318,7 +423,7 @@ const ServicesList = () => {
                         {service.formattedCost}
                       </div>
                       <button
-                        onClick={() => navigate(`/services/${service.id}`)}
+                        onClick={() => navigate(`/services/${service._id || service.id}`)}
                         className="btn-primary text-sm"
                       >
                         View Details
@@ -332,6 +437,7 @@ const ServicesList = () => {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="card px-4 py-3 flex items-center justify-between border-t border-white/10 sm:px-6">
+                {/* Mobile pagination */}
                 <div className="flex-1 flex justify-between sm:hidden">
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
@@ -340,36 +446,108 @@ const ServicesList = () => {
                   >
                     Previous
                   </button>
+                  <span className="text-sm text-dark-300">
+                    Page {currentPage} of {totalPages}
+                  </span>
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
-                    className="ml-3 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
                   </button>
                 </div>
+                
+                {/* Desktop pagination */}
                 <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm text-dark-300">
+                      Showing <span className="font-medium text-dark-100">{((currentPage - 1) * 6) + 1}</span> to{' '}
+                      <span className="font-medium text-dark-100">{Math.min(currentPage * 6, services.length + ((currentPage - 1) * 6))}</span> of{' '}
+                      <span className="font-medium text-dark-100">{totalPages * 6}</span> results
+                    </p>
+                    <p className="text-xs text-dark-400 mt-1">
                       Page <span className="font-medium text-dark-100">{currentPage}</span> of{' '}
-                      <span className="font-medium text-dark-100">{totalPages}</span>
+                      <span className="font-medium text-dark-100">{totalPages}</span> (6 cards per page)
                     </p>
                   </div>
+                  
                   <div>
                     <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                      {/* First page */}
+                      <button
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-white/20 bg-dark-800/50 text-sm font-medium text-dark-300 hover:bg-dark-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <span className="sr-only">First</span>
+                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M15.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 010 1.414zm-6 0a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 011.414 1.414L5.414 10l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      
+                      {/* Previous page */}
                       <button
                         onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                         disabled={currentPage === 1}
-                        className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="relative inline-flex items-center px-2 py-2 border border-white/20 bg-dark-800/50 text-sm font-medium text-dark-300 hover:bg-dark-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Previous
+                        <span className="sr-only">Previous</span>
+                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
                       </button>
+                      
+                      {/* Page numbers */}
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                              currentPage === pageNum
+                                ? 'z-10 bg-primary-600 border-primary-500 text-white'
+                                : 'bg-dark-800/50 border-white/20 text-dark-300 hover:bg-dark-700/50'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                      
+                      {/* Next page */}
                       <button
                         onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                         disabled={currentPage === totalPages}
-                        className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="relative inline-flex items-center px-2 py-2 border border-white/20 bg-dark-800/50 text-sm font-medium text-dark-300 hover:bg-dark-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Next
+                        <span className="sr-only">Next</span>
+                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      
+                      {/* Last page */}
+                      <button
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-white/20 bg-dark-800/50 text-sm font-medium text-dark-300 hover:bg-dark-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <span className="sr-only">Last</span>
+                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10.293 15.707a1 1 0 010-1.414L14.586 10l-4.293-4.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                        </svg>
                       </button>
                     </nav>
                   </div>

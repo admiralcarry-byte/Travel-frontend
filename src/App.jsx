@@ -14,6 +14,7 @@ import ProviderForm from './pages/ProviderForm';
 import ProviderDetails from './pages/ProviderDetails';
 import ServicesList from './pages/ServicesList';
 import ServiceForm from './pages/ServiceForm';
+import ServiceDetails from './pages/ServiceDetails';
 import SalesList from './pages/SalesList';
 import SaleWizard from './pages/SaleWizard';
 import SaleSummary from './pages/SaleSummary';
@@ -21,10 +22,11 @@ import ClientSalesView from './pages/ClientSalesView';
 import InventoryDashboard from './pages/InventoryDashboard';
 import InventoryCalendar from './pages/InventoryCalendar';
 import CupoForm from './pages/CupoForm';
+import CupoDetails from './pages/CupoDetails';
 import ReservationFlow from './pages/ReservationFlow';
 import ReportingDashboard from './pages/ReportingDashboard';
-import NotificationHistory from './pages/NotificationHistory';
-import NotificationAdmin from './pages/NotificationAdmin';
+// import NotificationHistory from './pages/NotificationHistory';
+// import NotificationAdmin from './pages/NotificationAdmin';
 import UserSettings from './pages/UserSettings';
 import UsersList from './pages/UsersList';
 import UserForm from './pages/UserForm';
@@ -126,6 +128,26 @@ const AppRoutes = () => {
         } 
       />
       <Route 
+        path="/services/:id" 
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ServiceDetails />
+            </Layout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/services/:id/edit" 
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ServiceForm />
+            </Layout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
         path="/sales" 
         element={
           <ProtectedRoute>
@@ -206,6 +228,16 @@ const AppRoutes = () => {
               }
             />
             <Route
+              path="/cupos/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CupoDetails />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/reservations/new"
               element={
                 <ProtectedRoute>
@@ -225,7 +257,8 @@ const AppRoutes = () => {
                 </ProtectedRoute>
               }
             />
-            <Route
+            {/* Notification routes hidden */}
+            {/* <Route
               path="/notifications/history"
               element={
                 <ProtectedRoute>
@@ -244,7 +277,7 @@ const AppRoutes = () => {
                   </Layout>
                 </ProtectedRoute>
               }
-            />
+            /> */}
             <Route
               path="/settings"
               element={

@@ -416,14 +416,28 @@ const AdminDashboard = () => {
 
         {/* Business Overview Section */}
         <div className="mb-12">
-          <h3 className="text-3xl font-bold text-dark-100 mb-8 flex items-center">
-            <div className="icon-container bg-primary-500 mr-4">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-3xl font-bold text-dark-100 flex items-center">
+              <div className="icon-container bg-primary-500 mr-4">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              Business Overview
+            </h3>
+            <button
+              onClick={async () => {
+                await fetchAllData();
+              }}
+              disabled={loading}
+              className="btn-secondary flex items-center space-x-2"
+            >
+              <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-            </div>
-            Business Overview
-          </h3>
+              <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
+            </button>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {/* Total Revenue */}
@@ -434,10 +448,18 @@ const AdminDashboard = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                   </svg>
                 </div>
-                <span className="text-success-400 text-sm font-medium">+{businessStats.monthlyGrowth}%</span>
+                <span className="text-success-400 text-sm font-medium">
+                  {loading ? '...' : `+${businessStats.monthlyGrowth}%`}
+                </span>
               </div>
               <h4 className="text-lg font-semibold text-dark-100 mb-2">Total Revenue</h4>
-              <p className="text-3xl font-bold text-success-400">${businessStats.totalRevenue.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-success-400">
+                {loading ? (
+                  <div className="animate-pulse bg-success-400/20 h-8 w-32 rounded"></div>
+                ) : (
+                  `$${businessStats.totalRevenue.toLocaleString()}`
+                )}
+              </p>
               <p className="text-sm text-dark-400 mt-2">All time revenue</p>
             </div>
 
@@ -452,7 +474,13 @@ const AdminDashboard = () => {
                 <span className="text-primary-400 text-sm font-medium">Active</span>
               </div>
               <h4 className="text-lg font-semibold text-dark-100 mb-2">Total Sales</h4>
-              <p className="text-3xl font-bold text-primary-400">{businessStats.totalSales}</p>
+              <p className="text-3xl font-bold text-primary-400">
+                {loading ? (
+                  <div className="animate-pulse bg-primary-400/20 h-8 w-16 rounded"></div>
+                ) : (
+                  businessStats.totalSales
+                )}
+              </p>
               <p className="text-sm text-dark-400 mt-2">Completed transactions</p>
             </div>
 
@@ -467,10 +495,30 @@ const AdminDashboard = () => {
                 <span className="text-accent-400 text-sm font-medium">Growing</span>
               </div>
               <h4 className="text-lg font-semibold text-dark-100 mb-2">Total Clients</h4>
-              <p className="text-3xl font-bold text-accent-400">{businessStats.totalClients}</p>
+              <p className="text-3xl font-bold text-accent-400">
+                {loading ? (
+                  <div className="animate-pulse bg-accent-400/20 h-8 w-16 rounded"></div>
+                ) : (
+                  businessStats.totalClients
+                )}
+              </p>
               <p className="text-sm text-dark-400 mt-2">Registered clients</p>
             </div>
           </div>
+
+          {/* Debug Information - Remove in production */}
+          {/* {process.env.NODE_ENV === 'development' && (
+            <div className="mb-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+              <h4 className="font-bold text-sm mb-2">Debug - Business Stats:</h4>
+              <pre className="text-xs text-gray-600 dark:text-gray-300">
+                {JSON.stringify(businessStats, null, 2)}
+              </pre>
+              <h4 className="font-bold text-sm mb-2 mt-4">Debug - System Stats:</h4>
+              <pre className="text-xs text-gray-600 dark:text-gray-300">
+                {JSON.stringify(systemStats, null, 2)}
+              </pre>
+            </div>
+          )} */}
 
           {/* Quick Actions */}
           <div className="card-glass p-6">

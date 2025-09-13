@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 import KPICard from '../components/KPICard';
 import LineChart from '../components/LineChart';
 import BarChart from '../components/BarChart';
@@ -7,48 +8,57 @@ import PieChart from '../components/PieChart';
 import TopServicesTable from '../components/TopServicesTable';
 
 const ReportingDashboard = () => {
+  const { token, user } = useAuth();
   const [kpis, setKpis] = useState(null);
   const [salesData, setSalesData] = useState(null);
   const [profitData, setProfitData] = useState(null);
   const [balancesData, setBalancesData] = useState(null);
+  const [clientBalanceData, setClientBalanceData] = useState(null);
+  const [providerBalanceData, setProviderBalanceData] = useState(null);
   const [topServices, setTopServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  const [filters, setFilters] = useState({
-    period: 'monthly',
-    startDate: '',
-    endDate: '',
-    sellerId: ''
-  });
+  // Initialize filters with default date range to prevent race condition
+  const getInitialFilters = () => {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 6); // Last 6 months
+    
+    return {
+      period: 'monthly',
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0],
+      sellerId: ''
+    };
+  };
 
-  const [debouncedFilters, setDebouncedFilters] = useState({
-    period: 'monthly',
-    startDate: '',
-    endDate: '',
-    sellerId: ''
-  });
+  const [filters, setFilters] = useState(getInitialFilters());
+  const [debouncedFilters, setDebouncedFilters] = useState(getInitialFilters());
 
   const [sellers, setSellers] = useState([]);
 
   const fetchSellers = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/users', {
+      const response = await axios.get('http://localhost:5000/api/users/sellers', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
 
       if (response.data.success) {
-        setSellers(response.data.data.users.filter(user => user.role === 'seller'));
+        setSellers(response.data.data.sellers);
       }
     } catch (error) {
       console.error('Failed to fetch sellers:', error);
     }
-  }, []);
+  }, [token]);
 
   const fetchAllData = useCallback(async () => {
     try {
+      console.log('🚀 Starting to fetch reporting data from backend...');
+      console.log('🔑 Using token:', token ? 'Present' : 'Missing');
+      console.log('📅 Filters:', debouncedFilters);
       setLoading(true);
       setError('');
 
@@ -58,36 +68,94 @@ const ReportingDashboard = () => {
       if (debouncedFilters.endDate) params.append('endDate', debouncedFilters.endDate);
       if (debouncedFilters.sellerId) params.append('sellerId', debouncedFilters.sellerId);
 
-      const [kpisRes, salesRes, profitRes, balancesRes, topServicesRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/reports/kpis?${params}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        axios.get(`http://localhost:5000/api/reports/sales?${params}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        axios.get(`http://localhost:5000/api/reports/profit?${params}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        axios.get(`http://localhost:5000/api/reports/balances?${params}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }),
-        axios.get(`http://localhost:5000/api/reports/top-services?${params}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        })
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      console.log('🌐 Making API calls to:');
+      console.log('  📊 KPIs:', `http://localhost:5000/api/reports/kpis?${params}`);
+      console.log('  📈 Sales:', `http://localhost:5000/api/reports/sales?${params}`);
+      console.log('  💵 Profit:', `http://localhost:5000/api/reports/profit?${params}`);
+      console.log('  ⚖️ Balances:', `http://localhost:5000/api/reports/balances?${params}`);
+      console.log('  👥 Client Balance:', `http://localhost:5000/api/reports/client-balance?${params}`);
+      console.log('  🏭 Provider Balance:', `http://localhost:5000/api/reports/provider-balance?${params}`);
+      console.log('  🏆 Top Services:', `http://localhost:5000/api/reports/top-services?${params}`);
+
+      const [kpisRes, salesRes, profitRes, balancesRes, clientBalanceRes, providerBalanceRes, topServicesRes] = await Promise.all([
+        axios.get(`http://localhost:5000/api/reports/kpis?${params}`, { headers }),
+        axios.get(`http://localhost:5000/api/reports/sales?${params}`, { headers }),
+        axios.get(`http://localhost:5000/api/reports/profit?${params}`, { headers }),
+        axios.get(`http://localhost:5000/api/reports/balances?${params}`, { headers }),
+        axios.get(`http://localhost:5000/api/reports/client-balance?${params}`, { headers }),
+        axios.get(`http://localhost:5000/api/reports/provider-balance?${params}`, { headers }),
+        axios.get(`http://localhost:5000/api/reports/top-services?${params}`, { headers })
       ]);
 
-      if (kpisRes.data.success) setKpis(kpisRes.data.data);
-      if (salesRes.data.success) setSalesData(salesRes.data.data);
-      if (profitRes.data.success) setProfitData(profitRes.data.data);
-      if (balancesRes.data.success) setBalancesData(balancesRes.data.data);
-      if (topServicesRes.data.success) setTopServices(topServicesRes.data.data.topServices);
+      if (kpisRes.data.success) {
+        console.log('📊 KPIs Data from Backend:', kpisRes.data.data);
+        console.log('💰 Total Sales:', kpisRes.data.data.totalSales);
+        console.log('📈 Total Profit:', kpisRes.data.data.totalProfit);
+        console.log('📋 Sale Count:', kpisRes.data.data.saleCount);
+        console.log('📊 Profit Margin:', kpisRes.data.data.profitMargin + '%');
+        console.log('💳 Client Payments:', kpisRes.data.data.totalClientPayments);
+        console.log('🏢 Provider Payments:', kpisRes.data.data.totalProviderPayments);
+        console.log('👥 Client Balance:', kpisRes.data.data.totalClientBalance);
+        console.log('🏭 Provider Balance:', kpisRes.data.data.totalProviderBalance);
+        
+        // Additional detailed logging
+        console.log('🔧 DEBUG: Raw response data:', JSON.stringify(kpisRes.data, null, 2));
+        console.log('🔧 DEBUG: Data types:', {
+          totalSales: typeof kpisRes.data.data.totalSales,
+          totalProfit: typeof kpisRes.data.data.totalProfit,
+          saleCount: typeof kpisRes.data.data.saleCount,
+          totalClientBalance: typeof kpisRes.data.data.totalClientBalance,
+          totalProviderBalance: typeof kpisRes.data.data.totalProviderBalance
+        });
+        console.log('🔧 DEBUG: Values being set to state:', kpisRes.data.data);
+        
+        setKpis(kpisRes.data.data);
+      } else {
+        console.error('❌ KPIs API failed:', kpisRes.data);
+      }
+      if (salesRes.data.success) {
+        console.log('📈 Sales Data from Backend:', salesRes.data.data);
+        setSalesData(salesRes.data.data);
+      }
+      if (profitRes.data.success) {
+        console.log('💵 Profit Data from Backend:', profitRes.data.data);
+        setProfitData(profitRes.data.data);
+      }
+      if (balancesRes.data.success) {
+        console.log('⚖️ Balances Data from Backend:', balancesRes.data.data);
+        setBalancesData(balancesRes.data.data);
+      }
+      if (clientBalanceRes.data.success) {
+        console.log('👥 Client Balance Data from Backend:', clientBalanceRes.data.data);
+        setClientBalanceData(clientBalanceRes.data.data);
+      }
+      if (providerBalanceRes.data.success) {
+        console.log('🏭 Provider Balance Data from Backend:', providerBalanceRes.data.data);
+        setProviderBalanceData(providerBalanceRes.data.data);
+      }
+      if (topServicesRes.data.success) {
+        console.log('🏆 Top Services Data from Backend:', topServicesRes.data.data);
+        setTopServices(topServicesRes.data.data.topServices);
+      }
 
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to fetch reporting data');
+      console.error('Reporting data fetch error:', error);
+      if (error.response?.status === 401) {
+        setError('Authentication required. Please log in to view reports.');
+      } else if (error.response?.status === 403) {
+        setError('Access denied. You do not have permission to view reports.');
+      } else {
+        setError(error.response?.data?.message || 'Failed to fetch reporting data');
+      }
     } finally {
       setLoading(false);
     }
-  }, [debouncedFilters]);
+  }, [debouncedFilters, token]);
 
   // Debounce filters to prevent excessive API calls
   useEffect(() => {
@@ -103,10 +171,15 @@ const ReportingDashboard = () => {
     fetchSellers();
   }, [fetchSellers]);
 
-  // Fetch data only when debounced filters change
+  // Fetch data only when debounced filters change and user is authenticated
   useEffect(() => {
-    fetchAllData();
-  }, [debouncedFilters, fetchAllData]);
+    if (token && user) {
+      fetchAllData();
+    } else {
+      setLoading(false);
+      setError('Please log in to view reports.');
+    }
+  }, [debouncedFilters, fetchAllData, token, user]);
 
   const handleFilterChange = useCallback((field, value) => {
     setFilters(prev => ({
@@ -116,34 +189,10 @@ const ReportingDashboard = () => {
   }, []);
 
   const clearFilters = useCallback(() => {
-    setFilters({
-      period: 'monthly',
-      startDate: '',
-      endDate: '',
-      sellerId: ''
-    });
+    const initialFilters = getInitialFilters();
+    setFilters(initialFilters);
   }, []);
 
-  const getDefaultDateRange = useCallback(() => {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - 6); // Last 6 months
-    
-    return {
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0]
-    };
-  }, []);
-
-  // Set default dates only once on mount
-  useEffect(() => {
-    const defaultDates = getDefaultDateRange();
-    setFilters(prev => ({
-      ...prev,
-      startDate: defaultDates.startDate,
-      endDate: defaultDates.endDate
-    }));
-  }, [getDefaultDateRange]);
 
   if (loading) {
     return (
@@ -265,8 +314,35 @@ const ReportingDashboard = () => {
         </div>
 
         {/* KPIs */}
+        {loading && (
+          <div className="mb-8 p-4 bg-blue-100 dark:bg-blue-900 rounded">
+            <p className="text-blue-800 dark:text-blue-200">Loading reporting data...</p>
+          </div>
+        )}
+        
+        {error && (
+          <div className="mb-8 p-4 bg-red-100 dark:bg-red-900 rounded">
+            <p className="text-red-800 dark:text-red-200">Error: {error}</p>
+          </div>
+        )}
+        
         {kpis && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {console.log('🎯 Rendering KPIs Cards with values:', {
+              totalSales: kpis.totalSales,
+              totalProfit: kpis.totalProfit,
+              saleCount: kpis.saleCount,
+              profitMargin: kpis.profitMargin,
+              totalClientBalance: kpis.totalClientBalance,
+              totalProviderBalance: kpis.totalProviderBalance
+            })}
+            {console.log('🔧 DEBUG: KPIs state object:', kpis)}
+            {console.log('🔧 DEBUG: Individual values for KPICard components:', {
+              'Total Sales value': kpis.totalSales,
+              'Total Profit value': kpis.totalProfit,
+              'Client Balance value': JSON.stringify(clientBalanceData),
+              'Provider Balance value': providerBalanceData?.totalProviderBalance || 0
+            })}
             <KPICard
               title="Total Sales"
               value={kpis.totalSales}
@@ -283,20 +359,49 @@ const ReportingDashboard = () => {
             />
             <KPICard
               title="Client Balances"
-              value={kpis.totalClientBalance}
+              value={clientBalanceData?.totalClientBalance || 0}
               subtitle="Outstanding amounts"
               icon="👥"
               color="yellow"
             />
             <KPICard
               title="Provider Balances"
-              value={Math.abs(kpis.totalProviderBalance)}
+              value={Math.abs(providerBalanceData?.totalProviderBalance || 0)}
               subtitle="Amounts owed"
               icon="🏢"
               color="red"
             />
           </div>
         )}
+        
+        {/* Debug info - temporary display of raw values - HIDDEN */}
+        {/* {kpis && (
+          <div className="mb-4 p-4 bg-blue-100 dark:bg-blue-900 rounded">
+            <h4 className="font-bold text-blue-800 dark:text-blue-200">🔧 DEBUG - Raw Data:</h4>
+            <div className="text-sm text-blue-700 dark:text-blue-300">
+              <p><strong>Total Sales:</strong> {kpis.totalSales} (Type: {typeof kpis.totalSales})</p>
+              <p><strong>Total Profit:</strong> {kpis.totalProfit} (Type: {typeof kpis.totalProfit})</p>
+              <p><strong>Sale Count:</strong> {kpis.saleCount} (Type: {typeof kpis.saleCount})</p>
+              <p><strong>Profit Margin:</strong> {kpis.profitMargin}% (Type: {typeof kpis.profitMargin})</p>
+              <hr className="my-2" />
+              <p><strong>Client Balance (Separate):</strong> {clientBalanceData?.totalClientBalance || 0} (Type: {typeof clientBalanceData?.totalClientBalance})</p>
+              <p><strong>Provider Balance (Separate):</strong> {providerBalanceData?.totalProviderBalance || 0} (Type: {typeof providerBalanceData?.totalProviderBalance})</p>
+              <p><strong>Client Balance (KPI):</strong> {kpis.totalClientBalance} (Type: {typeof kpis.totalClientBalance})</p>
+              <p><strong>Provider Balance (KPI):</strong> {kpis.totalProviderBalance} (Type: {typeof kpis.totalProviderBalance})</p>
+            </div>
+            <details className="mt-2">
+              <summary className="cursor-pointer text-blue-600 dark:text-blue-400">Full JSON Data</summary>
+              <div className="text-xs mt-2 bg-white dark:bg-gray-800 p-2 rounded overflow-auto">
+                <h5 className="font-bold">KPIs:</h5>
+                <pre>{JSON.stringify(kpis, null, 2)}</pre>
+                <h5 className="font-bold mt-2">Client Balance Data:</h5>
+                <pre>{JSON.stringify(clientBalanceData, null, 2)}</pre>
+                <h5 className="font-bold mt-2">Provider Balance Data:</h5>
+                <pre>{JSON.stringify(providerBalanceData, null, 2)}</pre>
+              </div>
+            </details>
+          </div>
+        )} */}
 
         {/* Charts Row 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

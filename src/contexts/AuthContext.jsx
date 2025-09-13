@@ -103,6 +103,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUser = (userData) => {
+    setUser(userData);
+  };
+
   const value = {
     token,
     user,
@@ -111,6 +115,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     fetchUser,
+    updateUser,
     isAuthenticated: !!token,
     isAdmin: user?.role === 'admin',
     isSeller: user?.role === 'seller'

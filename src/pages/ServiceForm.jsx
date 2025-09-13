@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 
 const ServiceForm = () => {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditing = Boolean(id);
+
   const [formData, setFormData] = useState({
     title: '',
     type: '',
@@ -18,8 +22,6 @@ const ServiceForm = () => {
   const [providersLoading, setProvidersLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  const navigate = useNavigate();
 
   const serviceTypes = [
     { value: 'hotel', label: 'Hotel' },
@@ -39,8 +41,22 @@ const ServiceForm = () => {
   ];
 
   useEffect(() => {
+    if (isEditing) {
+      fetchService();
+    } else {
+      // Reset form when creating a new service
+      setFormData({
+        title: '',
+        type: '',
+        description: '',
+        providerId: '',
+        cost: '',
+        currency: 'USD',
+        metadata: {}
+      });
+    }
     fetchProviders();
-  }, []);
+  }, [id, isEditing]);
 
   useEffect(() => {
     // Filter providers based on selected service type
@@ -50,7 +66,7 @@ const ServiceForm = () => {
       
       // Reset provider selection if current provider doesn't match the new type
       if (formData.providerId) {
-        const currentProvider = providers.find(p => p.id === formData.providerId);
+        const currentProvider = providers.find(p => (p._id || p.id) === formData.providerId);
         if (currentProvider && currentProvider.type !== formData.type) {
           setFormData(prev => ({ ...prev, providerId: '' }));
         }
@@ -59,6 +75,34 @@ const ServiceForm = () => {
       setFilteredProviders(providers);
     }
   }, [formData.type, providers]);
+
+  const fetchService = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`http://localhost:5000/api/services/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.data.success) {
+        const service = response.data.data.service;
+        setFormData({
+          title: service.title || '',
+          type: service.type || '',
+          description: service.description || '',
+          providerId: service.providerId?._id || service.providerId?.id || '',
+          cost: service.cost || '',
+          currency: service.currency || 'USD',
+          metadata: service.metadata || {}
+        });
+      }
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to fetch service details');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchProviders = async () => {
     try {
@@ -70,11 +114,16 @@ const ServiceForm = () => {
       });
 
       if (response.data.success) {
+        console.log('Providers fetched:', response.data.data.providers);
         setProviders(response.data.data.providers);
         setFilteredProviders(response.data.data.providers);
+      } else {
+        console.error('Failed to fetch providers:', response.data.message);
+        setError('Failed to fetch providers');
       }
     } catch (error) {
-      setError('Failed to fetch providers');
+      console.error('Error fetching providers:', error);
+      setError('Failed to fetch providers: ' + (error.response?.data?.message || error.message));
     } finally {
       setProvidersLoading(false);
     }
@@ -101,20 +150,29 @@ const ServiceForm = () => {
         cost: parseFloat(formData.cost)
       };
 
-      const response = await axios.post('http://localhost:5000/api/services', serviceData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      let response;
+      if (isEditing) {
+        response = await axios.put(`http://localhost:5000/api/services/${id}`, serviceData, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+      } else {
+        response = await axios.post('http://localhost:5000/api/services', serviceData, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+      }
 
       if (response.data.success) {
-        setSuccess('Service created successfully!');
+        setSuccess(isEditing ? 'Service updated successfully!' : 'Service created successfully!');
         setTimeout(() => {
           navigate('/services');
         }, 2000);
       }
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to create service');
+      setError(error.response?.data?.message || (isEditing ? 'Failed to update service' : 'Failed to create service'));
     } finally {
       setLoading(false);
     }
@@ -123,9 +181,11 @@ const ServiceForm = () => {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-dark-100">Add New Service</h1>
+        <h1 className="text-2xl font-bold text-dark-100">
+          {isEditing ? 'Edit Service' : 'Add New Service'}
+        </h1>
         <p className="mt-1 text-sm text-dark-400">
-          Create a new service offered by a provider
+          {isEditing ? 'Update service information' : 'Create a new service offered by a provider'}
         </p>
       </div>
 
@@ -224,11 +284,13 @@ const ServiceForm = () => {
                       ? 'Loading providers...' 
                       : !formData.type 
                         ? 'Select service type first' 
-                        : 'Select provider'
+                        : filteredProviders.length === 0
+                          ? 'No providers available'
+                          : 'Select provider'
                     }
                   </option>
                   {filteredProviders.map(provider => (
-                    <option key={provider.id} value={provider.id}>
+                    <option key={provider._id || provider.id} value={provider._id || provider.id}>
                       {provider.name} ({provider.type.charAt(0).toUpperCase() + provider.type.slice(1)})
                     </option>
                   ))}
@@ -236,6 +298,11 @@ const ServiceForm = () => {
                 {!formData.type && (
                   <p className="mt-1 text-sm text-dark-400">
                     Please select a service type to see available providers
+                  </p>
+                )}
+                {formData.type && filteredProviders.length === 0 && !providersLoading && (
+                  <p className="mt-1 text-sm text-warning-400">
+                    No providers found for {formData.type} type. Total providers: {providers.length}
                   </p>
                 )}
               </div>
@@ -295,7 +362,7 @@ const ServiceForm = () => {
                 disabled={loading}
                 className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Creating...' : 'Create Service'}
+                {loading ? (isEditing ? 'Updating...' : 'Creating...') : (isEditing ? 'Update Service' : 'Create Service')}
               </button>
             </div>
           </form>

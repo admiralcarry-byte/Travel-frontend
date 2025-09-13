@@ -35,34 +35,58 @@ export const SystemStatsProvider = ({ children }) => {
   const fetchSystemStats = useCallback(async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('No authentication token found');
+        return;
+      }
+
       const [usersRes, salesRes, clientsRes, servicesRes, providersRes] = await Promise.all([
         axios.get('http://localhost:5000/api/users?limit=100', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: { 'Authorization': `Bearer ${token}` }
         }),
         axios.get('http://localhost:5000/api/sales?limit=1', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: { 'Authorization': `Bearer ${token}` }
         }),
         axios.get('http://localhost:5000/api/clients?limit=1', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: { 'Authorization': `Bearer ${token}` }
         }),
         axios.get('http://localhost:5000/api/services?limit=1', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: { 'Authorization': `Bearer ${token}` }
         }),
         axios.get('http://localhost:5000/api/providers?limit=1', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
 
+      // Log the responses for debugging
+      console.log('System Stats API Responses:', {
+        users: usersRes.data,
+        sales: salesRes.data,
+        clients: clientsRes.data,
+        services: servicesRes.data,
+        providers: providersRes.data
+      });
+
       setSystemStats({
-        totalUsers: usersRes.data.data?.users?.length || 0,
-        totalSales: salesRes.data.data?.total || 0,
-        totalClients: clientsRes.data.data?.total || 0,
-        totalServices: servicesRes.data.data?.total || 0,
-        totalProviders: providersRes.data.data?.total || 0,
+        totalUsers: usersRes.data.success ? (usersRes.data.data?.users?.length || 0) : 0,
+        totalSales: salesRes.data.success ? (salesRes.data.data?.total || 0) : 0,
+        totalClients: clientsRes.data.success ? (clientsRes.data.data?.total || 0) : 0,
+        totalServices: servicesRes.data.success ? (servicesRes.data.data?.total || 0) : 0,
+        totalProviders: providersRes.data.success ? (providersRes.data.data?.total || 0) : 0,
         systemUptime: '99.9%'
       });
     } catch (error) {
       console.error('Error fetching system stats:', error);
+      // Set default values when API fails
+      setSystemStats({
+        totalUsers: 0,
+        totalSales: 0,
+        totalClients: 0,
+        totalServices: 0,
+        totalProviders: 0,
+        systemUptime: '99.9%'
+      });
     } finally {
       setLoading(false);
     }
@@ -70,28 +94,50 @@ export const SystemStatsProvider = ({ children }) => {
 
   const fetchBusinessStats = useCallback(async (users = []) => {
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('No authentication token found');
+        return;
+      }
+
       const [salesRes, clientsRes, servicesRes] = await Promise.all([
         axios.get('http://localhost:5000/api/reports/kpis', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: { 'Authorization': `Bearer ${token}` }
         }),
         axios.get('http://localhost:5000/api/clients?limit=1', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: { 'Authorization': `Bearer ${token}` }
         }),
         axios.get('http://localhost:5000/api/services?limit=1', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
 
+      // Log the responses for debugging
+      console.log('Business Stats API Responses:', {
+        sales: salesRes.data,
+        clients: clientsRes.data,
+        services: servicesRes.data
+      });
+
       setBusinessStats({
-        totalSales: salesRes.data.data.saleCount || 0,
-        totalRevenue: salesRes.data.data.totalSales || 0,
-        totalClients: clientsRes.data.data?.total || 0,
-        totalServices: servicesRes.data.data?.total || 0,
+        totalSales: salesRes.data.success ? (salesRes.data.data.saleCount || 0) : 0,
+        totalRevenue: salesRes.data.success ? (salesRes.data.data.totalSales || 0) : 0,
+        totalClients: clientsRes.data.success ? (clientsRes.data.data?.total || 0) : 0,
+        totalServices: servicesRes.data.success ? (servicesRes.data.data?.total || 0) : 0,
         activeUsers: users.filter(u => u.role === 'seller').length,
         monthlyGrowth: 12.5 // Mock data - would come from analytics
       });
     } catch (error) {
       console.error('Error fetching business stats:', error);
+      // Set default values when API fails
+      setBusinessStats({
+        totalSales: 0,
+        totalRevenue: 0,
+        totalClients: 0,
+        totalServices: 0,
+        activeUsers: users.filter(u => u.role === 'seller').length,
+        monthlyGrowth: 0
+      });
     }
   }, []);
 
