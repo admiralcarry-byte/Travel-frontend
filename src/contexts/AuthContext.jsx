@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
+import { apiConfig } from '../config/api';
 
 const AuthContext = createContext();
 
@@ -22,16 +23,14 @@ export const AuthProvider = ({ children }) => {
       const storedToken = localStorage.getItem('token');
       if (storedToken) {
         setToken(storedToken);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
         
         // Fetch user data if token exists
         try {
-          const response = await axios.get('http://localhost:5000/api/auth/me');
+          const response = await api.get(apiConfig.endpoints.auth.me);
           setUser(response.data.data.user);
         } catch (error) {
           // Token is invalid, clear it
           localStorage.removeItem('token');
-          delete axios.defaults.headers.common['Authorization'];
           setToken(null);
         }
       }
@@ -43,7 +42,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+      const response = await api.post(apiConfig.endpoints.auth.login, {
         email,
         password
       });
@@ -53,7 +52,6 @@ export const AuthProvider = ({ children }) => {
       setToken(newToken);
       setUser(userData);
       localStorage.setItem('token', newToken);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
       
       return { success: true, user: userData };
     } catch (error) {
@@ -64,7 +62,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (username, email, password, role = 'seller') => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/register', {
+      const response = await api.post(apiConfig.endpoints.auth.register, {
         username,
         email,
         password,
@@ -76,7 +74,6 @@ export const AuthProvider = ({ children }) => {
       setToken(newToken);
       setUser(userData);
       localStorage.setItem('token', newToken);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
       
       return { success: true, user: userData };
     } catch (error) {
@@ -89,12 +86,11 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setUser(null);
     localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
   };
 
   const fetchUser = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/auth/me');
+      const response = await api.get(apiConfig.endpoints.auth.me);
       setUser(response.data.data.user);
       return { success: true, user: response.data.data.user };
     } catch (error) {
