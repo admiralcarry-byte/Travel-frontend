@@ -127,24 +127,37 @@ const UserSettings = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">User Settings</h1>
-        <p className="text-gray-600 dark:text-gray-400">Manage your account preferences and settings</p>
+      <div className="card p-6">
+        <h1 className="text-2xl font-bold text-dark-100 mb-2">User Settings</h1>
+        <p className="text-dark-300">Manage your account preferences and settings</p>
       </div>
 
       {message.text && (
-        <div className={`p-4 rounded-md ${
+        <div className={`notification ${
           message.type === 'success' 
-            ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400'
-            : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
+            ? 'border-success-500/30 text-success-400'
+            : 'border-error-500/30 text-error-400'
         }`}>
-          {message.text}
+          <div className="flex items-center space-x-4">
+            <div className={`icon-container ${
+              message.type === 'success' ? 'bg-success-500' : 'bg-error-500'
+            }`}>
+              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                {message.type === 'success' ? (
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                ) : (
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                )}
+              </svg>
+            </div>
+            <span className="font-medium text-lg">{message.text}</span>
+          </div>
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow transition-colors duration-200">
+      <div className="card">
         {/* Tab Navigation */}
-        <div className="border-b border-gray-200 dark:border-gray-700">
+        <div className="border-b border-white/10">
           <nav className="flex space-x-8 px-6" aria-label="Tabs">
             {tabs.map((tab) => (
               <button
@@ -152,8 +165,8 @@ const UserSettings = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`${
                   activeTab === tab.id
-                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                    ? 'border-primary-500 text-primary-400'
+                    : 'border-transparent text-dark-400 hover:text-dark-300 hover:border-white/20'
                 } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
               >
                 <span>{tab.icon}</span>
@@ -169,7 +182,7 @@ const UserSettings = () => {
             <form onSubmit={handleProfileSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="username" className="block text-sm font-medium text-dark-200 mb-2">
                     Username
                   </label>
                   <input
@@ -177,12 +190,12 @@ const UserSettings = () => {
                     id="username"
                     value={profileData.username}
                     onChange={(e) => setProfileData({ ...profileData, username: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                    className="input-field"
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="email" className="block text-sm font-medium text-dark-200 mb-2">
                     Email
                   </label>
                   <input
@@ -190,12 +203,12 @@ const UserSettings = () => {
                     id="email"
                     value={profileData.email}
                     onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                    className="input-field"
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="firstName" className="block text-sm font-medium text-dark-200 mb-2">
                     First Name
                   </label>
                   <input
@@ -203,11 +216,11 @@ const UserSettings = () => {
                     id="firstName"
                     value={profileData.firstName}
                     onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                    className="input-field"
                   />
                 </div>
                 <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="lastName" className="block text-sm font-medium text-dark-200 mb-2">
                     Last Name
                   </label>
                   <input
@@ -215,11 +228,11 @@ const UserSettings = () => {
                     id="lastName"
                     value={profileData.lastName}
                     onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                    className="input-field"
                   />
                 </div>
                 <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="phone" className="block text-sm font-medium text-dark-200 mb-2">
                     Phone
                   </label>
                   <input
@@ -227,18 +240,18 @@ const UserSettings = () => {
                     id="phone"
                     value={profileData.phone}
                     onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                    className="input-field"
                   />
                 </div>
                 <div>
-                  <label htmlFor="timezone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="timezone" className="block text-sm font-medium text-dark-200 mb-2">
                     Timezone
                   </label>
                   <select
                     id="timezone"
                     value={profileData.timezone}
                     onChange={(e) => setProfileData({ ...profileData, timezone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                    className="input-field"
                   >
                     {timezones.map((tz) => (
                       <option key={tz} value={tz}>{tz}</option>
@@ -262,7 +275,7 @@ const UserSettings = () => {
             <form onSubmit={handlePasswordSubmit} className="space-y-6">
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="currentPassword" className="block text-sm font-medium text-dark-200 mb-2">
                     Current Password
                   </label>
                   <input
@@ -270,12 +283,12 @@ const UserSettings = () => {
                     id="currentPassword"
                     value={passwordData.currentPassword}
                     onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                    className="input-field"
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="newPassword" className="block text-sm font-medium text-dark-200 mb-2">
                     New Password
                   </label>
                   <input
@@ -283,12 +296,12 @@ const UserSettings = () => {
                     id="newPassword"
                     value={passwordData.newPassword}
                     onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                    className="input-field"
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-dark-200 mb-2">
                     Confirm New Password
                   </label>
                   <input
@@ -296,7 +309,7 @@ const UserSettings = () => {
                     id="confirmPassword"
                     value={passwordData.confirmPassword}
                     onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                    className="input-field"
                     required
                   />
                 </div>
@@ -381,20 +394,20 @@ const UserSettings = () => {
           {activeTab === 'preferences' && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Theme Preferences</h3>
+                <h3 className="text-lg font-medium text-dark-100 mb-4">Theme Preferences</h3>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Current Theme</h4>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Currently using {theme} theme</p>
+                      <h4 className="text-sm font-medium text-dark-200">Current Theme</h4>
+                      <p className="text-sm text-dark-400">Currently using {theme} theme</p>
                     </div>
                     <div className="flex space-x-2">
                       <button
                         onClick={setLightTheme}
                         className={`px-3 py-1 rounded-md text-sm font-medium ${
                           theme === 'light' 
-                            ? 'bg-indigo-100 text-indigo-700' 
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            ? 'bg-primary-100 text-primary-700' 
+                            : 'bg-dark-100 text-dark-700 hover:bg-dark-200'
                         }`}
                       >
                         Light
@@ -403,8 +416,8 @@ const UserSettings = () => {
                         onClick={setDarkTheme}
                         className={`px-3 py-1 rounded-md text-sm font-medium ${
                           theme === 'dark' 
-                            ? 'bg-indigo-100 text-indigo-700' 
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            ? 'bg-primary-100 text-primary-700' 
+                            : 'bg-dark-100 text-dark-700 hover:bg-dark-200'
                         }`}
                       >
                         Dark
@@ -413,8 +426,8 @@ const UserSettings = () => {
                         onClick={applySystemTheme}
                         className={`px-3 py-1 rounded-md text-sm font-medium ${
                           theme === 'system' 
-                            ? 'bg-indigo-100 text-indigo-700' 
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            ? 'bg-primary-100 text-primary-700' 
+                            : 'bg-dark-100 text-dark-700 hover:bg-dark-200'
                         }`}
                       >
                         System
