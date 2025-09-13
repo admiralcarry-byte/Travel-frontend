@@ -31,7 +31,6 @@ import UserSettings from './pages/UserSettings';
 import UsersList from './pages/UsersList';
 import UserForm from './pages/UserForm';
 import ProtectedRoute from './components/ProtectedRoute';
-import AdminRoute from './components/AdminRoute';
 
 const AppRoutes = () => {
   return (
@@ -292,31 +291,31 @@ const AppRoutes = () => {
             <Route
               path="/users"
               element={
-                <AdminRoute>
+                <ProtectedRoute>
                   <Layout>
                     <UsersList />
                   </Layout>
-                </AdminRoute>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/users/new"
               element={
-                <AdminRoute>
+                <ProtectedRoute>
                   <Layout>
                     <UserForm />
                   </Layout>
-                </AdminRoute>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/users/:id/edit"
               element={
-                <AdminRoute>
+                <ProtectedRoute>
                   <Layout>
                     <UserForm />
                   </Layout>
-                </AdminRoute>
+                </ProtectedRoute>
               }
             />
             <Route path="/" element={<Navigate to="/login" />} />
