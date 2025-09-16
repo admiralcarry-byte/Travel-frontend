@@ -38,12 +38,16 @@ const KPICard = ({ title, value, subtitle, icon, color = 'blue', trend, trendVal
 
   const formatValue = (val) => {
     if (typeof val === 'number') {
-      if (val >= 1000000) {
-        return `$${(val / 1000000).toFixed(1)}M`;
-      } else if (val >= 1000) {
-        return `$${(val / 1000).toFixed(1)}K`;
+      const absVal = Math.abs(val);
+      const isNegative = val < 0;
+      const sign = isNegative ? '-' : '';
+      
+      if (absVal >= 1000000) {
+        return `${sign}$${(absVal / 1000000).toFixed(1)}M`;
+      } else if (absVal >= 1000) {
+        return `${sign}$${(absVal / 1000).toFixed(1)}K`;
       } else {
-        return `$${val.toFixed(2)}`;
+        return `${sign}$${absVal.toFixed(2)}`;
       }
     }
     return val;

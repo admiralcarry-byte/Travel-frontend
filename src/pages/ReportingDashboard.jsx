@@ -355,7 +355,7 @@ const ReportingDashboard = () => {
             />
             <KPICard
               title="Client Balances"
-              value={clientBalanceData?.totalClientBalance || 0}
+              value={Math.abs(clientBalanceData?.totalClientBalance || 0)}
               subtitle="Outstanding amounts"
               icon="users"
               color="yellow"
