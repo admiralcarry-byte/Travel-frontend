@@ -687,7 +687,6 @@ const SaleWizard = () => {
               onClick={nextStep}
               disabled={
                 (currentStep === 1 && !selectedClient) ||
-                (currentStep === 2 && selectedPassengers.length === 0) ||
                 (currentStep === 3 && selectedServices.length === 0)
               }
               className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
