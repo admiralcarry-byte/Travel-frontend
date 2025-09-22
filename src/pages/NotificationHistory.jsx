@@ -1,15 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const NotificationHistory = () => {
   const { token, user } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalNotifications, setTotalNotifications] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [filters, setFilters] = useState({
     type: '',
     status: '',
@@ -17,18 +20,23 @@ const NotificationHistory = () => {
     endDate: ''
   });
 
-  const fetchNotifications = useCallback(async () => {
+  // Debounce timer ref
+  const debounceTimer = useRef(null);
+
+  const fetchNotifications = useCallback(async (page = currentPage, filterParams = filters, limit = rowsPerPage) => {
     try {
       setLoading(true);
       setError('');
 
       const params = new URLSearchParams({
-        page: currentPage,
-        limit: 10,
-        ...filters
+        page: page,
+        limit: limit,
+        ...filterParams
       });
 
       const response = await api.get(`/api/notifications/history?${params}`);
+
+      // console.log('Notification API Response:', response.data); // Debug log
 
       if (response.data.success) {
         setNotifications(response.data.data.notifications);
@@ -49,8 +57,9 @@ const NotificationHistory = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, filters, token, user]);
+  }, [currentPage, filters, rowsPerPage, token, user]);
 
+  // Initial load effect
   useEffect(() => {
     if (token && user) {
       fetchNotifications();
@@ -58,17 +67,54 @@ const NotificationHistory = () => {
       setLoading(false);
       setError('Please log in to view notifications.');
     }
-  }, [fetchNotifications, token, user]);
+  }, [token, user]);
 
-  const handleFilterChange = (field, value) => {
+  // Debounced filter effect
+  useEffect(() => {
+    if (token && user) {
+      // Clear existing timer
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+
+      // Set new timer for debounced API call
+      debounceTimer.current = setTimeout(() => {
+        fetchNotifications(1, filters, rowsPerPage);
+        setCurrentPage(1);
+      }, 300); // 300ms debounce delay
+
+      // Cleanup function
+      return () => {
+        if (debounceTimer.current) {
+          clearTimeout(debounceTimer.current);
+        }
+      };
+    }
+  }, [filters, token, user]);
+
+  // Page change effect
+  useEffect(() => {
+    if (token && user && currentPage > 1) {
+      fetchNotifications(currentPage, filters, rowsPerPage);
+    }
+  }, [currentPage, token, user]);
+
+  // Rows per page change effect
+  useEffect(() => {
+    if (token && user) {
+      fetchNotifications(1, filters, rowsPerPage);
+      setCurrentPage(1);
+    }
+  }, [rowsPerPage, token, user]);
+
+  const handleFilterChange = useCallback((field, value) => {
     setFilters(prev => ({
       ...prev,
       [field]: value
     }));
-    setCurrentPage(1);
-  };
+  }, []);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setFilters({
       type: '',
       status: '',
@@ -76,9 +122,9 @@ const NotificationHistory = () => {
       endDate: ''
     });
     setCurrentPage(1);
-  };
+  }, []);
 
-  const getStatusColor = (status) => {
+  const getStatusColor = useCallback((status) => {
     const colors = {
       sent: 'bg-green-100 text-green-800',
       failed: 'bg-red-100 text-red-800',
@@ -86,9 +132,9 @@ const NotificationHistory = () => {
       pending: 'bg-blue-100 text-blue-800'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
-  };
+  }, []);
 
-  const getTypeColor = (type) => {
+  const getTypeColor = useCallback((type) => {
     const colors = {
       email: 'bg-blue-100 text-blue-800',
       whatsapp: 'bg-green-100 text-green-800',
@@ -97,11 +143,62 @@ const NotificationHistory = () => {
       confirmation: 'bg-indigo-100 text-indigo-800'
     };
     return colors[type] || 'bg-gray-100 text-gray-800';
-  };
+  }, []);
 
-  const formatDate = (dateString) => {
+  const formatDate = useCallback((dateString) => {
     return new Date(dateString).toLocaleString();
-  };
+  }, []);
+
+  // Memoized table row component
+  const NotificationRow = React.memo(({ notification, getStatusColor, getTypeColor, formatDate }) => (
+    <tr className="hover:bg-white/5 transition-colors duration-200">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="text-sm font-medium text-dark-100">
+          {notification.clientId ? 
+            `${notification.clientId.name} ${notification.clientId.surname}` : 
+            'N/A'
+          }
+        </div>
+        <div className="text-sm text-dark-400">
+          {notification.clientId?.email || 'N/A'}
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(notification.type)}`}>
+          {notification.type}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(notification.status)}`}>
+          {notification.status}
+        </span>
+      </td>
+      <td className="px-6 py-4">
+        <div className="text-sm text-dark-100 max-w-xs truncate">
+          {notification.message}
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-300">
+        {notification.createdBy?.username || 'System'}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-300">
+        {formatDate(notification.createdAt)}
+      </td>
+    </tr>
+  ));
+
+  // Memoized pagination handlers
+  const handlePreviousPage = useCallback(() => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  }, []);
+
+  const handleNextPage = useCallback(() => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  }, [totalPages]);
+
+  const handleRowsPerPageChange = useCallback((value) => {
+    setRowsPerPage(parseInt(value));
+  }, []);
 
   if (loading) {
     return (
@@ -132,6 +229,17 @@ const NotificationHistory = () => {
           <p className="text-xl text-dark-300 max-w-3xl mx-auto mb-8">
             Track and manage all sent notifications
           </p>
+          <div className="flex justify-center">
+            <button
+              onClick={() => navigate('/notifications/send')}
+              className="btn-primary flex items-center space-x-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              <span>Send New Notification</span>
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -247,8 +355,22 @@ const NotificationHistory = () => {
                 <h3 className="text-lg font-semibold text-dark-100">
                   Showing {notifications.length} of {totalNotifications} notifications
                 </h3>
-                <div className="text-sm text-dark-300">
-                  Page {currentPage} of {totalPages}
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <label className="text-sm text-dark-300">Rows per page:</label>
+                    <select
+                      value={rowsPerPage}
+                      onChange={(e) => handleRowsPerPageChange(e.target.value)}
+                      className="input-field w-20 text-sm"
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                    </select>
+                  </div>
+                  <div className="text-sm text-dark-300">
+                    Page {currentPage} of {totalPages}
+                  </div>
                 </div>
               </div>
             </div>
@@ -260,7 +382,7 @@ const NotificationHistory = () => {
                   <thead className="bg-dark-700/50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
-                        Client
+                        Passenger
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
                         Type
@@ -281,67 +403,49 @@ const NotificationHistory = () => {
                   </thead>
                   <tbody className="divide-y divide-white/10">
                     {notifications.map((notification) => (
-                      <tr key={notification._id} className="hover:bg-white/5 transition-colors duration-200">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-dark-100">
-                            {notification.clientId ? 
-                              `${notification.clientId.name} ${notification.clientId.surname}` : 
-                              'N/A'
-                            }
-                          </div>
-                          <div className="text-sm text-dark-400">
-                            {notification.clientId?.email || 'N/A'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(notification.type)}`}>
-                            {notification.type}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(notification.status)}`}>
-                            {notification.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-dark-100 max-w-xs truncate">
-                            {notification.message}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-300">
-                          {notification.createdBy?.username || 'System'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-300">
-                          {formatDate(notification.createdAt)}
-                        </td>
-                      </tr>
+                      <NotificationRow
+                        key={notification._id}
+                        notification={notification}
+                        getStatusColor={getStatusColor}
+                        getTypeColor={getTypeColor}
+                        formatDate={formatDate}
+                      />
                     ))}
                   </tbody>
                 </table>
               </div>
 
               {/* Pagination */}
-              {totalPages > 1 && (
+              {(totalPages > 1 || totalNotifications > rowsPerPage) && (
                 <div className="px-6 py-4 border-t border-white/10">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        onClick={handlePreviousPage}
                         disabled={currentPage === 1}
-                        className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
                       >
-                        Previous
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        <span>Previous</span>
                       </button>
-                      <span className="text-sm text-dark-300">
+                      <span className="text-sm text-dark-300 px-3">
                         Page {currentPage} of {totalPages}
                       </span>
                       <button
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        onClick={handleNextPage}
                         disabled={currentPage === totalPages}
-                        className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
                       >
-                        Next
+                        <span>Next</span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
                       </button>
+                    </div>
+                    <div className="text-sm text-dark-400">
+                      Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, totalNotifications)} of {totalNotifications} entries
                     </div>
                   </div>
                 </div>

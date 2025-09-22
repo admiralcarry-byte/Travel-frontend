@@ -7,6 +7,24 @@ import PageTransition from './PageTransition';
 const Layout = ({ children, showNavigation = true }) => {
   const { user, logout, isAdmin, isSeller } = useAuth();
   const location = useLocation();
+  const [expandedGroups, setExpandedGroups] = useState({});
+
+  const toggleGroup = (groupLabel) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupLabel]: !prev[groupLabel]
+    }));
+  };
+
+  const isGroupActive = (group) => {
+    return group.items?.some(item => {
+      if (item.path.includes('?')) {
+        const [path, query] = item.path.split('?');
+        return location.pathname === path;
+      }
+      return location.pathname === item.path;
+    });
+  };
 
   const navigationItems = [
     { 
@@ -21,7 +39,7 @@ const Layout = ({ children, showNavigation = true }) => {
     },
     { 
       path: '/clients', 
-      label: 'Clients', 
+      label: 'Passengers', 
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -55,34 +73,59 @@ const Layout = ({ children, showNavigation = true }) => {
         </svg>
       )
     },
-    { 
-      path: '/sales/clients', 
-      label: 'Client Sales', 
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      )
-    },
-    { 
-      path: '/inventory', 
-      label: 'Inventory', 
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-        </svg>
-      )
-    },
-    { 
-      path: '/reports', 
-      label: 'Reports', 
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      )
-    },
-    // Notifications navigation hidden
+    // Admin and Seller navigation items
+    ...(isAdmin || isSeller ? [
+      { 
+        path: '/inventory', 
+        label: 'Slots', 
+        icon: (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+        )
+      },
+      { 
+        path: '/reports', 
+        label: 'Reports', 
+        icon: (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        )
+      },
+      { 
+        path: '/daily-reports', 
+        label: 'Daily Reports', 
+        icon: (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+        )
+      },
+    ] : []),
+    // Admin-only navigation items
+    ...(isAdmin ? [
+      {
+        path: '/settings', 
+        label: 'Settings', 
+        icon: (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        )
+      },
+      {
+        path: '/admin-insights', 
+        label: 'Admin Insights', 
+        icon: (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        )
+      }
+    ] : []),
+    // Notifications navigation - DISABLED
     // { 
     //   path: '/notifications/history', 
     //   label: 'Notifications', 
@@ -92,17 +135,6 @@ const Layout = ({ children, showNavigation = true }) => {
     //     </svg>
     //   )
     // },
-    // Settings - Admin only
-    ...(isAdmin ? [{
-      path: '/settings', 
-      label: 'Settings', 
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      )
-    }] : []),
   ];
 
   return (
@@ -130,17 +162,74 @@ const Layout = ({ children, showNavigation = true }) => {
                 {/* Navigation */}
                 <div className="flex-grow flex flex-col px-1 sm:px-2 md:px-4">
                   <nav className="flex-1 space-y-1 sm:space-y-2">
-                    {navigationItems.map((item) => (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}
-                        title={item.label}
-                      >
-                        <span className="mr-1 sm:mr-2 md:mr-3">{item.icon}</span>
-                        <span className="hidden md:block">{item.label}</span>
-                      </Link>
-                    ))}
+                    {navigationItems.map((item) => {
+                      if (item.type === 'group') {
+                        const isExpanded = expandedGroups[item.label];
+                        const isActive = isGroupActive(item);
+                        
+                        return (
+                          <div key={item.label}>
+                            <button
+                              onClick={() => toggleGroup(item.label)}
+                              className={`nav-link w-full text-left ${isActive ? 'active' : ''}`}
+                              title={item.label}
+                            >
+                              <span className="mr-1 sm:mr-2 md:mr-3">{item.icon}</span>
+                              <span className="hidden md:block flex-1">{item.label}</span>
+                              <svg 
+                                className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
+                                fill="none" 
+                                stroke="currentColor" 
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                            
+                            {isExpanded && (
+                              <div className="ml-4 mt-1 space-y-1">
+                                {item.items.map((subItem) => {
+                                  let isSubItemActive = false;
+                                  
+                                  if (subItem.path.includes('?')) {
+                                    // For items with query parameters (like /sales?tab=passengers)
+                                    const [path, query] = subItem.path.split('?');
+                                    isSubItemActive = location.pathname === path && location.search.includes(query);
+                                  } else {
+                                    // For items without query parameters (like /sales)
+                                    isSubItemActive = location.pathname === subItem.path && !location.search;
+                                  }
+                                  
+                                  return (
+                                    <Link
+                                      key={subItem.path}
+                                      to={subItem.path}
+                                      className={`nav-link text-sm pl-8 ${isSubItemActive ? 'active' : ''}`}
+                                      title={subItem.label}
+                                    >
+                                      <span className="mr-2">{subItem.icon}</span>
+                                      <span className="hidden md:block">{subItem.label}</span>
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <Link
+                            key={item.path}
+                            to={item.path}
+                            className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}
+                            title={item.label}
+                          >
+                            <span className="mr-1 sm:mr-2 md:mr-3">{item.icon}</span>
+                            <span className="hidden md:block">{item.label}</span>
+                          </Link>
+                        );
+                      }
+                    })}
                   </nav>
                 </div>
 

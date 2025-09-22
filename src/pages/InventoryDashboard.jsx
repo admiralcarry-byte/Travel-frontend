@@ -82,7 +82,7 @@ const InventoryDashboard = () => {
         setError('');
       }
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to fetch inventory');
+      setError(error.response?.data?.message || 'Failed to fetch slot');
     } finally {
       if (isInitialLoad) {
         setLoading(false);
@@ -142,13 +142,25 @@ const InventoryDashboard = () => {
   }, []);
 
   const handleReserve = useCallback((cupo) => {
+
+    // Check if required data exists
+    if (!cupo.serviceId || (!cupo.serviceId.id && !cupo.serviceId._id)) {
+      setError('Invalid service data. Cannot create reservation.');
+      return;
+    }
+
+    if (!cupo.serviceId.providerId || (!cupo.serviceId.providerId.id && !cupo.serviceId.providerId._id)) {
+      setError(`Invalid provider data. Service: ${cupo.serviceId.title}, Provider: ${cupo.serviceId.providerId ? 'exists but no ID' : 'missing'}. Cannot create reservation.`);
+      return;
+    }
+
     // Navigate to reservation flow with cupo data
     navigate('/reservations/new', { 
       state: { 
         cupo: cupo,
         prefillData: {
-          serviceId: cupo.serviceId.id,
-          providerId: cupo.serviceId.providerId.id,
+          serviceId: cupo.serviceId.id || cupo.serviceId._id,
+          providerId: cupo.serviceId.providerId.id || cupo.serviceId.providerId._id,
           serviceTitle: cupo.serviceId.title,
           date: cupo.metadata.date,
           availableSeats: cupo.availableSeats
@@ -170,7 +182,7 @@ const InventoryDashboard = () => {
             </div>
           </div>
         </div>
-        <p className="text-dark-300 text-lg font-medium ml-4">Loading inventory...</p>
+        <p className="text-dark-300 text-lg font-medium ml-4">Loading slots...</p>
       </div>
     );
   }
@@ -181,10 +193,10 @@ const InventoryDashboard = () => {
         {/* Header */}
         <div className="text-center">
           <h1 className="text-5xl sm:text-6xl font-bold gradient-text mb-6 font-poppins">
-            Inventory Dashboard
+            Slots Dashboard
           </h1>
           <p className="text-xl text-dark-300 max-w-3xl mx-auto mb-8">
-            Manage pre-purchased inventory (cupos) and reservations
+            Manage pre-purchased slots (cupos) and reservations
           </p>
           <button
             onClick={() => navigate('/cupos/new')}
@@ -302,7 +314,7 @@ const InventoryDashboard = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                   </svg>
                 </div>
-                <div className="text-dark-200 text-xl font-bold">No inventory found</div>
+                <div className="text-dark-200 text-xl font-bold">No slots found</div>
               </div>
               <div className="text-center">
                 <p className="text-dark-400 text-sm mb-6">
@@ -401,14 +413,40 @@ const InventoryDashboard = () => {
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleReserve(cupo)}
-                        disabled={cupo.availableSeats === 0}
+                        disabled={
+                          cupo.availableSeats === 0 || 
+                          !cupo.serviceId || 
+                          (!cupo.serviceId.id && !cupo.serviceId._id) || 
+                          !cupo.serviceId.providerId || 
+                          (!cupo.serviceId.providerId.id && !cupo.serviceId.providerId._id)
+                        }
                         className={`flex-1 px-3 py-2 text-sm rounded-md transition-all duration-300 ${
-                          cupo.availableSeats === 0 
+                          cupo.availableSeats === 0 || 
+                          !cupo.serviceId || 
+                          (!cupo.serviceId.id && !cupo.serviceId._id) || 
+                          !cupo.serviceId.providerId || 
+                          (!cupo.serviceId.providerId.id && !cupo.serviceId.providerId._id)
                             ? 'bg-dark-700 text-dark-400 cursor-not-allowed' 
                             : 'btn-primary'
                         }`}
+                        title={
+                          !cupo.serviceId || (!cupo.serviceId.id && !cupo.serviceId._id)
+                            ? 'Missing service data'
+                            : !cupo.serviceId.providerId || (!cupo.serviceId.providerId.id && !cupo.serviceId.providerId._id)
+                            ? 'Missing provider data'
+                            : cupo.availableSeats === 0
+                            ? 'Sold out'
+                            : 'Click to reserve'
+                        }
                       >
-                        {cupo.availableSeats === 0 ? 'Sold Out' : 'Reserve'}
+                        {cupo.availableSeats === 0 
+                          ? 'Sold Out' 
+                          : !cupo.serviceId || (!cupo.serviceId.id && !cupo.serviceId._id)
+                          ? 'No Service'
+                          : !cupo.serviceId.providerId || (!cupo.serviceId.providerId.id && !cupo.serviceId.providerId._id)
+                          ? 'No Provider'
+                          : 'Reserve'
+                        }
                       </button>
                       <button
                         onClick={() => navigate(`/cupos/${cupo.id || cupo._id}`)}

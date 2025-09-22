@@ -131,12 +131,20 @@ const ProviderDetails = () => {
               </span>
             </div>
           </div>
-          <button
-            onClick={() => navigate('/providers/new')}
-            className="btn-primary"
-          >
-            Add New Provider
-          </button>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => navigate(`/providers/${providerId}/dashboard`)}
+              className="btn-primary"
+            >
+              View Dashboard
+            </button>
+            <button
+              onClick={() => navigate('/providers/new')}
+              className="btn-secondary"
+            >
+              Add New Provider
+            </button>
+          </div>
         </div>
 
         {/* Provider Details */}
@@ -170,6 +178,29 @@ const ProviderDetails = () => {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-dark-300 mb-2">Website</label>
+                <div className="flex items-center space-x-3">
+                  <div className="icon-container bg-primary-500">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
+                    </svg>
+                  </div>
+                  {provider.contactInfo?.website ? (
+                    <a 
+                      href={provider.contactInfo.website} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary-400 hover:text-primary-300 underline"
+                    >
+                      {provider.contactInfo.website}
+                    </a>
+                  ) : (
+                    <span className="text-dark-100">No website provided</span>
+                  )}
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-dark-300 mb-2">Address</label>
                 <div className="flex items-start space-x-3">
                   <div className="icon-container bg-primary-500 mt-1">
@@ -194,22 +225,50 @@ const ProviderDetails = () => {
             <h2 className="text-2xl font-semibold text-dark-100 mb-6">Provider Information</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-dark-300 mb-2">Provider ID</label>
-                <span className="text-dark-100 font-mono text-sm bg-dark-700 px-3 py-2 rounded">
+                <div className="text-sm font-medium text-dark-300">Provider ID</div>
+                <div className="text-dark-100 font-mono text-sm bg-dark-700 px-3 py-2 rounded ml-6">
                   {provider.id || provider._id}
-                </span>
+                </div>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-dark-300 mb-2">Type</label>
-                <span className={`badge badge-primary ${getTypeColor(provider.type)}`}>
-                  {provider.type ? provider.type.charAt(0).toUpperCase() + provider.type.slice(1) : 'Unknown'}
-                </span>
+                <div className="text-sm font-medium text-dark-300">Type</div>
+                <div className="ml-6">
+                  <span className={`badge badge-primary ${getTypeColor(provider.type)}`}>
+                    {provider.type ? provider.type.charAt(0).toUpperCase() + provider.type.slice(1) : 'Unknown'}
+                  </span>
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-dark-300 mb-2">Created Date</label>
-                <span className="text-dark-100">
+                <div className="text-sm font-medium text-dark-300">Commission Rate</div>
+                <div className="text-dark-100 font-semibold ml-6">
+                  {provider.commissionRate || 0}%
+                </div>
+              </div>
+
+              <div>
+                <div className="text-sm font-medium text-dark-300">Payment Terms</div>
+                <div className="text-dark-100 ml-6">
+                  {provider.paymentTerms ? 
+                    provider.paymentTerms.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 
+                    'Net 30 Days'
+                  }
+                </div>
+              </div>
+
+              {provider.description && (
+                <div>
+                  <div className="text-sm font-medium text-dark-300">Description</div>
+                  <div className="text-dark-100 ml-6">
+                    {provider.description}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <div className="text-sm font-medium text-dark-300">Created Date</div>
+                <div className="text-dark-100 ml-6">
                   {new Date(provider.createdAt).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'long',
@@ -217,12 +276,12 @@ const ProviderDetails = () => {
                     hour: '2-digit',
                     minute: '2-digit'
                   })}
-                </span>
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-dark-300 mb-2">Last Updated</label>
-                <span className="text-dark-100">
+                <div className="text-sm font-medium text-dark-300">Last Updated</div>
+                <div className="text-dark-100 ml-6">
                   {new Date(provider.updatedAt).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'long',
@@ -230,7 +289,7 @@ const ProviderDetails = () => {
                     hour: '2-digit',
                     minute: '2-digit'
                   })}
-                </span>
+                </div>
               </div>
             </div>
           </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import PaymentForm from './PaymentForm';
 import Modal from './Modal';
+import ProvisionalReceipt from './ProvisionalReceipt';
 
 const PaymentsTable = ({ saleId, onPaymentAdded }) => {
   const [payments, setPayments] = useState([]);
@@ -9,12 +10,15 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
   const [error, setError] = useState('');
   const [showClientForm, setShowClientForm] = useState(false);
   const [showProviderForm, setShowProviderForm] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [selectedPaymentId, setSelectedPaymentId] = useState(null);
+  const [completedReceipts, setCompletedReceipts] = useState(new Set());
   const [columnWidths, setColumnWidths] = useState({
     type: 'w-28',
     method: 'w-24', 
     amount: 'w-32',
     date: 'w-24',
-    receipt: 'w-20',
+    receipt: 'w-32',
     notes: 'w-32'
   });
 
@@ -50,6 +54,48 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
     setShowClientForm(false);
     setShowProviderForm(false);
     onPaymentAdded && onPaymentAdded();
+  };
+
+  const generateReceipt = async (paymentId) => {
+    try {
+      setError(''); // Clear any previous errors
+      const response = await api.post('/api/receipts/generate', {
+        paymentId,
+        saleId
+      });
+
+      if (response.data.success) {
+        setSelectedPaymentId(paymentId);
+        setShowReceipt(true);
+        
+        // Refresh payments data to update the UI with the new receipt
+        await fetchPayments();
+      }
+    } catch (error) {
+      console.error('Receipt generation error:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to generate receipt';
+      setError(errorMessage);
+      
+      // Show error for 5 seconds then clear
+      setTimeout(() => {
+        setError('');
+      }, 5000);
+    }
+  };
+
+  const handleReceiptClose = () => {
+    setShowReceipt(false);
+    setSelectedPaymentId(null);
+  };
+
+  const handleReceiptCompleted = (paymentId) => {
+    // Mark this payment as having a completed receipt
+    setCompletedReceipts(prev => new Set([...prev, paymentId]));
+    
+    // Refresh the payments data to update the UI
+    if (onPaymentAdded) {
+      onPaymentAdded();
+    }
   };
 
   const formatCurrency = (amount, currency) => {
@@ -112,7 +158,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
             onClick={() => setShowClientForm(true)}
             className="px-3 py-1 bg-green-600 text-white text-sm rounded-md hover:bg-green-700"
           >
-            + Client Payment
+            + Passenger Payment
           </button>
           <button
             onClick={() => setShowProviderForm(true)}
@@ -133,7 +179,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
       <Modal
         isOpen={showClientForm}
         onClose={() => setShowClientForm(false)}
-        title="Record Client Payment"
+        title="Record Passenger Payment"
         size="lg"
       >
         <PaymentForm
@@ -162,7 +208,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
       {payments.length === 0 ? (
         <div className="text-center py-8 text-dark-400">
           <p>No payments recorded yet</p>
-          <p className="text-sm">Add client or provider payments to track balances</p>
+          <p className="text-sm">Add passenger or provider payments to track balances</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -202,7 +248,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
                   Date
                 </th>
                 <th 
-                  className={`${columnWidths.receipt} px-3 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider cursor-pointer hover:bg-dark-600 transition-colors`}
+                  className={`${columnWidths.receipt} px-3 py-3 text-center text-xs font-semibold text-dark-300 uppercase tracking-wider cursor-pointer hover:bg-dark-600 transition-colors`}
                   onDoubleClick={() => handleColumnResize('receipt')}
                   title="Double-click to resize column"
                 >
@@ -223,7 +269,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
                   <td className="px-3 py-4">
                     <div className="truncate">
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPaymentTypeColor(payment.type)}`}>
-                        {payment.type.charAt(0).toUpperCase() + payment.type.slice(1)}
+                        {payment.type === 'client' ? 'Passenger' : payment.type.charAt(0).toUpperCase() + payment.type.slice(1)}
                       </span>
                     </div>
                   </td>
@@ -252,20 +298,28 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
                   </td>
                   <td className="px-3 py-4">
                     <div className="truncate text-sm text-dark-300">
-                      {payment.receiptImage ? (
-                        <div className="flex items-center space-x-1">
+                      {payment.receiptImage || completedReceipts.has(payment._id) ? (
+                        <div className="flex items-center justify-center space-x-2">
                           <span className="text-lg">{getReceiptIcon(payment.receiptImage)}</span>
-                          <a
-                            href={`${api.getUri()}${payment.receiptImage}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary-400 hover:text-primary-300 text-xs"
+                          <button
+                            onClick={() => {
+                              setSelectedPaymentId(payment._id);
+                              setShowReceipt(true);
+                            }}
+                            className="text-primary-400 hover:text-primary-300 text-xs bg-primary-500/20 hover:bg-primary-500/30 px-3 py-1.5 rounded-md border border-primary-500/30 transition-colors whitespace-nowrap"
                           >
                             View
-                          </a>
+                          </button>
                         </div>
                       ) : (
-                        <span className="text-dark-400">No receipt</span>
+                        <div className="flex items-center justify-center">
+                          <button
+                            onClick={() => generateReceipt(payment._id)}
+                            className="text-primary-400 hover:text-primary-300 text-xs bg-primary-500/20 hover:bg-primary-500/30 px-3 py-1.5 rounded-md border border-primary-500/30 transition-colors whitespace-nowrap"
+                          >
+                            Generate
+                          </button>
+                        </div>
                       )}
                     </div>
                   </td>
@@ -280,6 +334,16 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
           </table>
           </div>
         </div>
+      )}
+
+      {/* Receipt Display */}
+      {showReceipt && (
+        <ProvisionalReceipt
+          paymentId={selectedPaymentId}
+          saleId={saleId}
+          onClose={handleReceiptClose}
+          onReceiptCompleted={handleReceiptCompleted}
+        />
       )}
     </div>
   );

@@ -27,19 +27,19 @@ const Login = () => {
     setError('');
 
     try {
-      console.log('🚀 Starting login process...');
+      // console.log('🚀 Starting login process...');
       const result = await login(formData.email, formData.password);
       
-      console.log('📋 Login result:', result);
+      // console.log('📋 Login result:', result);
       
       if (result.success) {
-        console.log('✅ Login successful, navigating to dashboard...');
+        // console.log('✅ Login successful, navigating to dashboard...');
         // Add a small delay to ensure state is updated
         setTimeout(() => {
           navigate('/dashboard');
         }, 100);
       } else {
-        console.log('❌ Login failed:', result.message);
+        // console.log('❌ Login failed:', result.message);
         setError(result.message);
       }
     } catch (error) {

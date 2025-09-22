@@ -6,9 +6,13 @@ const ProviderForm = () => {
   const [formData, setFormData] = useState({
     name: '',
     type: '',
+    description: '',
+    commissionRate: 10,
+    paymentTerms: 'net_30',
     contactInfo: {
       phone: '',
       email: '',
+      website: '',
       address: {
         street: '',
         city: '',
@@ -44,6 +48,14 @@ const ProviderForm = () => {
     { value: 'transfer', label: 'Transfer' },
     { value: 'excursion', label: 'Excursion' },
     { value: 'insurance', label: 'Insurance' }
+  ];
+
+  const paymentTermsOptions = [
+    { value: 'immediate', label: 'Immediate Payment' },
+    { value: 'net_15', label: 'Net 15 Days' },
+    { value: 'net_30', label: 'Net 30 Days' },
+    { value: 'net_45', label: 'Net 45 Days' },
+    { value: 'net_60', label: 'Net 60 Days' }
   ];
 
   const handleChange = (e) => {
@@ -214,6 +226,68 @@ const ProviderForm = () => {
                   </select>
                 </div>
               </div>
+
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium text-dark-200">
+                  Description
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  rows={3}
+                  className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
+                  placeholder="Enter provider description"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="commissionRate" className="block text-sm font-medium text-dark-200">
+                    Commission Rate (%) *
+                  </label>
+                  <input
+                    type="number"
+                    id="commissionRate"
+                    name="commissionRate"
+                    value={formData.commissionRate}
+                    onChange={handleChange}
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    required
+                    className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
+                    placeholder="Enter commission rate (0-100)"
+                  />
+                  <p className="mt-1 text-sm text-dark-400">
+                    Commission rate as a percentage of the sale price
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="paymentTerms" className="block text-sm font-medium text-dark-200">
+                    Payment Terms *
+                  </label>
+                  <select
+                    id="paymentTerms"
+                    name="paymentTerms"
+                    value={formData.paymentTerms}
+                    onChange={handleChange}
+                    required
+                    className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
+                  >
+                    {paymentTermsOptions.map(term => (
+                      <option key={term.value} value={term.value}>
+                        {term.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-sm text-dark-400">
+                    Payment terms for vendor payments
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Contact Information */}
@@ -252,6 +326,21 @@ const ProviderForm = () => {
                     placeholder="Enter email address"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="contactInfo-website" className="block text-sm font-medium text-dark-200">
+                  Website
+                </label>
+                <input
+                  type="url"
+                  id="contactInfo-website"
+                  name="contactInfo.website"
+                  value={formData.contactInfo.website}
+                  onChange={handleChange}
+                  className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
+                  placeholder="Enter website URL (e.g., https://example.com)"
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

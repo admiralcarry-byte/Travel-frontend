@@ -30,7 +30,7 @@ const UserSettings = () => {
     confirmPassword: ''
   });
   
-  // Notification preferences (hidden)
+  // Notification preferences - DISABLED
   // const [notifications, setNotifications] = useState({
   //   emailNotifications: true,
   //   pushNotifications: true,
@@ -57,7 +57,7 @@ const UserSettings = () => {
         </svg>
       )
     },
-    // { id: 'notifications', name: 'Notifications', icon: '🔔' }, // Hidden
+    // { id: 'notifications', name: 'Notifications', icon: '🔔' }, // DISABLED
     // { id: 'preferences', name: 'Preferences', icon: '⚙️' }
   ];
 
@@ -120,7 +120,7 @@ const UserSettings = () => {
     }
   };
 
-  // Notification submit handler (hidden)
+  // Notification submit handler - DISABLED
   // const handleNotificationSubmit = async (e) => {
   //   e.preventDefault();
   //   setLoading(true);
@@ -342,7 +342,7 @@ const UserSettings = () => {
             </form>
           )}
 
-          {/* Notifications tab hidden */}
+          {/* Notifications tab - DISABLED */}
           {/* {activeTab === 'notifications' && (
             <form onSubmit={handleNotificationSubmit} className="space-y-6">
               <div className="space-y-4">

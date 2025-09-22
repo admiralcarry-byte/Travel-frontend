@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 
-const ClientForm = () => {
+// Companion Form Component
+const CompanionForm = ({ onAddCompanion, onCancel }) => {
   const [formData, setFormData] = useState({
     name: '',
     surname: '',
+    dni: '',
     dob: '',
     email: '',
     phone: '',
@@ -13,6 +15,324 @@ const ClientForm = () => {
     nationality: '',
     expirationDate: ''
   });
+  const [errors, setErrors] = useState({});
+
+  const validateName = (name, fieldName) => {
+    const nameRegex = /^[a-zA-Z\s\-']+$/;
+    if (!name) return `${fieldName} is required`;
+    if (!nameRegex.test(name)) return `${fieldName} can only contain letters, spaces, hyphens, and apostrophes`;
+    if (name.length < 2) return `${fieldName} must be at least 2 characters long`;
+    return '';
+  };
+
+  const validateDNI = (dni) => {
+    if (!dni) return 'DNI/CUIT is required';
+    if (dni.length < 7) return 'DNI/CUIT must be at least 7 characters long';
+    if (dni.length > 20) return 'DNI/CUIT cannot exceed 20 characters';
+    return '';
+  };
+
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email && !emailRegex.test(email)) return 'Your email format is incorrect. Please enter it in the format kevin@gmail.com';
+    return '';
+  };
+
+  const validatePhone = (phone) => {
+    if (!phone) return '';
+    
+    const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+    const phoneRegex = /^(\+?[1-9]\d{9,14})$/;
+    
+    if (!phoneRegex.test(cleanPhone)) {
+      return 'Your phone number format is incorrect. Please enter a valid phone number (10-15 digits)';
+    }
+    
+    return '';
+  };
+
+  const validatePassportNumber = (passportNumber) => {
+    if (passportNumber && passportNumber.length < 3) return 'Passport number must be at least 3 characters long';
+    if (passportNumber && passportNumber.length > 20) return 'Passport number cannot exceed 20 characters';
+    return '';
+  };
+
+  const validateNationality = (nationality) => {
+    const nationalityRegex = /^[a-zA-Z\s\-']+$/;
+    if (nationality && !nationalityRegex.test(nationality)) return 'Nationality can only contain letters, spaces, hyphens, and apostrophes';
+    return '';
+  };
+
+  const validateDate = (date, fieldName) => {
+    if (!date) return '';
+    
+    let dateObj;
+    if (typeof date === 'string') {
+      if (date.includes('/')) {
+        const parts = date.split('/');
+        if (parts.length === 3) {
+          const month = parts[0].padStart(2, '0');
+          const day = parts[1].padStart(2, '0');
+          const year = parts[2];
+          dateObj = new Date(`${year}-${month}-${day}`);
+        } else {
+          dateObj = new Date(date);
+        }
+      } else {
+        dateObj = new Date(date);
+      }
+    } else {
+      dateObj = new Date(date);
+    }
+    
+    if (isNaN(dateObj.getTime())) return `Please enter a valid ${fieldName.toLowerCase()}`;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (fieldName === 'Date of Birth') {
+      if (dateObj >= today) return 'Date of birth must be in the past';
+      const age = today.getFullYear() - dateObj.getFullYear();
+      if (age > 120) return 'Please enter a valid date of birth';
+    } else if (fieldName === 'Passport Expiration Date') {
+      if (dateObj <= today) return 'Passport expiration date must be in the future';
+    }
+    
+    return '';
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    newErrors.name = validateName(formData.name, 'First Name');
+    newErrors.surname = validateName(formData.surname, 'Last Name');
+    newErrors.dni = validateDNI(formData.dni);
+    
+    if (formData.email) newErrors.email = validateEmail(formData.email);
+    if (formData.phone) newErrors.phone = validatePhone(formData.phone);
+    if (formData.dob) newErrors.dob = validateDate(formData.dob, 'Date of Birth');
+    if (formData.passportNumber) newErrors.passportNumber = validatePassportNumber(formData.passportNumber);
+    if (formData.nationality) newErrors.nationality = validateNationality(formData.nationality);
+    if (formData.expirationDate) newErrors.expirationDate = validateDate(formData.expirationDate, 'Passport Expiration Date');
+    
+    Object.keys(newErrors).forEach(key => {
+      if (!newErrors[key]) delete newErrors[key];
+    });
+    
+    return newErrors;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleSubmit = () => {
+    const newErrors = validateForm();
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    
+    // Call the parent callback with the companion data
+    onAddCompanion(formData);
+    
+    // Reset the companion form data
+    setFormData({
+      name: '',
+      surname: '',
+      dni: '',
+      dob: '',
+      email: '',
+      phone: '',
+      passportNumber: '',
+      nationality: '',
+      expirationDate: ''
+    });
+    setErrors({});
+  };
+
+  return (
+    <div className="space-y-4">
+      <h4 className="text-md font-medium text-dark-100 mb-4">Add Companion</h4>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-dark-200 mb-1">
+            First Name *
+          </label>
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            required
+            className={`input-field text-sm ${errors.name ? 'border-red-500' : ''}`}
+          />
+          {errors.name && <p className="mt-1 text-sm text-red-400">{errors.name}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-dark-200 mb-1">
+            Last Name *
+          </label>
+          <input
+            type="text"
+            name="surname"
+            value={formData.surname}
+            onChange={handleChange}
+            required
+            className={`input-field text-sm ${errors.surname ? 'border-red-500' : ''}`}
+          />
+          {errors.surname && <p className="mt-1 text-sm text-red-400">{errors.surname}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-dark-200 mb-1">
+            DNI/CUIT *
+          </label>
+          <input
+            type="text"
+            name="dni"
+            value={formData.dni}
+            onChange={handleChange}
+            required
+            className={`input-field text-sm ${errors.dni ? 'border-red-500' : ''}`}
+          />
+          {errors.dni && <p className="mt-1 text-sm text-red-400">{errors.dni}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-dark-200 mb-1">
+            Date of Birth
+          </label>
+          <input
+            type="date"
+            name="dob"
+            value={formData.dob}
+            onChange={handleChange}
+            className={`input-field text-sm ${errors.dob ? 'border-red-500' : ''}`}
+          />
+          {errors.dob && <p className="mt-1 text-sm text-red-400">{errors.dob}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-dark-200 mb-1">
+            Email
+          </label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            className={`input-field text-sm ${errors.email ? 'border-red-500' : ''}`}
+          />
+          {errors.email && <p className="mt-1 text-sm text-red-400">{errors.email}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-dark-200 mb-1">
+            Phone Number
+          </label>
+          <input
+            type="tel"
+            name="phone"
+            value={formData.phone}
+            onChange={handleChange}
+            className={`input-field text-sm ${errors.phone ? 'border-red-500' : ''}`}
+          />
+          {errors.phone && <p className="mt-1 text-sm text-red-400">{errors.phone}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-dark-200 mb-1">
+            Passport Number
+          </label>
+          <input
+            type="text"
+            name="passportNumber"
+            value={formData.passportNumber}
+            onChange={handleChange}
+            className={`input-field text-sm ${errors.passportNumber ? 'border-red-500' : ''}`}
+          />
+          {errors.passportNumber && <p className="mt-1 text-sm text-red-400">{errors.passportNumber}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-dark-200 mb-1">
+            Nationality
+          </label>
+          <input
+            type="text"
+            name="nationality"
+            value={formData.nationality}
+            onChange={handleChange}
+            className={`input-field text-sm ${errors.nationality ? 'border-red-500' : ''}`}
+          />
+          {errors.nationality && <p className="mt-1 text-sm text-red-400">{errors.nationality}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-dark-200 mb-1">
+            Passport Expiration Date
+          </label>
+          <input
+            type="date"
+            name="expirationDate"
+            value={formData.expirationDate}
+            onChange={handleChange}
+            className={`input-field text-sm ${errors.expirationDate ? 'border-red-500' : ''}`}
+          />
+          {errors.expirationDate && <p className="mt-1 text-sm text-red-400">{errors.expirationDate}</p>}
+        </div>
+      </div>
+
+      <div className="flex justify-end space-x-3 pt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="btn-secondary text-sm"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          className="btn-primary text-sm"
+        >
+          Add Companion
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const ClientForm = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    surname: '',
+    dni: '',
+    dob: '',
+    email: '',
+    phone: '',
+    passportNumber: '',
+    nationality: '',
+    expirationDate: ''
+  });
+  const [companions, setCompanions] = useState([]);
+  const [showCompanionForm, setShowCompanionForm] = useState(false);
   const [passportImage, setPassportImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -23,6 +343,7 @@ const ClientForm = () => {
   const [createSaleAfterClient, setCreateSaleAfterClient] = useState(false);
 
   const navigate = useNavigate();
+
 
   // Validation functions
   const validateEmail = (email) => {
@@ -53,6 +374,13 @@ const ClientForm = () => {
     if (!name) return `${fieldName} is required`;
     if (!nameRegex.test(name)) return `${fieldName} can only contain letters, spaces, hyphens, and apostrophes`;
     if (name.length < 2) return `${fieldName} must be at least 2 characters long`;
+    return '';
+  };
+
+  const validateDNI = (dni) => {
+    if (!dni) return 'DNI/CUIT is required';
+    if (dni.length < 7) return 'DNI/CUIT must be at least 7 characters long';
+    if (dni.length > 20) return 'DNI/CUIT cannot exceed 20 characters';
     return '';
   };
 
@@ -114,33 +442,33 @@ const ClientForm = () => {
   const validateForm = () => {
     const errors = {};
     
+    // Only name, surname, and DNI are required
     errors.name = validateName(formData.name, 'First Name');
     errors.surname = validateName(formData.surname, 'Last Name');
-    errors.email = validateEmail(formData.email);
-    errors.phone = validatePhone(formData.phone);
-    errors.dob = validateDate(formData.dob, 'Date of Birth');
-    errors.passportNumber = validatePassportNumber(formData.passportNumber);
-    errors.nationality = validateNationality(formData.nationality);
-    errors.expirationDate = validateDate(formData.expirationDate, 'Passport Expiration Date');
+    errors.dni = validateDNI(formData.dni);
+    
+    // Optional fields validation
+    if (formData.email) errors.email = validateEmail(formData.email);
+    if (formData.phone) errors.phone = validatePhone(formData.phone);
+    if (formData.dob) errors.dob = validateDate(formData.dob, 'Date of Birth');
+    if (formData.passportNumber) errors.passportNumber = validatePassportNumber(formData.passportNumber);
+    if (formData.nationality) errors.nationality = validateNationality(formData.nationality);
+    if (formData.expirationDate) errors.expirationDate = validateDate(formData.expirationDate, 'Passport Expiration Date');
     
     // Remove empty error messages
     Object.keys(errors).forEach(key => {
       if (!errors[key]) delete errors[key];
     });
     
-    // Debug logging
-    console.log('Form data:', formData);
-    console.log('Validation errors:', errors);
-    
     return errors;
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [name]: value
-    });
+    }));
     
     // Clear specific field error when user starts typing
     if (validationErrors[name]) {
@@ -192,13 +520,13 @@ const ClientForm = () => {
         const validation = response.data.data.validation;
 
         // Log OCR results to console
-        console.log('=== OCR EXTRACTION RESULTS ===');
-        console.log('Full Response:', response.data);
-        console.log('Extracted Data:', extractedData);
-        console.log('Validation:', validation);
-        console.log('Confidence:', validation.confidence + '%');
-        console.log('Errors:', validation.errors);
-        console.log('==============================');
+        // console.log('=== OCR EXTRACTION RESULTS ===');
+        // console.log('Full Response:', response.data);
+        // console.log('Extracted Data:', extractedData);
+        // console.log('Validation:', validation);
+        // console.log('Confidence:', validation.confidence + '%');
+        // console.log('Errors:', validation.errors);
+        // console.log('==============================');
 
         // Auto-fill form with extracted data
         setFormData(prev => ({
@@ -208,7 +536,9 @@ const ClientForm = () => {
           passportNumber: extractedData.passportNumber || prev.passportNumber,
           nationality: extractedData.nationality || prev.nationality,
           dob: extractedData.dob || prev.dob,
-          expirationDate: extractedData.expirationDate || prev.expirationDate
+          expirationDate: extractedData.expirationDate || prev.expirationDate,
+          email: extractedData.email || prev.email,
+          phone: extractedData.phone || prev.phone
         }));
 
         setSuccess(`OCR extraction completed with ${validation.confidence}% confidence`);
@@ -219,11 +549,11 @@ const ClientForm = () => {
       }
     } catch (error) {
       // Log OCR error to console
-      console.log('=== OCR EXTRACTION ERROR ===');
-      console.log('Error:', error);
-      console.log('Error Response:', error.response?.data);
-      console.log('Error Message:', error.response?.data?.message || 'OCR extraction failed');
-      console.log('============================');
+      // console.log('=== OCR EXTRACTION ERROR ===');
+      // console.log('Error:', error);
+      // console.log('Error Response:', error.response?.data);
+      // console.log('Error Message:', error.response?.data?.message || 'OCR extraction failed');
+      // console.log('============================');
       
       setError(error.response?.data?.message || 'OCR extraction failed');
     } finally {
@@ -238,22 +568,31 @@ const ClientForm = () => {
 
     // Validate form before submission
     const errors = validateForm();
-    console.log('Validation errors found:', errors);
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
       setError('Please correct the errors below before submitting');
-      console.log('Setting validation errors:', errors);
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await api.post('/api/clients', formData);
+      let response;
+      
+      if (companions.length > 0) {
+        // Create client with companions
+        response = await api.post('/api/clients/bulk', {
+          mainClient: formData,
+          companions: companions
+        });
+      } else {
+        // Create single client
+        response = await api.post('/api/clients', formData);
+      }
 
       if (response.data.success) {
-        const clientId = response.data.data.client._id;
-        setSuccess('Client created successfully!');
+        const clientId = response.data.data.mainClient?._id || response.data.data.client._id;
+        setSuccess(companions.length > 0 ? 'Passenger and companions created successfully!' : 'Passenger created successfully!');
         
         if (createSaleAfterClient) {
           // Navigate to sale wizard with the new client pre-selected
@@ -280,11 +619,12 @@ const ClientForm = () => {
           else if (err.includes('nationality')) backendErrors.nationality = err;
           else if (err.includes('date of birth')) backendErrors.dob = err;
           else if (err.includes('expiration')) backendErrors.expirationDate = err;
+          else if (err.includes('DNI') || err.includes('CUIT')) backendErrors.dni = err;
         });
         setValidationErrors(backendErrors);
         setError('Please correct the errors below');
       } else {
-        setError(error.response?.data?.message || 'Failed to create client');
+        setError(error.response?.data?.message || 'Failed to create passenger');
       }
     } finally {
       setLoading(false);
@@ -294,9 +634,9 @@ const ClientForm = () => {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-dark-100">Add New Client</h1>
+        <h1 className="text-2xl font-bold text-dark-100">Add New Passenger</h1>
         <p className="mt-1 text-sm text-dark-400">
-          Create a new client record with passport information
+          Create a new passenger record with passport information
         </p>
       </div>
 
@@ -413,8 +753,28 @@ const ClientForm = () => {
               </div>
 
               <div>
+                <label htmlFor="dni" className="block text-sm font-medium text-dark-200">
+                  DNI/CUIT *
+                </label>
+                <input
+                  type="text"
+                  id="dni"
+                  name="dni"
+                  value={formData.dni}
+                  onChange={handleChange}
+                  required
+                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50 ${
+                    validationErrors.dni ? 'border-red-500' : 'border-white/20'
+                  }`}
+                />
+                {validationErrors.dni && (
+                  <p className="mt-1 text-sm text-red-400">{validationErrors.dni}</p>
+                )}
+              </div>
+
+              <div>
                 <label htmlFor="dob" className="block text-sm font-medium text-dark-200">
-                  Date of Birth *
+                  Date of Birth
                 </label>
                 <input
                   type="date"
@@ -422,7 +782,6 @@ const ClientForm = () => {
                   name="dob"
                   value={formData.dob}
                   onChange={handleChange}
-                  required
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50 ${
                     validationErrors.dob ? 'border-red-500' : 'border-white/20'
                   }`}
@@ -434,7 +793,7 @@ const ClientForm = () => {
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-dark-200">
-                  Email *
+                  Email
                 </label>
                 <input
                   type="email"
@@ -442,7 +801,6 @@ const ClientForm = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  required
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50 ${
                     validationErrors.email ? 'border-red-500' : 'border-white/20'
                   }`}
@@ -454,7 +812,7 @@ const ClientForm = () => {
 
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-dark-200">
-                  Phone Number *
+                  Phone Number
                 </label>
                 <input
                   type="tel"
@@ -462,7 +820,6 @@ const ClientForm = () => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  required
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50 ${
                     validationErrors.phone ? 'border-red-500' : 'border-white/20'
                   }`}
@@ -474,7 +831,7 @@ const ClientForm = () => {
 
               <div>
                 <label htmlFor="passportNumber" className="block text-sm font-medium text-dark-200">
-                  Passport Number *
+                  Passport Number
                 </label>
                 <input
                   type="text"
@@ -482,7 +839,6 @@ const ClientForm = () => {
                   name="passportNumber"
                   value={formData.passportNumber}
                   onChange={handleChange}
-                  required
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50 ${
                     validationErrors.passportNumber ? 'border-red-500' : 'border-white/20'
                   }`}
@@ -494,7 +850,7 @@ const ClientForm = () => {
 
               <div>
                 <label htmlFor="nationality" className="block text-sm font-medium text-dark-200">
-                  Nationality *
+                  Nationality
                 </label>
                 <input
                   type="text"
@@ -502,7 +858,6 @@ const ClientForm = () => {
                   name="nationality"
                   value={formData.nationality}
                   onChange={handleChange}
-                  required
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50 ${
                     validationErrors.nationality ? 'border-red-500' : 'border-white/20'
                   }`}
@@ -514,7 +869,7 @@ const ClientForm = () => {
 
               <div>
                 <label htmlFor="expirationDate" className="block text-sm font-medium text-dark-200">
-                  Passport Expiration Date *
+                  Passport Expiration Date
                 </label>
                 <input
                   type="date"
@@ -522,7 +877,6 @@ const ClientForm = () => {
                   name="expirationDate"
                   value={formData.expirationDate}
                   onChange={handleChange}
-                  required
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50 ${
                     validationErrors.expirationDate ? 'border-red-500' : 'border-white/20'
                   }`}
@@ -533,8 +887,59 @@ const ClientForm = () => {
               </div>
             </div>
 
-            {/* Additional Options */}
+            {/* Companions Section */}
             <div className="pt-6 border-t border-white/10">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-dark-100">Companions</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowCompanionForm(!showCompanionForm)}
+                  className="btn-primary text-sm"
+                >
+                  {showCompanionForm ? 'Cancel' : 'Add Companion'}
+                </button>
+              </div>
+
+              {/* Companion Form */}
+              {showCompanionForm && (
+                <div className="mb-6 p-4 bg-dark-700/50 rounded-lg border border-white/10">
+                  <CompanionForm
+                    onAddCompanion={(companion) => {
+                      setCompanions(prev => [...prev, companion]);
+                      setShowCompanionForm(false);
+                    }}
+                    onCancel={() => setShowCompanionForm(false)}
+                  />
+                </div>
+              )}
+
+              {/* Companions List */}
+              {companions.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-dark-200">Added Companions ({companions.length})</h4>
+                  {companions.map((companion, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-dark-700/30 rounded-lg border border-white/10">
+                      <div>
+                        <span className="text-dark-100 font-medium">
+                          {companion.name} {companion.surname}
+                        </span>
+                        <span className="text-dark-400 text-sm ml-2">DNI: {companion.dni}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCompanions(prev => prev.filter((_, i) => i !== index))}
+                        className="text-red-400 hover:text-red-300 text-sm"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Additional Options */}
+            {/* <div className="pt-6 border-t border-white/10">
               <div className="flex items-center">
                 <input
                   type="checkbox"
@@ -544,10 +949,10 @@ const ClientForm = () => {
                   className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-white/20 rounded bg-dark-800/50"
                 />
                 <label htmlFor="createSaleAfterClient" className="ml-2 block text-sm text-dark-200">
-                  Create a sale for this client after creation (will appear in sales table)
+                  Create a sale for this passenger after creation (will appear in sales table)
                 </label>
               </div>
-            </div>
+            </div> */}
 
             {/* Form Actions */}
             <div className="flex justify-end space-x-3 pt-6 border-t border-white/10">
@@ -563,7 +968,7 @@ const ClientForm = () => {
                 disabled={loading}
                 className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Creating...' : 'Create Client'}
+                {loading ? 'Creating...' : 'Create Passenger'}
               </button>
             </div>
           </form>

@@ -6,10 +6,10 @@ const Dashboard = () => {
   const { user, logout, isAdmin, isSeller, loading } = useAuth();
 
   // Debug logging
-  console.log('Dashboard - User:', user);
-  console.log('Dashboard - isAdmin:', isAdmin);
-  console.log('Dashboard - isSeller:', isSeller);
-  console.log('Dashboard - loading:', loading);
+  // console.log('Dashboard - User:', user);
+  // console.log('Dashboard - isAdmin:', isAdmin);
+  // console.log('Dashboard - isSeller:', isSeller);
+  // console.log('Dashboard - loading:', loading);
 
   // Show loading state while user data is being fetched
   if (loading) {

@@ -27,7 +27,7 @@ const ClientDetails = () => {
         setPassengers(response.data.data.passengers);
       }
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to fetch client data');
+      setError(error.response?.data?.message || 'Failed to fetch passenger data');
     } finally {
       setLoading(false);
     }
@@ -39,8 +39,8 @@ const ClientDetails = () => {
   };
 
   const handlePassengerUpdated = (updatedPassenger) => {
-    setPassengers(prev => 
-        prev.map(p => (p._id || p.id) === (updatedPassenger._id || updatedPassenger.id) ? updatedPassenger : p)
+    setPassengers(prev =>
+      prev.map(p => (p._id || p.id) === (updatedPassenger._id || updatedPassenger.id) ? updatedPassenger : p)
     );
   };
 
@@ -65,7 +65,7 @@ const ClientDetails = () => {
             onClick={() => navigate('/clients')}
             className="btn-primary"
           >
-            Back to Clients
+            Back to Passengers
           </button>
         </div>
       </div>
@@ -76,12 +76,12 @@ const ClientDetails = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="text-dark-300 text-lg font-medium mb-4">Client not found</div>
+          <div className="text-dark-300 text-lg font-medium mb-4">Passenger not found</div>
           <button
             onClick={() => navigate('/clients')}
             className="btn-primary"
           >
-            Back to Clients
+            Back to Passengers
           </button>
         </div>
       </div>
@@ -97,65 +97,64 @@ const ClientDetails = () => {
             onClick={() => navigate('/clients')}
             className="text-primary-400 hover:text-primary-300 text-sm font-medium mb-4"
           >
-            ← Back to Clients
+            ← Back to Passengers
           </button>
           <h1 className="text-3xl font-bold text-dark-100">{client.fullName}</h1>
-          <p className="text-dark-300 mt-2">Client Details and Passengers</p>
+          <p className="text-dark-300 mt-2">Passenger Details and Passengers</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Client Information */}
           <div className="lg:col-span-1">
             <div className="card p-6">
-              <h2 className="text-xl font-semibold text-dark-100 mb-4">Client Information</h2>
-              
+              <h2 className="text-xl font-semibold text-dark-100 mb-4">Passenger Information</h2>
+
               <div className="space-y-4">
                 <div>
                   <span className="text-sm font-medium text-dark-400">Full Name</span>
                   <p className="text-dark-100">{client.fullName}</p>
                 </div>
-                
+
                 <div>
                   <span className="text-sm font-medium text-dark-400">Email</span>
                   <p className="text-dark-100">{client.email}</p>
                 </div>
-                
+
                 <div>
                   <span className="text-sm font-medium text-dark-400">Phone</span>
                   <p className="text-dark-100">{client.phone}</p>
                 </div>
-                
+
                 <div>
                   <span className="text-sm font-medium text-dark-400">Date of Birth</span>
                   <p className="text-dark-100">{new Date(client.dob).toLocaleDateString()}</p>
                 </div>
-                
+
                 <div>
                   <span className="text-sm font-medium text-dark-400">Passport Number</span>
                   <p className="text-dark-100">{client.passportNumber}</p>
                 </div>
-                
+
                 <div>
                   <span className="text-sm font-medium text-dark-400">Nationality</span>
                   <p className="text-dark-100">{client.nationality}</p>
                 </div>
-                
+
                 <div>
                   <span className="text-sm font-medium text-dark-400">Passport Expiration</span>
                   <p className="text-dark-100">{new Date(client.expirationDate).toLocaleDateString()}</p>
                 </div>
-                
+
                 <div>
                   <span className="text-sm font-medium text-dark-400">Passport Status</span>
-                  <span className={`ml-2 badge ${
-                    client.isPassportValid 
-                      ? 'badge-success' 
+                  <span className={`ml-2 badge ${client.isPassportValid
+                      ? 'badge-success'
                       : 'badge-error'
-                  }`}>
+                    }`}>
                     {client.isPassportValid ? 'Valid' : 'Expired'}
                   </span>
                 </div>
-                
+
                 <div>
                   <span className="text-sm font-medium text-dark-400">Created</span>
                   <p className="text-dark-100">{new Date(client.createdAt).toLocaleDateString()}</p>
@@ -167,7 +166,7 @@ const ClientDetails = () => {
                   <span className="text-sm font-medium text-dark-400">Passport Image</span>
                   <div className="mt-2">
                     <a
-                        href={`${api.getUri()}/uploads/passports/${client.passportImage}`}
+                      href={`${api.getUri()}/uploads/passports/${client.passportImage}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary-400 hover:text-primary-300 text-sm"
@@ -185,13 +184,13 @@ const ClientDetails = () => {
             <div className="card p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-dark-100">
-                  Passengers ({passengers.length})
+                  Companions ({passengers.length})
                 </h2>
                 <button
                   onClick={() => setShowPassengerForm(!showPassengerForm)}
                   className="btn-primary text-sm"
                 >
-                  {showPassengerForm ? 'Cancel' : 'Add Passenger'}
+                  {showPassengerForm ? 'Cancel' : 'Add Companion'}
                 </button>
               </div>
 
@@ -209,8 +208,8 @@ const ClientDetails = () => {
               {/* Passengers List */}
               {passengers.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="text-dark-300 text-lg mb-2">No passengers added yet</div>
-                  <p className="text-dark-400 text-sm">Add passengers to this client to get started</p>
+                  <div className="text-dark-300 text-lg mb-2">No companions added yet</div>
+                  <p className="text-dark-400 text-sm">Add companions to this passenger to get started</p>
                 </div>
               ) : (
                 <div className="space-y-4">

@@ -42,14 +42,14 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      console.log('🔐 Attempting login with:', { email, endpoint: apiConfig.endpoints.auth.login });
+      // console.log('🔐 Attempting login with:', { email, endpoint: apiConfig.endpoints.auth.login });
       
       const response = await api.post(apiConfig.endpoints.auth.login, {
         email,
         password
       });
 
-      console.log('✅ Login response received:', response.data);
+      // console.log('✅ Login response received:', response.data);
       const { token: newToken, user: userData } = response.data.data;
       
       setToken(newToken);

@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatCurrencyCompact, formatWithWarning } from '../utils/formatNumbers';
 
 const ProfitChart = ({ sale }) => {
   // Calculate chart data
@@ -15,12 +16,12 @@ const ProfitChart = ({ sale }) => {
   const clientPaymentsPercent = maxValue > 0 ? (totalClientPayments / maxValue) * 100 : 0;
   const providerPaymentsPercent = maxValue > 0 ? (totalProviderPayments / maxValue) * 100 : 0;
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
+  // Format values with warnings for suspiciously large numbers
+  const formattedSalePrice = formatWithWarning(totalSalePrice);
+  const formattedCost = formatWithWarning(totalCost);
+  const formattedClientPayments = formatWithWarning(totalClientPayments);
+  const formattedProviderPayments = formatWithWarning(totalProviderPayments);
+  const formattedProfit = formatWithWarning(profit);
 
   return (
     <div className="card p-6">
@@ -32,7 +33,10 @@ const ProfitChart = ({ sale }) => {
         <div>
           <div className="flex justify-between items-center mb-1">
             <span className="text-sm font-medium text-dark-200">Total Sale Price</span>
-            <span className="text-sm font-bold text-dark-100">{formatCurrency(totalSalePrice)}</span>
+            <span className={`text-sm font-bold text-dark-100 ${formattedSalePrice.warning ? 'text-red-500' : ''}`}>
+              {formattedSalePrice.value}
+              {formattedSalePrice.warning && <span className="text-xs text-red-400 ml-1">⚠️</span>}
+            </span>
           </div>
           <div className="w-full bg-dark-700 rounded-full h-3">
             <div 
@@ -46,7 +50,10 @@ const ProfitChart = ({ sale }) => {
         <div>
           <div className="flex justify-between items-center mb-1">
             <span className="text-sm font-medium text-dark-200">Total Cost</span>
-            <span className="text-sm font-bold text-dark-100">{formatCurrency(totalCost)}</span>
+            <span className={`text-sm font-bold text-dark-100 ${formattedCost.warning ? 'text-red-500' : ''}`}>
+              {formattedCost.value}
+              {formattedCost.warning && <span className="text-xs text-red-400 ml-1">⚠️</span>}
+            </span>
           </div>
           <div className="w-full bg-dark-700 rounded-full h-3">
             <div 
@@ -59,8 +66,11 @@ const ProfitChart = ({ sale }) => {
         {/* Client Payments Bar */}
         <div>
           <div className="flex justify-between items-center mb-1">
-            <span className="text-sm font-medium text-dark-200">Client Payments</span>
-            <span className="text-sm font-bold text-dark-100">{formatCurrency(totalClientPayments)}</span>
+            <span className="text-sm font-medium text-dark-200">Passenger Payments</span>
+            <span className={`text-sm font-bold text-dark-100 ${formattedClientPayments.warning ? 'text-red-500' : ''}`}>
+              {formattedClientPayments.value}
+              {formattedClientPayments.warning && <span className="text-xs text-red-400 ml-1">⚠️</span>}
+            </span>
           </div>
           <div className="w-full bg-dark-700 rounded-full h-3">
             <div 
@@ -74,7 +84,10 @@ const ProfitChart = ({ sale }) => {
         <div>
           <div className="flex justify-between items-center mb-1">
             <span className="text-sm font-medium text-dark-200">Provider Payments</span>
-            <span className="text-sm font-bold text-dark-100">{formatCurrency(totalProviderPayments)}</span>
+            <span className={`text-sm font-bold text-dark-100 ${formattedProviderPayments.warning ? 'text-red-500' : ''}`}>
+              {formattedProviderPayments.value}
+              {formattedProviderPayments.warning && <span className="text-xs text-red-400 ml-1">⚠️</span>}
+            </span>
           </div>
           <div className="w-full bg-dark-700 rounded-full h-3">
             <div 
@@ -91,8 +104,9 @@ const ProfitChart = ({ sale }) => {
           <span className="text-lg font-medium text-dark-200">Net Profit</span>
           <span className={`text-2xl font-bold ${
             profit >= 0 ? 'text-success-400' : 'text-error-400'
-          }`}>
-            {formatCurrency(profit)}
+          } ${formattedProfit.warning ? 'text-red-500' : ''}`}>
+            {formattedProfit.value}
+            {formattedProfit.warning && <span className="text-xs text-red-400 ml-1">⚠️</span>}
           </span>
         </div>
         <div className="flex justify-between items-center mt-1">
@@ -109,11 +123,11 @@ const ProfitChart = ({ sale }) => {
       <div className="mt-4 pt-4 border-t border-white/10">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <div className="text-sm text-dark-400">Client Balance</div>
+            <div className="text-sm text-dark-400">Passenger Balance</div>
             <div className={`text-lg font-semibold ${
               sale.clientBalance <= 0 ? 'text-success-400' : 'text-error-400'
             }`}>
-              {formatCurrency(sale.clientBalance)}
+              {formatCurrencyCompact(sale.clientBalance)}
             </div>
           </div>
           <div>
@@ -121,7 +135,7 @@ const ProfitChart = ({ sale }) => {
             <div className={`text-lg font-semibold ${
               sale.providerBalance >= 0 ? 'text-success-400' : 'text-error-400'
             }`}>
-              {formatCurrency(sale.providerBalance)}
+              {formatCurrencyCompact(sale.providerBalance)}
             </div>
           </div>
         </div>
@@ -141,7 +155,7 @@ const ProfitChart = ({ sale }) => {
           </div>
           <div className="flex items-center">
             <div className="w-3 h-3 bg-success-500 rounded mr-2"></div>
-            <span>Client Payments</span>
+            <span>Passenger Payments</span>
           </div>
           <div className="flex items-center">
             <div className="w-3 h-3 bg-warning-500 rounded mr-2"></div>

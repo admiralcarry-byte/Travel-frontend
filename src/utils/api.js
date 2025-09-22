@@ -5,20 +5,22 @@ import { apiConfig } from '../config/api';
 const api = axios.create({
   baseURL: apiConfig.baseURL,
   timeout: 60000, // Increased timeout to 60 seconds for OCR processing
+  withCredentials: true, // Enable credentials for CORS
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
 });
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    console.log('🌐 API Request:', {
-      method: config.method?.toUpperCase(),
-      url: config.url,
-      baseURL: config.baseURL,
-      fullURL: `${config.baseURL}${config.url}`
-    });
+    // console.log('🌐 API Request:', {
+    //   method: config.method?.toUpperCase(),
+    //   url: config.url,
+    //   baseURL: config.baseURL,
+    //   fullURL: `${config.baseURL}${config.url}`
+    // });
     
     const token = localStorage.getItem('token');
     if (token) {
@@ -35,11 +37,11 @@ api.interceptors.request.use(
 // Response interceptor to handle common errors
 api.interceptors.response.use(
   (response) => {
-    console.log('✅ API Response:', {
-      status: response.status,
-      url: response.config.url,
-      data: response.data
-    });
+    // console.log('✅ API Response:', {
+    //   status: response.status,
+    //   url: response.config.url,
+    //   data: response.data
+    // });
     return response;
   },
   (error) => {

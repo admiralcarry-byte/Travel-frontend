@@ -229,7 +229,7 @@ const AdminDashboard = () => {
   };
 
   const handleResetDatabase = async () => {
-    const confirmMessage = 'WARNING: This will permanently delete ALL data from the database including users, clients, sales, and all other records. This action cannot be undone. Are you absolutely sure?';
+    const confirmMessage = 'WARNING: This will permanently delete ALL data from the database including users, passengers, sales, and all other records. This action cannot be undone. Are you absolutely sure?';
     
     if (!window.confirm(confirmMessage)) {
       showSystemMessage('Database reset cancelled by user', 'info');
@@ -470,7 +470,7 @@ const AdminDashboard = () => {
                 </div>
                 <span className="text-accent-400 text-sm font-medium">Growing</span>
               </div>
-              <h4 className="text-lg font-semibold text-dark-100 mb-2">Total Clients</h4>
+              <h4 className="text-lg font-semibold text-dark-100 mb-2">Total Passengers</h4>
               <p className="text-3xl font-bold text-accent-400">
                 {loading ? (
                   <div className="animate-pulse bg-accent-400/20 h-8 w-16 rounded"></div>
@@ -478,7 +478,7 @@ const AdminDashboard = () => {
                   businessStats.totalClients
                 )}
               </p>
-              <p className="text-sm text-dark-400 mt-2">Registered clients</p>
+              <p className="text-sm text-dark-400 mt-2">Registered passengers</p>
             </div>
           </div>
 
@@ -528,8 +528,8 @@ const AdminDashboard = () => {
                     </svg>
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-dark-100 group-hover:text-accent-400 transition-colors">Manage Clients</div>
-                    <div className="text-xs text-dark-400">Client database</div>
+                    <div className="text-sm font-semibold text-dark-100 group-hover:text-accent-400 transition-colors">Manage Passengers</div>
+                    <div className="text-xs text-dark-400">Passenger database</div>
                   </div>
                 </div>
               </button>

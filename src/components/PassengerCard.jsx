@@ -4,12 +4,16 @@ import api from '../utils/api';
 const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: passenger.name,
-    surname: passenger.surname,
-    dob: passenger.dob.split('T')[0], // Convert to YYYY-MM-DD format
-    passportNumber: passenger.passportNumber,
-    nationality: passenger.nationality,
-    expirationDate: passenger.expirationDate.split('T')[0]
+    name: passenger.name || '',
+    surname: passenger.surname || '',
+    dni: passenger.dni || '',
+    email: passenger.email || '',
+    phone: passenger.phone || '',
+    dob: passenger.dob ? passenger.dob.split('T')[0] : '', // Convert to YYYY-MM-DD format
+    passportNumber: passenger.passportNumber || '',
+    nationality: passenger.nationality || '',
+    expirationDate: passenger.expirationDate ? passenger.expirationDate.split('T')[0] : '',
+    specialRequests: passenger.specialRequests || ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -44,12 +48,16 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
 
   const handleCancel = () => {
     setFormData({
-      name: passenger.name,
-      surname: passenger.surname,
-      dob: passenger.dob.split('T')[0],
-      passportNumber: passenger.passportNumber,
-      nationality: passenger.nationality,
-      expirationDate: passenger.expirationDate.split('T')[0]
+      name: passenger.name || '',
+      surname: passenger.surname || '',
+      dni: passenger.dni || '',
+      email: passenger.email || '',
+      phone: passenger.phone || '',
+      dob: passenger.dob ? passenger.dob.split('T')[0] : '',
+      passportNumber: passenger.passportNumber || '',
+      nationality: passenger.nationality || '',
+      expirationDate: passenger.expirationDate ? passenger.expirationDate.split('T')[0] : '',
+      specialRequests: passenger.specialRequests || ''
     });
     setIsEditing(false);
     setError('');
@@ -77,10 +85,13 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-lg font-medium text-dark-100">
-            {passenger.fullName}
+            {passenger.fullName || `${passenger.name || ''} ${passenger.surname || ''}`.trim() || 'Unknown Passenger'}
           </h3>
           <p className="text-sm text-dark-300">
-            Passport: {passenger.passportNumber}
+            DNI: {passenger.dni || 'No DNI'} | {passenger.email || 'No email'}
+          </p>
+          <p className="text-xs text-dark-400">
+            Phone: {passenger.phone || 'No phone'} | Passport: {passenger.passportNumber || 'No passport'}
           </p>
         </div>
         <div className="flex space-x-2">
@@ -149,6 +160,45 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
 
           <div>
             <label className="block text-sm font-medium text-dark-400 mb-1">
+              DNI/CUIT
+            </label>
+            <input
+              type="text"
+              name="dni"
+              value={formData.dni}
+              onChange={handleChange}
+              className="input-field text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-400 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="input-field text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-400 mb-1">
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              className="input-field text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-400 mb-1">
               Date of Birth
             </label>
             <input
@@ -198,36 +248,69 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               className="input-field text-sm"
             />
           </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-dark-400 mb-1">
+              Special Requests / Notes
+            </label>
+            <textarea
+              name="specialRequests"
+              value={formData.specialRequests}
+              onChange={handleChange}
+              rows={3}
+              placeholder="Dietary restrictions, medical conditions, travel preferences, or any other notes..."
+              className="input-field text-sm"
+            />
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="font-medium text-dark-400">Date of Birth:</span>
-            <span className="ml-2 text-dark-100">
-              {new Date(passenger.dob).toLocaleDateString()}
-            </span>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="font-medium text-dark-400">Email:</span>
+              <span className="ml-2 text-dark-100">{passenger.email || 'Not provided'}</span>
+            </div>
+            <div>
+              <span className="font-medium text-dark-400">Phone:</span>
+              <span className="ml-2 text-dark-100">{passenger.phone || 'Not provided'}</span>
+            </div>
+            <div>
+              <span className="font-medium text-dark-400">Date of Birth:</span>
+              <span className="ml-2 text-dark-100">
+                {passenger.dob ? new Date(passenger.dob).toLocaleDateString() : 'Not provided'}
+              </span>
+            </div>
+            <div>
+              <span className="font-medium text-dark-400">Nationality:</span>
+              <span className="ml-2 text-dark-100">{passenger.nationality || 'Not provided'}</span>
+            </div>
+            <div>
+              <span className="font-medium text-dark-400">Expiration Date:</span>
+              <span className="ml-2 text-dark-100">
+                {passenger.expirationDate ? new Date(passenger.expirationDate).toLocaleDateString() : 'Not provided'}
+              </span>
+            </div>
+            <div>
+              <span className="font-medium text-dark-400">Status:</span>
+              <span className={`ml-2 badge ${
+                passenger.isPassportValid 
+                  ? 'badge-success' 
+                  : 'badge-error'
+              }`}>
+                {passenger.isPassportValid ? 'Valid' : 'Expired'}
+              </span>
+            </div>
           </div>
-          <div>
-            <span className="font-medium text-dark-400">Nationality:</span>
-            <span className="ml-2 text-dark-100">{passenger.nationality}</span>
-          </div>
-          <div>
-            <span className="font-medium text-dark-400">Expiration Date:</span>
-            <span className="ml-2 text-dark-100">
-              {new Date(passenger.expirationDate).toLocaleDateString()}
-            </span>
-          </div>
-          <div>
-            <span className="font-medium text-dark-400">Status:</span>
-            <span className={`ml-2 badge ${
-              passenger.isPassportValid 
-                ? 'badge-success' 
-                : 'badge-error'
-            }`}>
-              {passenger.isPassportValid ? 'Valid' : 'Expired'}
-            </span>
-          </div>
-        </div>
+
+          {passenger.specialRequests && (
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <div className="text-sm">
+                <span className="font-medium text-dark-400">Special Requests / Notes:</span>
+                <p className="mt-1 text-dark-100 whitespace-pre-wrap">{passenger.specialRequests}</p>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {passenger.passportImage && (

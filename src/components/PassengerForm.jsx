@@ -5,17 +5,22 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
   const [formData, setFormData] = useState({
     name: '',
     surname: '',
+    dni: '',
+    email: '',
+    phone: '',
     dob: '',
     passportNumber: '',
     nationality: '',
     expirationDate: '',
-    gender: ''
+    gender: '',
+    specialRequests: ''
   });
   const [passportImage, setPassportImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleChange = (e) => {
     setFormData({
@@ -47,6 +52,7 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
 
     setOcrLoading(true);
     setError('');
+    setSuccess('');
 
     try {
       const formData = new FormData();
@@ -60,6 +66,7 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
 
       if (response.data.success) {
         const extractedData = response.data.data.extractedData;
+        const validation = response.data.data.validation;
 
         // Auto-fill form with extracted data
         setFormData(prev => ({
@@ -69,8 +76,16 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
           passportNumber: extractedData.passportNumber || prev.passportNumber,
           nationality: extractedData.nationality || prev.nationality,
           dob: extractedData.dob || prev.dob,
-          expirationDate: extractedData.expirationDate || prev.expirationDate
+          expirationDate: extractedData.expirationDate || prev.expirationDate,
+          email: extractedData.email || prev.email,
+          phone: extractedData.phone || prev.phone
         }));
+
+        setSuccess(`OCR extraction completed with ${validation.confidence}% confidence`);
+        
+        if (validation.errors.length > 0) {
+          setError(`Some fields could not be extracted: ${validation.errors.join(', ')}`);
+        }
       }
     } catch (error) {
       setError(error.response?.data?.message || 'OCR extraction failed');
@@ -96,16 +111,21 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
         setFormData({
           name: '',
           surname: '',
+          dni: '',
+          email: '',
+          phone: '',
           dob: '',
           passportNumber: '',
           nationality: '',
-          expirationDate: ''
+          expirationDate: '',
+          gender: '',
+          specialRequests: ''
         });
         setPassportImage(null);
         setImagePreview(null);
       }
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to add passenger');
+      setError(error.response?.data?.message || 'Failed to add companion');
     } finally {
       setLoading(false);
     }
@@ -113,11 +133,17 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
 
   return (
     <div className="card p-6">
-      <h3 className="text-lg font-medium text-dark-100 mb-4">Add New Passenger</h3>
+      <h3 className="text-lg font-medium text-dark-100 mb-4">Add New Companion</h3>
       
       {error && (
         <div className="bg-error-500/10 border border-error-500/20 text-error-400 px-4 py-3 rounded-md mb-4">
           {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-md mb-4">
+          {success}
         </div>
       )}
 
@@ -185,6 +211,46 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
               value={formData.surname}
               onChange={handleChange}
               required
+              className="input-field text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-400 mb-1">
+              DNI/CUIT *
+            </label>
+            <input
+              type="text"
+              name="dni"
+              value={formData.dni}
+              onChange={handleChange}
+              required
+              className="input-field text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-400 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="input-field text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-400 mb-1">
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
               className="input-field text-sm"
             />
           </div>
@@ -264,6 +330,21 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
           </div>
         </div>
 
+        {/* Special Requests / Notes */}
+        <div>
+          <label className="block text-sm font-medium text-dark-400 mb-1">
+            Special Requests / Notes
+          </label>
+          <textarea
+            name="specialRequests"
+            value={formData.specialRequests}
+            onChange={handleChange}
+            rows={3}
+            placeholder="Dietary restrictions, medical conditions, travel preferences, or any other notes..."
+            className="input-field text-sm"
+          />
+        </div>
+
         {/* Form Actions */}
         <div className="flex justify-end space-x-3 pt-4">
           <button
@@ -278,7 +359,7 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
             disabled={loading}
             className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Adding...' : 'Add Passenger'}
+            {loading ? 'Adding...' : 'Add Companion'}
           </button>
         </div>
       </form>

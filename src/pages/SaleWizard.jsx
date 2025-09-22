@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import api from '../utils/api';
 
 const SaleWizard = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { id } = useParams();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [existingSale, setExistingSale] = useState(null);
 
   // Step 1: Client Selection
   const [clients, setClients] = useState([]);
@@ -27,16 +30,22 @@ const SaleWizard = () => {
   const [saleNotes, setSaleNotes] = useState('');
 
   const steps = [
-    { number: 1, title: 'Select Client', description: 'Choose or create a client' },
-    { number: 2, title: 'Add Passengers', description: 'Select passengers for this sale' },
+    { number: 1, title: 'Select Passenger', description: 'Choose or create a passenger' },
+    { number: 2, title: 'Add Companions', description: 'Select companions for this sale' },
     { number: 3, title: 'Add Services', description: 'Choose services and set prices' },
-    { number: 4, title: 'Review & Create', description: 'Review details and create sale' }
+    { number: 4, title: isEditMode ? 'Review & Update' : 'Review & Create', description: isEditMode ? 'Review details and update sale' : 'Review details and create sale' }
   ];
 
   useEffect(() => {
     fetchClients();
     fetchServices();
-  }, []);
+    
+    // Check if we're in edit mode
+    if (id) {
+      setIsEditMode(true);
+      fetchExistingSale();
+    }
+  }, [id]);
 
   useEffect(() => {
     if (selectedClient) {
@@ -62,7 +71,7 @@ const SaleWizard = () => {
         }
       }
     } catch (error) {
-      setError('Failed to fetch clients');
+      setError('Failed to fetch passengers');
     }
   };
 
@@ -74,7 +83,7 @@ const SaleWizard = () => {
         setAvailablePassengers(response.data.data.passengers);
       }
     } catch (error) {
-      setError('Failed to fetch passengers');
+      setError('Failed to fetch companions');
     }
   };
 
@@ -87,6 +96,39 @@ const SaleWizard = () => {
       }
     } catch (error) {
       setError('Failed to fetch services');
+    }
+  };
+
+  const fetchExistingSale = async () => {
+    try {
+      const response = await api.get(`/api/sales/${id}`);
+      
+      if (response.data.success) {
+        const sale = response.data.data.sale;
+        setExistingSale(sale);
+        
+        // Set the selected client
+        setSelectedClient(sale.clientId);
+        
+        // Set selected passengers with their notes
+        const passengersWithNotes = sale.passengers.map(p => ({
+          passengerId: p.passengerId._id,
+          price: p.price,
+          notes: p.notes || ''
+        }));
+        setSelectedPassengers(passengersWithNotes);
+        
+        // Set selected services
+        setSelectedServices(sale.services);
+        
+        // Set sale notes
+        setSaleNotes(sale.notes || '');
+        
+        // Skip to step 2 since client is already selected
+        setCurrentStep(2);
+      }
+    } catch (error) {
+      setError('Failed to fetch sale details');
     }
   };
 
@@ -112,10 +154,20 @@ const SaleWizard = () => {
   };
 
   const handlePassengerPriceChange = (passengerId, price) => {
-    setSelectedPassengers(prev => 
+    setSelectedPassengers(prev =>
       prev.map(p => 
         p.passengerId === passengerId 
           ? { ...p, price: parseFloat(price) || 0 }
+          : p
+      )
+    );
+  };
+
+  const handlePassengerNotesChange = (passengerId, notes) => {
+    setSelectedPassengers(prev =>
+      prev.map(p => 
+        p.passengerId === passengerId 
+          ? { ...p, notes: notes }
           : p
       )
     );
@@ -130,10 +182,15 @@ const SaleWizard = () => {
         return [...prev, {
           serviceId: service._id,
           providerId: service.providerId._id,
+          serviceName: service.title, // Required field
           priceClient: service.cost,
           costProvider: service.cost * 0.8, // 20% markup example
           currency: service.currency || 'USD',
-          quantity: 1
+          quantity: 1,
+          serviceDates: {
+            startDate: new Date(), // Required field
+            endDate: new Date(Date.now() + 24 * 60 * 60 * 1000) // Required field - default to tomorrow
+          }
         }];
       }
     });
@@ -144,6 +201,22 @@ const SaleWizard = () => {
       prev.map(s => 
         s.serviceId === serviceId 
           ? { ...s, [field]: parseFloat(value) || 0 }
+          : s
+      )
+    );
+  };
+
+  const handleServiceDateChange = (serviceId, field, value) => {
+    setSelectedServices(prev => 
+      prev.map(s => 
+        s.serviceId === serviceId 
+          ? { 
+              ...s, 
+              serviceDates: { 
+                ...s.serviceDates, 
+                [field]: new Date(value) 
+              } 
+            }
           : s
       )
     );
@@ -173,23 +246,25 @@ const SaleWizard = () => {
         passengers: selectedPassengers,
         services: selectedServices,
         notes: saleNotes,
-        status: 'open'
+        status: isEditMode ? existingSale.status : 'open'
       };
 
-      const response = await api.post('/api/sales', saleData);
+      let response;
+      if (isEditMode) {
+        response = await api.put(`/api/sales/${id}`, saleData);
+        setSuccess('Sale updated successfully!');
+      } else {
+        response = await api.post('/api/sales', saleData);
+        setSuccess('Sale created successfully!');
+      }
 
       if (response.data.success) {
-        console.log('Sale creation response:', response.data);
-        console.log('Sale object:', response.data.data.sale);
-        console.log('Sale ID:', response.data.data.sale.id);
-        console.log('Sale _ID:', response.data.data.sale._id);
-        setSuccess('Sale created successfully!');
         setTimeout(() => {
           navigate(`/sales/${response.data.data.sale.id}`);
         }, 2000);
       }
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to create sale');
+      setError(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} sale`);
     } finally {
       setLoading(false);
     }
@@ -278,11 +353,11 @@ const SaleWizard = () => {
         {/* Step 1: Client Selection */}
         {currentStep === 1 && (
           <div className="space-y-6">
-            <h3 className="text-lg font-medium text-dark-100">Select Client</h3>
+            <h3 className="text-lg font-medium text-dark-100">Select Passenger</h3>
             
             <div>
               <label className="block text-sm font-medium text-dark-200 mb-2">
-                Search Clients
+                Search Passengers
               </label>
               <input
                 type="text"
@@ -326,11 +401,11 @@ const SaleWizard = () => {
         {/* Step 2: Passengers */}
         {currentStep === 2 && (
           <div className="space-y-6">
-            <h3 className="text-lg font-medium text-dark-100">Select Passengers</h3>
+            <h3 className="text-lg font-medium text-dark-100">Select Companions</h3>
             
             {availablePassengers.length === 0 ? (
               <div className="text-center py-8 text-dark-400">
-                No passengers found for this client. Please add passengers first.
+                No companions found for this passenger. Please add companions first.
               </div>
             ) : (
               <div className="space-y-4">
@@ -357,17 +432,31 @@ const SaleWizard = () => {
                         </div>
                         <div className="flex items-center space-x-4">
                           {isSelected && (
-                            <div>
-                              <label className="block text-sm font-medium text-dark-200">
-                                Price
-                              </label>
-                              <input
-                                type="number"
-                                value={isSelected.price}
-                                onChange={(e) => handlePassengerPriceChange(passenger._id, e.target.value)}
-                                className="w-24 px-2 py-1 border border-white/20 rounded text-sm bg-dark-800/50 text-dark-100"
-                                placeholder="0.00"
-                              />
+                            <div className="flex space-x-2">
+                              <div>
+                                <label className="block text-sm font-medium text-dark-200">
+                                  Price
+                                </label>
+                                <input
+                                  type="number"
+                                  value={isSelected.price}
+                                  onChange={(e) => handlePassengerPriceChange(passenger._id, e.target.value)}
+                                  className="w-24 px-2 py-1 border border-white/20 rounded text-sm bg-dark-800/50 text-dark-100"
+                                  placeholder="0.00"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-dark-200">
+                                  Notes
+                                </label>
+                                <input
+                                  type="text"
+                                  value={isSelected.notes || ''}
+                                  onChange={(e) => handlePassengerNotesChange(passenger._id, e.target.value)}
+                                  className="w-32 px-2 py-1 border border-white/20 rounded text-sm bg-dark-800/50 text-dark-100"
+                                  placeholder="Sales notes..."
+                                />
+                              </div>
                             </div>
                           )}
                           <button
@@ -420,7 +509,7 @@ const SaleWizard = () => {
                           <div className="flex space-x-2">
                             <div>
                               <label className="block text-xs font-medium text-dark-200">
-                                Client Price
+                                Passenger Price
                               </label>
                               <input
                                 type="number"
@@ -452,6 +541,28 @@ const SaleWizard = () => {
                                 min="1"
                               />
                             </div>
+                            <div>
+                              <label className="block text-xs font-medium text-dark-200">
+                                Start Date
+                              </label>
+                              <input
+                                type="date"
+                                value={isSelected.serviceDates?.startDate ? new Date(isSelected.serviceDates.startDate).toISOString().split('T')[0] : ''}
+                                onChange={(e) => handleServiceDateChange(service._id, 'startDate', e.target.value)}
+                                className="w-32 px-2 py-1 border border-white/20 rounded text-sm bg-dark-800/50 text-dark-100"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-dark-200">
+                                End Date
+                              </label>
+                              <input
+                                type="date"
+                                value={isSelected.serviceDates?.endDate ? new Date(isSelected.serviceDates.endDate).toISOString().split('T')[0] : ''}
+                                onChange={(e) => handleServiceDateChange(service._id, 'endDate', e.target.value)}
+                                className="w-32 px-2 py-1 border border-white/20 rounded text-sm bg-dark-800/50 text-dark-100"
+                              />
+                            </div>
                           </div>
                         )}
                         <button
@@ -480,20 +591,27 @@ const SaleWizard = () => {
             
             {/* Client Summary */}
             <div className="bg-dark-700/50 p-4 rounded-lg border border-white/10">
-              <h4 className="font-medium text-dark-100 mb-2">Client</h4>
+              <h4 className="font-medium text-dark-100 mb-2">Passenger</h4>
               <p className="text-dark-200">{selectedClient?.name} {selectedClient?.surname}</p>
               <p className="text-sm text-dark-300">{selectedClient?.email}</p>
             </div>
 
             {/* Passengers Summary */}
             <div className="bg-dark-700/50 p-4 rounded-lg border border-white/10">
-              <h4 className="font-medium text-dark-100 mb-2">Passengers ({selectedPassengers.length})</h4>
+              <h4 className="font-medium text-dark-100 mb-2">Companions ({selectedPassengers.length})</h4>
               {selectedPassengers.map((passengerSale, index) => {
                 const passenger = availablePassengers.find(p => p._id === passengerSale.passengerId);
                 return (
-                  <div key={passengerSale.passengerId} className="flex justify-between text-sm">
-                    <span className="text-dark-200">{passenger?.name} {passenger?.surname}</span>
-                    <span className="text-dark-100">${passengerSale.price.toFixed(2)}</span>
+                  <div key={passengerSale.passengerId} className="text-sm mb-2">
+                    <div className="flex justify-between">
+                      <span className="text-dark-200">{passenger?.name} {passenger?.surname}</span>
+                      <span className="text-dark-100">${passengerSale.price.toFixed(2)}</span>
+                    </div>
+                    {passengerSale.notes && (
+                      <div className="text-xs text-dark-400 mt-1 ml-2">
+                        Notes: {passengerSale.notes}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -582,7 +700,7 @@ const SaleWizard = () => {
               disabled={loading}
               className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Creating...' : 'Create Sale'}
+              {loading ? (isEditMode ? 'Updating...' : 'Creating...') : (isEditMode ? 'Update Sale' : 'Create Sale')}
             </button>
           )}
         </div>

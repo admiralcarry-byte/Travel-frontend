@@ -22,13 +22,18 @@ const ServiceForm = () => {
   const [providersLoading, setProvidersLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [exchangeRate, setExchangeRate] = useState('');
+  const [convertedAmount, setConvertedAmount] = useState(null);
+  const [manualExchangeRate, setManualExchangeRate] = useState(false);
 
   const serviceTypes = [
     { value: 'hotel', label: 'Hotel' },
     { value: 'airline', label: 'Airline' },
     { value: 'transfer', label: 'Transfer' },
     { value: 'excursion', label: 'Excursion' },
-    { value: 'insurance', label: 'Insurance' }
+    { value: 'insurance', label: 'Insurance' },
+    // { value: 'car_rental', label: 'Car Rental' },
+    // { value: 'medical_assistance', label: 'Medical Assistance' }
   ];
 
   const currencies = [
@@ -57,6 +62,25 @@ const ServiceForm = () => {
     }
     fetchProviders();
   }, [id, isEditing]);
+
+  // Currency conversion effects
+  useEffect(() => {
+    if (formData.currency && formData.currency !== 'USD' && !manualExchangeRate) {
+      fetchExchangeRate();
+    } else if (formData.currency === 'USD') {
+      setExchangeRate('');
+      setConvertedAmount(null);
+      setManualExchangeRate(false);
+    }
+  }, [formData.currency, formData.cost, manualExchangeRate]);
+
+  useEffect(() => {
+    if (manualExchangeRate && exchangeRate && formData.cost) {
+      setConvertedAmount(parseFloat(formData.cost) * parseFloat(exchangeRate));
+    } else if (!manualExchangeRate && exchangeRate && formData.cost) {
+      setConvertedAmount(parseFloat(formData.cost) * parseFloat(exchangeRate));
+    }
+  }, [exchangeRate, formData.cost, manualExchangeRate]);
 
   useEffect(() => {
     // Filter providers based on selected service type
@@ -106,7 +130,7 @@ const ServiceForm = () => {
       const response = await api.get('/api/providers?limit=100');
 
       if (response.data.success) {
-        console.log('Providers fetched:', response.data.data.providers);
+        // console.log('Providers fetched:', response.data.data.providers);
         setProviders(response.data.data.providers);
         setFilteredProviders(response.data.data.providers);
       } else {
@@ -118,6 +142,42 @@ const ServiceForm = () => {
       setError('Failed to fetch providers: ' + (error.response?.data?.message || error.message));
     } finally {
       setProvidersLoading(false);
+    }
+  };
+
+  const fetchExchangeRate = async () => {
+    try {
+      const response = await api.get(`/api/payments/exchange-rate?from=${formData.currency}&to=USD`);
+
+      if (response.data.success) {
+        setExchangeRate(response.data.data.rate.toString());
+        if (formData.cost) {
+          setConvertedAmount(parseFloat(formData.cost) * response.data.data.rate);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to fetch exchange rate:', error);
+      setExchangeRate('');
+      setConvertedAmount(null);
+    }
+  };
+
+  const handleExchangeRateChange = (e) => {
+    const value = e.target.value;
+    setExchangeRate(value);
+  };
+
+  const toggleManualExchangeRate = () => {
+    setManualExchangeRate(!manualExchangeRate);
+    if (!manualExchangeRate) {
+      // Switching to manual mode - clear auto-fetched rate
+      setExchangeRate('');
+      setConvertedAmount(null);
+    } else {
+      // Switching back to auto mode - fetch rate
+      if (formData.currency && formData.currency !== 'USD') {
+        fetchExchangeRate();
+      }
     }
   };
 
@@ -136,10 +196,15 @@ const ServiceForm = () => {
     setError('');
 
     try {
-      // Convert cost to number
+      // Convert cost to number and include exchange rate data
       const serviceData = {
         ...formData,
-        cost: parseFloat(formData.cost)
+        cost: parseFloat(formData.cost),
+        // Include exchange rate information if not USD
+        ...(formData.currency !== 'USD' && exchangeRate && {
+          exchangeRate: parseFloat(exchangeRate),
+          baseCurrency: 'USD'
+        })
       };
 
       let response;
@@ -330,6 +395,53 @@ const ServiceForm = () => {
                   </select>
                 </div>
               </div>
+
+              {/* Exchange Rate Section */}
+              {formData.currency && formData.currency !== 'USD' && (
+                <div className="space-y-4 p-4 bg-dark-700/30 border border-white/10 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-dark-200">Currency Conversion</h4>
+                    <button
+                      type="button"
+                      onClick={toggleManualExchangeRate}
+                      className="text-xs text-primary-400 hover:text-primary-300 underline"
+                    >
+                      {manualExchangeRate ? 'Use Auto Rate' : 'Set Manual Rate'}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="exchangeRate" className="block text-sm font-medium text-dark-300">
+                        Exchange Rate ({formData.currency} to USD) *
+                      </label>
+                      <input
+                        type="number"
+                        id="exchangeRate"
+                        value={exchangeRate}
+                        onChange={handleExchangeRateChange}
+                        required
+                        min="0"
+                        step="0.000001"
+                        className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
+                        placeholder="Enter exchange rate"
+                      />
+                      <p className="mt-1 text-xs text-dark-400">
+                        {manualExchangeRate ? 'Manual rate' : 'Auto-fetched rate'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-dark-300">
+                        Converted Amount (USD)
+                      </label>
+                      <div className="mt-1 px-3 py-2 bg-dark-600/50 border border-white/10 rounded-md text-dark-100">
+                        {convertedAmount ? `$${convertedAmount.toFixed(2)}` : 'Enter cost and rate'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Form Actions */}

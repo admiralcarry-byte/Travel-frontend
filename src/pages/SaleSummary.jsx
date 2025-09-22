@@ -5,6 +5,7 @@ import PaymentsTable from '../components/PaymentsTable';
 import ProfitChart from '../components/ProfitChart';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
+import { formatCurrencyCompact, formatWithWarning } from '../utils/formatNumbers';
 
 const SaleSummary = () => {
   const { id } = useParams();
@@ -31,8 +32,8 @@ const SaleSummary = () => {
         return;
       }
       
-      console.log('SaleSummary - ID from URL params:', id);
-      console.log('SaleSummary - API URL:', `/api/sales/${id}`);
+      // console.log('SaleSummary - ID from URL params:', id);
+      // console.log('SaleSummary - API URL:', `/api/sales/${id}`);
       
       const response = await api.get(`/api/sales/${id}`);
 
@@ -322,7 +323,7 @@ const SaleSummary = () => {
           <div className="lg:col-span-2 space-y-6">
             {/* Client Information */}
             <div className="bg-dark-700 shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-dark-100 mb-4">Client Information</h2>
+              <h2 className="text-xl font-semibold text-dark-100 mb-4">Passenger Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-dark-200">Name</label>
@@ -345,7 +346,7 @@ const SaleSummary = () => {
 
             {/* Passengers */}
             <div className="bg-dark-700 shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-dark-100 mb-4">Passengers ({sale.passengers.length})</h2>
+              <h2 className="text-xl font-semibold text-dark-100 mb-4">Companions ({sale.passengers.length})</h2>
               <div className="space-y-4">
                 {sale.passengers.map((passengerSale, index) => (
                   <div key={index} className="border border-gray-200 rounded-lg p-4">
@@ -414,6 +415,53 @@ const SaleSummary = () => {
               </div>
             </div>
 
+            {/* Documents */}
+            <div className="bg-dark-700 shadow rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-dark-100 mb-4">Documents</h2>
+              
+              <div className="flex items-center space-x-3">
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  className="hidden"
+                  id="document-upload"
+                  accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xls,.xlsx,.txt"
+                />
+                <label
+                  htmlFor="document-upload"
+                  className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white cursor-pointer ${
+                    uploading 
+                      ? 'bg-gray-500 cursor-not-allowed' 
+                      : 'bg-primary-500 hover:bg-primary-600'
+                  }`}
+                >
+                  {uploading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Uploading...
+                    </>
+                  ) : (
+                    'Choose File'
+                  )}
+                </label>
+                
+                {sale.documents && sale.documents.length > 0 && (
+                  <button
+                    onClick={() => window.open(`${api.getUri()}${sale.documents[0].url}`, '_blank')}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+                  >
+                    View
+                  </button>
+                )}
+              </div>
+              
+              {uploadError && (
+                <p className="text-sm text-red-600 mt-2">{uploadError}</p>
+              )}
+            </div>
+
             {/* Notes */}
             {sale.notes && (
               <div className="bg-dark-700 shadow rounded-lg p-6">
@@ -440,13 +488,13 @@ const SaleSummary = () => {
                 <div className="flex justify-between">
                   <span className="text-dark-300">Total Sale Price:</span>
                   <span className="font-semibold text-dark-100">
-                    {sale.formattedTotalSalePrice || `$${sale.totalSalePrice.toFixed(2)}`}
+                    {formatCurrencyCompact(sale.totalSalePrice)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-dark-300">Total Cost:</span>
                   <span className="font-semibold text-dark-100">
-                    {sale.formattedTotalCost || `$${sale.totalCost.toFixed(2)}`}
+                    {formatCurrencyCompact(sale.totalCost)}
                   </span>
                 </div>
                 <div className="border-t pt-3">
@@ -454,7 +502,7 @@ const SaleSummary = () => {
                     <span className="text-dark-300">Profit:</span>
                     <span className={`font-bold text-lg ${sale.profit >= 0 ? 'text-green-600' : 'text-red-600'
                       }`}>
-                      {sale.formattedProfit || `$${sale.profit.toFixed(2)}`}
+                      {formatCurrencyCompact(sale.profit)}
                     </span>
                   </div>
                   <div className="flex justify-between mt-1">
@@ -473,34 +521,30 @@ const SaleSummary = () => {
               <h2 className="text-xl font-semibold text-dark-100 mb-4">Payment Balances</h2>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-dark-300">Client Payments:</span>
+                  <span className="text-dark-300">Passenger Payments:</span>
                   <span className="font-semibold text-dark-100">
-                    {sale.formattedTotalClientPayments || `$${sale.totalClientPayments.toFixed(2)}`}
+                    {formatCurrencyCompact(sale.totalClientPayments)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-dark-300">Provider Payments:</span>
                   <span className="font-semibold text-dark-100">
-                    {sale.formattedTotalProviderPayments || `$${sale.totalProviderPayments.toFixed(2)}`}
+                    {formatCurrencyCompact(sale.totalProviderPayments)}
                   </span>
                 </div>
                 <div className="border-t pt-3">
                   <div className="flex justify-between">
-                    <span className="text-dark-300">Client Balance:</span>
+                    <span className="text-dark-300">Passenger Balance:</span>
                     <span className={`font-bold text-lg ${sale.clientBalance <= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}
-                      style={{ color: "lightblue" }}
-                    >
-                      {sale.formattedClientBalance || `$${sale.clientBalance.toFixed(2)}`}
+                      }`}>
+                      {formatCurrencyCompact(sale.clientBalance)}
                     </span>
                   </div>
                   <div className="flex justify-between mt-1">
                     <span className="text-dark-300">Provider Balance:</span>
                     <span className={`font-bold text-lg ${sale.providerBalance >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}
-                      style={{ color: "lightblue" }}
-                    >
-                      {sale.formattedProviderBalance || `$${sale.providerBalance.toFixed(2)}`}
+                      }`}>
+                      {formatCurrencyCompact(sale.providerBalance)}
                     </span>
                   </div>
                 </div>
@@ -527,62 +571,6 @@ const SaleSummary = () => {
                   <p className="text-dark-100">{new Date(sale.updatedAt).toLocaleDateString()}</p>
                 </div>
               </div>
-            </div>
-
-            {/* Documents */}
-            <div className="bg-dark-700 shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-dark-100 mb-4">Documents</h2>
-
-              {/* Upload Section */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-dark-200 mb-2">
-                  Upload Documents
-                </label>
-                <input
-                  type="file"
-                  multiple
-                  onChange={handleFileUpload}
-                  disabled={uploading}
-                  className="block w-full text-sm text-dark-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary-500 file:text-white hover:file:bg-primary-600"
-                  accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xls,.xlsx,.txt"
-                />
-                {uploading && (
-                  <p className="text-sm text-blue-600 mt-1">Uploading...</p>
-                )}
-                {uploadError && (
-                  <p className="text-sm text-red-600 mt-1">{uploadError}</p>
-                )}
-              </div>
-
-              {/* Documents List */}
-              {sale.documents && sale.documents.length > 0 ? (
-                <div className="space-y-2">
-                  {sale.documents.map((doc, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 border border-gray-200 rounded">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg">{getDocumentIcon(doc.type)}</span>
-                        <div>
-                          <p className="text-sm font-medium text-dark-100">{doc.filename}</p>
-                          <p className="text-xs text-dark-400">
-                            {doc.type} • {new Date(doc.uploadedAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                      <a
-                        href={`${api.getUri()}${doc.url}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-indigo-600 hover:text-indigo-800 text-sm"
-                        style={{color: "lightblue"}}
-                      >
-                        View
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-dark-400 text-sm">No documents uploaded yet</p>
-              )}
             </div>
           </div>
         </div>

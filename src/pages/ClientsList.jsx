@@ -44,20 +44,21 @@ const ClientsList = () => {
         setSearchLoading(true);
       }
       
-      const response = await api.get('/api/clients', {
+      const response = await api.get('/api/clients/all-passengers', {
         params: {
           page: currentPage,
           limit: rowsPerPage,
-          search: debouncedSearchTerm
+          search: debouncedSearchTerm,
+          type: 'all'
         }
       });
-      setClients(response.data.data.clients || []);
+      setClients(response.data.data.passengers || []);
       setTotalClients(response.data.data.total || 0);
       setTotalPages(response.data.data.pages || 1);
       setError('');
     } catch (err) {
       console.error('Error fetching clients:', err);
-      setError('Failed to load clients. Please try again.');
+      setError('Failed to load passengers. Please try again.');
       setClients([]);
     } finally {
       if (isInitialLoad) {
@@ -73,8 +74,29 @@ const ClientsList = () => {
     setCurrentPage(1);
   };
 
-  const handleClientClick = (clientId) => {
-    navigate(`/clients/${clientId}`);
+  const handleClientClick = (clientId, client) => {
+    // If it's a companion (Passenger record), navigate to the main client's details
+    if (client && client.relationshipType === 'companion' && client.clientId) {
+      navigate(`/clients/${client.clientId._id || client.clientId}`);
+    } else {
+      // If it's a main client, navigate to its details
+      navigate(`/clients/${clientId}`);
+    }
+  };
+
+  const handlePromoteCompanion = async (clientId) => {
+    try {
+      const response = await api.post(`/api/clients/${clientId}/promote`);
+      if (response.data.success) {
+        // Refresh the list
+        fetchClients(false);
+        setError(''); // Clear any previous errors
+      }
+    } catch (error) {
+      console.error('Error promoting companion:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to promote companion. Please try again.';
+      setError(errorMessage);
+    }
   };
 
   const handleRowsPerPageChange = (newRowsPerPage) => {
@@ -100,7 +122,7 @@ const ClientsList = () => {
             </div>
           </div>
         </div>
-        <p className="text-dark-300 text-lg font-medium ml-4">Loading clients...</p>
+        <p className="text-dark-300 text-lg font-medium ml-4">Loading Passengers...</p>
       </div>
     );
   }
@@ -111,10 +133,10 @@ const ClientsList = () => {
         {/* Modern Header */}
         <div className="text-center">
           <h1 className="text-5xl sm:text-6xl font-bold gradient-text mb-6 font-poppins">
-            Client Management
+            Passenger Management
           </h1>
           <p className="text-xl text-dark-300 max-w-3xl mx-auto">
-            Manage your client records, track passenger information, and maintain comprehensive travel documentation
+            Manage your passenger records, track passenger information, and maintain comprehensive travel documentation
           </p>
         </div>
 
@@ -144,7 +166,7 @@ const ClientsList = () => {
               {/* Search Input */}
               <div className="flex-1">
                 <label htmlFor="search" className="block text-sm font-semibold text-dark-200 mb-4">
-                  Search Clients
+                  Search Passengers
                 </label>
                 <div className="relative">
                   <input
@@ -152,7 +174,7 @@ const ClientsList = () => {
                     id="search"
                     value={searchTerm}
                     onChange={handleSearch}
-                    placeholder="Search by name, email, or passport number..."
+                    placeholder="Search by name, DNI/CUIT, email, or passport number..."
                     className="input-field pl-12"
                   />
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -173,7 +195,7 @@ const ClientsList = () => {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    <span>Add New Client</span>
+                    <span>Add New Passenger</span>
                   </span>
                 </button>
               </div>
@@ -185,7 +207,7 @@ const ClientsList = () => {
         <div className="card overflow-hidden">
           <div className="px-6 py-4 border-b border-white/10">
             <div className="flex items-center justify-between">
-              <h4 className="text-lg font-medium text-dark-100">Travel Clients</h4>
+              <h4 className="text-lg font-medium text-dark-100">Travel Passengers</h4>
               <button
                 onClick={() => navigate('/clients/new')}
                 className="btn-primary text-sm"
@@ -194,7 +216,7 @@ const ClientsList = () => {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  <span>Add Client</span>
+                  <span>Add Passenger</span>
                 </span>
               </button>
             </div>
@@ -209,14 +231,14 @@ const ClientsList = () => {
                   </svg>
                 </div>
                 <h3 className="text-3xl font-semibold text-dark-100">
-                  {searchTerm ? 'No clients found' : 'No clients yet'}
+                  {searchTerm ? 'No passengers found' : 'No passengers yet'}
                 </h3>
               </div>
               <div className="text-center">
                 <p className="text-dark-300 mb-8 max-w-md mx-auto text-lg">
                   {searchTerm 
-                    ? 'Try adjusting your search terms or clear the search to see all clients.' 
-                    : 'Get started by adding your first client to begin managing your travel business.'
+                    ? 'Try adjusting your search terms or clear the search to see all passengers.' 
+                    : 'Get started by adding your first passenger to begin managing your travel business.'
                   }
                 </p>
                 {!searchTerm && (
@@ -224,7 +246,7 @@ const ClientsList = () => {
                     onClick={() => navigate('/clients/new')}
                     className="btn-primary"
                   >
-                    Add Your First Client
+                    Add Your First Passenger
                   </button>
                 )}
               </div>
@@ -243,9 +265,16 @@ const ClientsList = () => {
                         </div>
                         <div>
                           <div className="text-lg font-semibold text-dark-100">
-                            {client.name || 'Unknown Client'} {client.surname || ''}
+                            {client.name || 'Unknown Passenger'} {client.surname || ''}
+                            {!client.isMainClient && (
+                              <span className="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+                                Companion
+                              </span>
+                            )}
                           </div>
-                          <div className="text-sm text-dark-300">{client.email || 'No email'}</div>
+                          <div className="text-sm text-dark-300">
+                            DNI: {client.dni || 'No DNI'} | {client.email || 'No email'}
+                          </div>
                           <div className="text-xs text-dark-400">
                             Phone: {client.phone || 'No phone'} | Passport: {client.passportNumber || 'No passport'}
                           </div>
@@ -262,7 +291,7 @@ const ClientsList = () => {
 
                         <div className="flex space-x-2">
                           <button
-                            onClick={() => handleClientClick(client._id || client.id)}
+                            onClick={() => handleClientClick(client._id || client.id, client)}
                             className="btn-primary text-sm"
                           >
                             <span className="flex items-center space-x-1">
@@ -273,6 +302,21 @@ const ClientsList = () => {
                               <span>View Details</span>
                             </span>
                           </button>
+                          
+                          {!client.isMainClient && (
+                            <button
+                              onClick={() => handlePromoteCompanion(client._id || client.id)}
+                              className="btn-secondary text-sm"
+                              title="Promote to Main Passenger"
+                            >
+                              <span className="flex items-center space-x-1">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
+                                </svg>
+                                <span>Promote</span>
+                              </span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -300,7 +344,7 @@ const ClientsList = () => {
 
                     {/* Page info */}
                     <div className="text-sm text-dark-300">
-                      Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, totalClients)} of {totalClients} clients
+                      Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, totalClients)} of {totalClients} passenger
                     </div>
 
                     {/* Pagination buttons */}

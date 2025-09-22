@@ -3,6 +3,7 @@ import api from '../utils/api';
 
 const NotificationAdmin = () => {
   const [cronStatus, setCronStatus] = useState(null);
+  const [serviceStatus, setServiceStatus] = useState(null);
   const [testResults, setTestResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -27,6 +28,7 @@ const NotificationAdmin = () => {
 
   useEffect(() => {
     fetchCronStatus();
+    fetchServiceStatus();
     fetchClients();
     fetchSales();
   }, []);
@@ -40,6 +42,18 @@ const NotificationAdmin = () => {
       }
     } catch (error) {
       console.error('Failed to fetch cron status:', error);
+    }
+  };
+
+  const fetchServiceStatus = async () => {
+    try {
+      const response = await api.get('/api/notifications/service-status');
+
+      if (response.data.success) {
+        setServiceStatus(response.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch service status:', error);
     }
   };
 
@@ -135,6 +149,40 @@ const NotificationAdmin = () => {
     }
   };
 
+  const createTestNotification = async () => {
+    if (clients.length === 0) {
+      setError('No clients available for test notification');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const testNotification = {
+        clientId: clients[0]._id,
+        type: 'custom',
+        subject: 'Test Notification - ' + new Date().toLocaleString(),
+        emailContent: 'This is a test notification sent from the admin panel.',
+        whatsappContent: 'Test notification from admin panel.'
+      };
+
+      const response = await api.post('/api/notifications/send', testNotification);
+
+      if (response.data.success) {
+        setSuccess('Test notification created successfully!');
+      } else {
+        setError(response.data.message || 'Failed to create test notification');
+      }
+    } catch (error) {
+      console.error('Test notification error:', error);
+      setError(error.response?.data?.message || 'Failed to create test notification');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const notificationTypes = [
     { value: 'custom', label: 'Custom' },
     { value: 'trip_reminder', label: 'Trip Reminder' },
@@ -149,6 +197,15 @@ const NotificationAdmin = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Notification Administration</h1>
           <p className="text-gray-600 mt-2">Manage notification system and send manual notifications</p>
+          <div className="mt-4">
+            <button
+              onClick={createTestNotification}
+              disabled={loading}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Creating...' : 'Create Test Notification'}
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -162,6 +219,51 @@ const NotificationAdmin = () => {
             {success}
           </div>
         )}
+
+        {/* Service Status */}
+        <div className="bg-white shadow rounded-lg p-6 mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Notification Service Status</h2>
+          
+          {serviceStatus ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                  serviceStatus.sendGrid.configured ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {serviceStatus.sendGrid.configured ? '✅ Configured' : '⚠️ Mock Mode'}
+                </div>
+                <p className="text-sm text-gray-600 mt-2">SendGrid Email</p>
+                <p className="text-xs text-gray-500">{serviceStatus.sendGrid.fromEmail}</p>
+              </div>
+              
+              <div className="text-center">
+                <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                  serviceStatus.twilio.configured ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {serviceStatus.twilio.configured ? '✅ Configured' : '⚠️ Mock Mode'}
+                </div>
+                <p className="text-sm text-gray-600 mt-2">Twilio WhatsApp</p>
+                <p className="text-xs text-gray-500">{serviceStatus.twilio.whatsappFrom}</p>
+              </div>
+              
+              <div className="text-center">
+                <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                  serviceStatus.mode === 'production' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {serviceStatus.mode === 'production' ? '🚀 Production' : '🔧 Development'}
+                </div>
+                <p className="text-sm text-gray-600 mt-2">Mode</p>
+                <p className="text-xs text-gray-500">
+                  {serviceStatus.mode === 'production' ? 'Real notifications' : 'Mock notifications'}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+            </div>
+          )}
+        </div>
 
         {/* Cron Job Status */}
         <div className="bg-white shadow rounded-lg p-6 mb-8">

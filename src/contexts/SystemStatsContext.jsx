@@ -50,13 +50,13 @@ export const SystemStatsProvider = ({ children }) => {
       ]);
 
       // Log the responses for debugging
-      console.log('System Stats API Responses:', {
-        users: usersRes.data,
-        sales: salesRes.data,
-        clients: clientsRes.data,
-        services: servicesRes.data,
-        providers: providersRes.data
-      });
+      // console.log('System Stats API Responses:', {
+      //   users: usersRes.data,
+      //   sales: salesRes.data,
+      //   clients: clientsRes.data,
+      //   services: servicesRes.data,
+      //   providers: providersRes.data
+      // });
 
       setSystemStats({
         totalUsers: usersRes.data.success ? (usersRes.data.data?.users?.length || 0) : 0,
@@ -97,11 +97,11 @@ export const SystemStatsProvider = ({ children }) => {
       ]);
 
       // Log the responses for debugging
-      console.log('Business Stats API Responses:', {
-        sales: salesRes.data,
-        clients: clientsRes.data,
-        services: servicesRes.data
-      });
+      // console.log('Business Stats API Responses:', {
+      //   sales: salesRes.data,
+      //   clients: clientsRes.data,
+      //   services: servicesRes.data
+      // });
 
       setBusinessStats({
         totalSales: salesRes.data.success ? (salesRes.data.data.saleCount || 0) : 0,

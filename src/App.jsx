@@ -12,24 +12,29 @@ import ClientDetails from './pages/ClientDetails';
 import ProvidersList from './pages/ProvidersList';
 import ProviderForm from './pages/ProviderForm';
 import ProviderDetails from './pages/ProviderDetails';
+import VendorDashboard from './pages/VendorDashboard';
 import ServicesList from './pages/ServicesList';
 import ServiceForm from './pages/ServiceForm';
 import ServiceDetails from './pages/ServiceDetails';
 import SalesList from './pages/SalesList';
 import SaleWizard from './pages/SaleWizard';
 import SaleSummary from './pages/SaleSummary';
-import ClientSalesView from './pages/ClientSalesView';
+import MonthlySales from './pages/MonthlySales';
 import InventoryDashboard from './pages/InventoryDashboard';
 import InventoryCalendar from './pages/InventoryCalendar';
 import CupoForm from './pages/CupoForm';
 import CupoDetails from './pages/CupoDetails';
 import ReservationFlow from './pages/ReservationFlow';
 import ReportingDashboard from './pages/ReportingDashboard';
+// Notification imports - DISABLED
 // import NotificationHistory from './pages/NotificationHistory';
 // import NotificationAdmin from './pages/NotificationAdmin';
+// import NotificationForm from './pages/NotificationForm';
 import UserSettings from './pages/UserSettings';
 import UsersList from './pages/UsersList';
 import UserForm from './pages/UserForm';
+import DailyReports from './pages/DailyReports';
+import AdminInsightsDashboard from './pages/AdminInsightsDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const AppRoutes = () => {
@@ -108,6 +113,16 @@ const AppRoutes = () => {
         } 
       />
       <Route 
+        path="/providers/:providerId/dashboard" 
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <VendorDashboard />
+            </Layout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
         path="/services" 
         element={
           <ProtectedRoute>
@@ -158,11 +173,11 @@ const AppRoutes = () => {
         } 
       />
       <Route 
-        path="/sales/clients" 
+        path="/sales/monthly" 
         element={
           <ProtectedRoute>
             <Layout>
-              <ClientSalesView />
+              <MonthlySales />
             </Layout>
           </ProtectedRoute>
         } 
@@ -193,6 +208,16 @@ const AppRoutes = () => {
                 <ProtectedRoute>
                   <Layout>
                     <SaleSummary />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/sales/:id/edit"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <SaleWizard />
                   </Layout>
                 </ProtectedRoute>
               }
@@ -257,13 +282,33 @@ const AppRoutes = () => {
                 </ProtectedRoute>
               }
             />
-            {/* Notification routes hidden */}
+            <Route
+              path="/daily-reports"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DailyReports />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            {/* Notification routes - DISABLED */}
             {/* <Route
               path="/notifications/history"
               element={
                 <ProtectedRoute>
                   <Layout>
                     <NotificationHistory />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/notifications/send"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <NotificationForm />
                   </Layout>
                 </ProtectedRoute>
               }
@@ -314,6 +359,16 @@ const AppRoutes = () => {
                 <ProtectedRoute>
                   <Layout>
                     <UserForm />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin-insights"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <Layout>
+                    <AdminInsightsDashboard />
                   </Layout>
                 </ProtectedRoute>
               }

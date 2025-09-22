@@ -6,6 +6,8 @@ import LineChart from '../components/LineChart';
 import BarChart from '../components/BarChart';
 import PieChart from '../components/PieChart';
 import TopServicesTable from '../components/TopServicesTable';
+import PaymentMethodsTable from '../components/PaymentMethodsTable';
+import TopPassengerBalancesTable from '../components/TopPassengerBalancesTable';
 
 const ReportingDashboard = () => {
   const { token, user } = useAuth();
@@ -16,6 +18,7 @@ const ReportingDashboard = () => {
   const [clientBalanceData, setClientBalanceData] = useState(null);
   const [providerBalanceData, setProviderBalanceData] = useState(null);
   const [topServices, setTopServices] = useState([]);
+  const [paymentMethodsData, setPaymentMethodsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -52,9 +55,9 @@ const ReportingDashboard = () => {
 
   const fetchAllData = useCallback(async () => {
     try {
-      console.log('🚀 Starting to fetch reporting data from backend...');
-      console.log('🔑 Using token:', token ? 'Present' : 'Missing');
-      console.log('📅 Filters:', debouncedFilters);
+      // console.log('🚀 Starting to fetch reporting data from backend...');
+      // console.log('🔑 Using token:', token ? 'Present' : 'Missing');
+      // console.log('📅 Filters:', debouncedFilters);
       setLoading(true);
       setError('');
 
@@ -69,74 +72,79 @@ const ReportingDashboard = () => {
         'Content-Type': 'application/json'
       };
 
-      console.log('🌐 Making API calls to:');
-      console.log('  📊 KPIs:', `/api/reports/kpis?${params}`);
-      console.log('  📈 Sales:', `/api/reports/sales?${params}`);
-      console.log('  💵 Profit:', `/api/reports/profit?${params}`);
-      console.log('  ⚖️ Balances:', `/api/reports/balances?${params}`);
-      console.log('  👥 Client Balance:', `/api/reports/client-balance?${params}`);
-      console.log('  🏭 Provider Balance:', `/api/reports/provider-balance?${params}`);
-      console.log('  🏆 Top Services:', `/api/reports/top-services?${params}`);
+      // console.log('🌐 Making API calls to:');
+      // console.log('  📊 KPIs:', `/api/reports/kpis?${params}`);
+      // console.log('  📈 Sales:', `/api/reports/sales?${params}`);
+      // console.log('  💵 Profit:', `/api/reports/profit?${params}`);
+      // console.log('  ⚖️ Balances:', `/api/reports/balances?${params}`);
+      // console.log('  👥 Client Balance:', `/api/reports/client-balance?${params}`);
+      // console.log('  🏭 Provider Balance:', `/api/reports/provider-balance?${params}`);
+      // console.log('  🏆 Top Services:', `/api/reports/top-services?${params}`);
 
-      const [kpisRes, salesRes, profitRes, balancesRes, clientBalanceRes, providerBalanceRes, topServicesRes] = await Promise.all([
+      const [kpisRes, salesRes, profitRes, balancesRes, clientBalanceRes, providerBalanceRes, topServicesRes, paymentMethodsRes] = await Promise.all([
         api.get(`/api/reports/kpis?${params}`),
         api.get(`/api/reports/sales?${params}`),
         api.get(`/api/reports/profit?${params}`),
         api.get(`/api/reports/balances?${params}`),
         api.get(`/api/reports/client-balance?${params}`),
         api.get(`/api/reports/provider-balance?${params}`),
-        api.get(`/api/reports/top-services?${params}`)
+        api.get(`/api/reports/top-services?${params}`),
+        api.get(`/api/reports/payment-methods?${params}`)
       ]);
 
       if (kpisRes.data.success) {
-        console.log('📊 KPIs Data from Backend:', kpisRes.data.data);
-        console.log('💰 Total Sales:', kpisRes.data.data.totalSales);
-        console.log('📈 Total Profit:', kpisRes.data.data.totalProfit);
-        console.log('📋 Sale Count:', kpisRes.data.data.saleCount);
-        console.log('📊 Profit Margin:', kpisRes.data.data.profitMargin + '%');
-        console.log('💳 Client Payments:', kpisRes.data.data.totalClientPayments);
-        console.log('🏢 Provider Payments:', kpisRes.data.data.totalProviderPayments);
-        console.log('👥 Client Balance:', kpisRes.data.data.totalClientBalance);
-        console.log('🏭 Provider Balance:', kpisRes.data.data.totalProviderBalance);
+        // console.log('📊 KPIs Data from Backend:', kpisRes.data.data);
+        // console.log('💰 Total Sales:', kpisRes.data.data.totalSales);
+        // console.log('📈 Total Profit:', kpisRes.data.data.totalProfit);
+        // console.log('📋 Sale Count:', kpisRes.data.data.saleCount);
+        // console.log('📊 Profit Margin:', kpisRes.data.data.profitMargin + '%');
+        // console.log('💳 Client Payments:', kpisRes.data.data.totalClientPayments);
+        // console.log('🏢 Provider Payments:', kpisRes.data.data.totalProviderPayments);
+        // console.log('👥 Client Balance:', kpisRes.data.data.totalClientBalance);
+        // console.log('🏭 Provider Balance:', kpisRes.data.data.totalProviderBalance);
         
         // Additional detailed logging
-        console.log('🔧 DEBUG: Raw response data:', JSON.stringify(kpisRes.data, null, 2));
-        console.log('🔧 DEBUG: Data types:', {
-          totalSales: typeof kpisRes.data.data.totalSales,
-          totalProfit: typeof kpisRes.data.data.totalProfit,
-          saleCount: typeof kpisRes.data.data.saleCount,
-          totalClientBalance: typeof kpisRes.data.data.totalClientBalance,
-          totalProviderBalance: typeof kpisRes.data.data.totalProviderBalance
-        });
-        console.log('🔧 DEBUG: Values being set to state:', kpisRes.data.data);
+        // console.log('🔧 DEBUG: Raw response data:', JSON.stringify(kpisRes.data, null, 2));
+        // console.log('🔧 DEBUG: Data types:', {
+        //   totalSales: typeof kpisRes.data.data.totalSales,
+        //   totalProfit: typeof kpisRes.data.data.totalProfit,
+        //   saleCount: typeof kpisRes.data.data.saleCount,
+        //   totalClientBalance: typeof kpisRes.data.data.totalClientBalance,
+        //   totalProviderBalance: typeof kpisRes.data.data.totalProviderBalance
+        // });
+        // console.log('🔧 DEBUG: Values being set to state:', kpisRes.data.data);
         
         setKpis(kpisRes.data.data);
       } else {
         console.error('❌ KPIs API failed:', kpisRes.data);
       }
       if (salesRes.data.success) {
-        console.log('📈 Sales Data from Backend:', salesRes.data.data);
+        // console.log('📈 Sales Data from Backend:', salesRes.data.data);
         setSalesData(salesRes.data.data);
       }
       if (profitRes.data.success) {
-        console.log('💵 Profit Data from Backend:', profitRes.data.data);
+        // console.log('💵 Profit Data from Backend:', profitRes.data.data);
         setProfitData(profitRes.data.data);
       }
       if (balancesRes.data.success) {
-        console.log('⚖️ Balances Data from Backend:', balancesRes.data.data);
+        // console.log('⚖️ Balances Data from Backend:', balancesRes.data.data);
         setBalancesData(balancesRes.data.data);
       }
       if (clientBalanceRes.data.success) {
-        console.log('👥 Client Balance Data from Backend:', clientBalanceRes.data.data);
+        // console.log('👥 Client Balance Data from Backend:', clientBalanceRes.data.data);
         setClientBalanceData(clientBalanceRes.data.data);
       }
       if (providerBalanceRes.data.success) {
-        console.log('🏭 Provider Balance Data from Backend:', providerBalanceRes.data.data);
+        // console.log('🏭 Provider Balance Data from Backend:', providerBalanceRes.data.data);
         setProviderBalanceData(providerBalanceRes.data.data);
       }
       if (topServicesRes.data.success) {
-        console.log('🏆 Top Services Data from Backend:', topServicesRes.data.data);
+        // console.log('🏆 Top Services Data from Backend:', topServicesRes.data.data);
         setTopServices(topServicesRes.data.data.topServices);
+      }
+      if (paymentMethodsRes.data.success) {
+        // console.log('💳 Payment Methods Data from Backend:', paymentMethodsRes.data.data);
+        setPaymentMethodsData(paymentMethodsRes.data.data);
       }
 
     } catch (error) {
@@ -189,6 +197,11 @@ const ReportingDashboard = () => {
     setFilters(initialFilters);
   }, []);
 
+  const refreshData = useCallback(() => {
+    console.log('🔄 Manually refreshing report data...');
+    fetchAllData();
+  }, [fetchAllData]);
+
 
   if (loading) {
     return (
@@ -213,9 +226,21 @@ const ReportingDashboard = () => {
       <div className="space-y-12">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-5xl sm:text-6xl font-bold gradient-text mb-6 font-poppins">
-            Reporting Dashboard
-          </h1>
+          <div className="flex items-center justify-center space-x-4 mb-6">
+            <h1 className="text-5xl sm:text-6xl font-bold gradient-text font-poppins">
+              Reporting Dashboard
+            </h1>
+            <button
+              onClick={refreshData}
+              className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center space-x-2"
+              title="Refresh data"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Refresh</span>
+            </button>
+          </div>
           <p className="text-xl text-dark-300 max-w-3xl mx-auto mb-8">
             Comprehensive analytics and insights for your travel business
           </p>
@@ -324,21 +349,21 @@ const ReportingDashboard = () => {
         
         {kpis && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {console.log('🎯 Rendering KPIs Cards with values:', {
+            {/* {console.log('🎯 Rendering KPIs Cards with values:', {
               totalSales: kpis.totalSales,
               totalProfit: kpis.totalProfit,
               saleCount: kpis.saleCount,
               profitMargin: kpis.profitMargin,
               totalClientBalance: kpis.totalClientBalance,
               totalProviderBalance: kpis.totalProviderBalance
-            })}
-            {console.log('🔧 DEBUG: KPIs state object:', kpis)}
+            })} */}
+            {/* {console.log('🔧 DEBUG: KPIs state object:', kpis)}
             {console.log('🔧 DEBUG: Individual values for KPICard components:', {
               'Total Sales value': kpis.totalSales,
               'Total Profit value': kpis.totalProfit,
               'Client Balance value': JSON.stringify(clientBalanceData),
               'Provider Balance value': providerBalanceData?.totalProviderBalance || 0
-            })}
+            })} */}
             <KPICard
               title="Total Sales"
               value={kpis.totalSales}
@@ -354,7 +379,7 @@ const ReportingDashboard = () => {
               color="green"
             />
             <KPICard
-              title="Client Balances"
+              title="Passenger Balances"
               value={clientBalanceData?.totalClientBalance || 0}
               subtitle="Outstanding amounts"
               icon="users"
@@ -443,7 +468,7 @@ const ReportingDashboard = () => {
             <PieChart
               title="Balance Distribution"
               data={[
-                { name: 'Client Balances', value: balancesData.summary.totalClientBalance },
+                { name: 'Passenger Balances', value: balancesData.summary.totalClientBalance },
                 { name: 'Provider Balances', value: Math.abs(balancesData.summary.totalProviderBalance) }
               ]}
               height={350}
@@ -482,44 +507,10 @@ const ReportingDashboard = () => {
         {balancesData && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Top Client Balances */}
-            <div className="card overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/10">
-                <h3 className="text-lg font-medium text-dark-100">Top Client Balances</h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-white/10">
-                  <thead className="bg-dark-700/50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
-                        Client
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
-                        Balance
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
-                        Sales
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/10">
-                    {balancesData.topClientBalances.map((client, index) => (
-                      <tr key={index} className="hover:bg-white/5 transition-colors duration-200">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-dark-100">{client.clientName}</div>
-                          <div className="text-sm text-dark-400">{client.clientEmail}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                          ${client.totalBalance.toFixed(2)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-300">
-                          {client.saleCount}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <TopPassengerBalancesTable 
+              balances={balancesData.topClientBalances} 
+              title="Top Passenger Balances"
+            />
 
             {/* Top Provider Balances */}
             <div className="card overflow-hidden">
@@ -559,6 +550,13 @@ const ReportingDashboard = () => {
                 </table>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Payment Methods Analysis */}
+        {paymentMethodsData && (
+          <div className="mt-8">
+            <PaymentMethodsTable data={paymentMethodsData} />
           </div>
         )}
       </div>

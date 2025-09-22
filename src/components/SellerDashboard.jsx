@@ -8,6 +8,7 @@ const SellerDashboard = () => {
   const { user } = useAuth();
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [sales, setSales] = useState([]);
+  const [monthlyStats, setMonthlyStats] = useState(null);
   const [stats, setStats] = useState({
     totalRevenue: 0,
     completedSales: 0,
@@ -30,6 +31,9 @@ const SellerDashboard = () => {
         // Fetch sales statistics
         const statsResponse = await api.get('/api/sales/stats');
 
+        // Fetch monthly stats for current salesperson
+        const monthlyStatsResponse = await api.get('/api/sales/seller/monthly-stats');
+
         if (salesResponse.data.success) {
           // Transform sales data to match component expectations
           const transformedSales = salesResponse.data.data.sales.map(sale => ({
@@ -37,6 +41,7 @@ const SellerDashboard = () => {
             customer: sale.clientId ? `${sale.clientId.name} ${sale.clientId.surname}` : 'Unknown Client',
             destination: sale.destination || 'N/A',
             amount: sale.totalSalePrice || 0,
+            profit: sale.profit || 0,
             date: sale.createdAt,
             status: sale.status === 'closed' ? 'completed' : sale.status === 'open' ? 'pending' : sale.status
           }));
@@ -58,6 +63,10 @@ const SellerDashboard = () => {
             pendingSales: pendingCount,
             totalSales: overview.totalSales || 0
           });
+        }
+
+        if (monthlyStatsResponse.data.success) {
+          setMonthlyStats(monthlyStatsResponse.data.data);
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -124,7 +133,73 @@ const SellerDashboard = () => {
           </p>
         </div>
           
-        {/* Stats Cards */}
+        {/* Monthly Performance Cards */}
+        {monthlyStats && (
+          <div className="mb-12">
+            <h2 className="text-3xl font-bold text-dark-100 mb-8 text-center">
+              This Month's Performance ({monthlyStats.month}/{monthlyStats.year})
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {/* Monthly Revenue */}
+              <div className="card-neon hover-lift p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="icon-container bg-primary-500">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="text-lg font-bold text-dark-100 mb-2">Monthly Revenue</h3>
+                <p className="text-3xl font-bold text-primary-400 mb-1">${monthlyStats.overview.totalRevenue.toLocaleString()}</p>
+                <p className="text-sm text-primary-300">From {monthlyStats.overview.totalSales} sales</p>
+              </div>
+
+              {/* Monthly Profit */}
+              <div className="card hover-lift p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="icon-container bg-success-500">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="text-lg font-bold text-dark-100 mb-2">Monthly Profit</h3>
+                <p className="text-3xl font-bold text-success-400 mb-1">${monthlyStats.overview.totalProfit.toLocaleString()}</p>
+                <p className="text-sm text-success-300">{monthlyStats.overview.avgProfitMargin}% margin</p>
+              </div>
+
+              {/* Average Sale Value */}
+              <div className="card hover-lift p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="icon-container bg-accent-500">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="text-lg font-bold text-dark-100 mb-2">Avg Sale Value</h3>
+                <p className="text-3xl font-bold text-accent-400 mb-1">${monthlyStats.overview.avgSaleValue.toLocaleString()}</p>
+                <p className="text-sm text-accent-300">Per transaction</p>
+              </div>
+
+              {/* Average Profit */}
+              <div className="card hover-lift p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="icon-container bg-info-500">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                  </div>
+                </div>
+                <h3 className="text-lg font-bold text-dark-100 mb-2">Avg Profit</h3>
+                <p className="text-3xl font-bold text-info-400 mb-1">${monthlyStats.overview.avgProfit.toLocaleString()}</p>
+                <p className="text-sm text-info-300">Per sale</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Overall Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
           {/* Total Sales Card */}
           <div className="card-neon hover-lift p-8">
@@ -195,7 +270,7 @@ const SellerDashboard = () => {
             Quick Actions
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <button 
               onClick={() => navigate('/sales/new')}
               className="group card hover-lift p-8"
@@ -209,6 +284,23 @@ const SellerDashboard = () => {
                 <div className="text-left">
                   <div className="text-2xl font-bold text-dark-100 mb-3 group-hover:text-primary-400 transition-colors">Add New Sale</div>
                   <div className="text-dark-300 group-hover:text-primary-300 transition-colors">Record a new travel booking and expand your business</div>
+                </div>
+              </div>
+            </button>
+            
+            <button 
+              onClick={() => navigate('/sales/monthly')}
+              className="group card hover-lift p-8"
+            >
+              <div className="flex items-center space-x-6">
+                <div className="icon-container bg-accent-500 group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <div className="text-2xl font-bold text-dark-100 mb-3 group-hover:text-accent-400 transition-colors">Monthly Sales</div>
+                  <div className="text-dark-300 group-hover:text-accent-300 transition-colors">View all sales and profit for this month</div>
                 </div>
               </div>
             </button>
@@ -354,7 +446,7 @@ const SellerDashboard = () => {
                             <button
                               onClick={() => {
                                 // Handle delete functionality
-                                console.log('Delete sale:', sale.id);
+                                // console.log('Delete sale:', sale.id);
                                 setActiveDropdown(null);
                               }}
                               className="w-full px-4 py-2 text-left text-sm text-error-400 hover:bg-error-500/10 hover:text-error-300 transition-colors"
