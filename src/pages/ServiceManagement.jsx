@@ -65,7 +65,8 @@ const ServiceManagement = () => {
     { value: 'GBP', label: 'GBP - British Pound' },
     { value: 'JPY', label: 'JPY - Japanese Yen' },
     { value: 'CAD', label: 'CAD - Canadian Dollar' },
-    { value: 'AUD', label: 'AUD - Australian Dollar' }
+    { value: 'AUD', label: 'AUD - Australian Dollar' },
+    { value: 'ARS', label: 'ARS - Argentine Peso' }
   ];
 
   useEffect(() => {

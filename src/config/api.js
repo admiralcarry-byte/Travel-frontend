@@ -10,7 +10,10 @@ export const apiConfig = {
       register: `${API_BASE_URL}/api/auth/register`,
       me: `${API_BASE_URL}/api/auth/me`,
       profile: `${API_BASE_URL}/api/auth/profile`,
-      password: `${API_BASE_URL}/api/auth/password`
+      password: `${API_BASE_URL}/api/auth/password`,
+      logout: `${API_BASE_URL}/api/auth/logout`,
+      logoutAll: `${API_BASE_URL}/api/auth/logout-all`,
+      sessions: `${API_BASE_URL}/api/auth/sessions`
     },
     users: `${API_BASE_URL}/api/users`,
     clients: `${API_BASE_URL}/api/clients`,

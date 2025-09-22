@@ -89,10 +89,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('token');
+  const logout = async () => {
+    try {
+      // Call logout endpoint to invalidate session on server
+      await api.post(apiConfig.endpoints.auth.logout);
+    } catch (error) {
+      console.error('Logout API call failed:', error);
+      // Continue with local logout even if API call fails
+    } finally {
+      // Always clear local state
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem('token');
+    }
   };
 
   const fetchUser = async () => {
