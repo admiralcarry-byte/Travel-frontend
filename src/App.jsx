@@ -26,6 +26,7 @@ import CupoForm from './pages/CupoForm';
 import CupoDetails from './pages/CupoDetails';
 import ReservationFlow from './pages/ReservationFlow';
 import ReportingDashboard from './pages/ReportingDashboard';
+import PaymentReports from './pages/PaymentReports';
 // Notification imports - DISABLED
 // import NotificationHistory from './pages/NotificationHistory';
 // import NotificationAdmin from './pages/NotificationAdmin';
@@ -278,6 +279,16 @@ const AppRoutes = () => {
                 <ProtectedRoute>
                   <Layout>
                     <ReportingDashboard />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports/payments"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <PaymentReports />
                   </Layout>
                 </ProtectedRoute>
               }
