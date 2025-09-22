@@ -140,7 +140,7 @@ const ReportingDashboard = () => {
       }
       if (topServicesRes.data.success) {
         // console.log('🏆 Top Services Data from Backend:', topServicesRes.data.data);
-        setTopServices(topServicesRes.data.data.topServices);
+        setTopServices(topServicesRes.data.data.topServices || []);
       }
       if (paymentMethodsRes.data.success) {
         // console.log('💳 Payment Methods Data from Backend:', paymentMethodsRes.data.data);
@@ -476,15 +476,15 @@ const ReportingDashboard = () => {
           )}
 
           {/* Top Services Revenue */}
-          {topServices.length > 0 && (
+          {topServices && topServices.length > 0 && (
             <BarChart
               title="Top Services Revenue"
               data={topServices.slice(0, 8).map(service => ({
-                label: service.serviceName.length > 15 
+                label: service.serviceName && service.serviceName.length > 15 
                   ? service.serviceName.substring(0, 15) + '...' 
-                  : service.serviceName,
-                value: service.totalRevenue,
-                profit: service.totalProfit
+                  : service.serviceName || 'Unknown Service',
+                value: service.totalRevenue || 0,
+                profit: service.totalProfit || 0
               }))}
               bars={[
                 { dataKey: 'value', name: 'Revenue', color: '#3B82F6' },
