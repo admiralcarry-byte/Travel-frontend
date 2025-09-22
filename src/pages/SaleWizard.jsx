@@ -232,7 +232,7 @@ const SaleWizard = () => {
   };
 
   const handleCreateSale = async () => {
-    if (!selectedClient || selectedPassengers.length === 0 || selectedServices.length === 0) {
+    if (!selectedClient || selectedServices.length === 0) {
       setError('Please complete all required steps');
       return;
     }
@@ -241,9 +241,24 @@ const SaleWizard = () => {
     setError('');
 
     try {
+      // If no companions are selected, we need to create a passenger entry for the main client
+      let passengersToInclude = selectedPassengers;
+      
+      // If no companions are selected, we'll need to create a passenger from the client data
+      // For now, we'll send the client data and let the backend handle creating the passenger
+      if (selectedPassengers.length === 0) {
+        // We'll send a special flag to indicate the client should be used as the passenger
+        passengersToInclude = [{
+          isMainClient: true,
+          clientId: selectedClient._id,
+          price: 0,
+          notes: ''
+        }];
+      }
+
       const saleData = {
         clientId: selectedClient._id,
-        passengers: selectedPassengers,
+        passengers: passengersToInclude,
         services: selectedServices,
         notes: saleNotes,
         status: isEditMode ? existingSale.status : 'open'
