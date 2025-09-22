@@ -427,7 +427,7 @@ const ReportingDashboard = () => {
         {/* Charts Row 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Sales Over Time */}
-          {salesData && (
+          {salesData && salesData.chartData && salesData.chartData.labels && (
             <LineChart
               title="Sales Over Time"
               data={salesData.chartData.labels.map((label, index) => ({
@@ -444,7 +444,7 @@ const ReportingDashboard = () => {
           )}
 
           {/* Profit by Seller */}
-          {profitData && (
+          {profitData && profitData.chartData && profitData.chartData.labels && (
             <BarChart
               title="Profit by Seller"
               data={profitData.chartData.labels.map((label, index) => ({
@@ -464,7 +464,7 @@ const ReportingDashboard = () => {
         {/* Charts Row 2 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Balance Distribution */}
-          {balancesData && (
+          {balancesData && balancesData.summary && (
             <PieChart
               title="Balance Distribution"
               data={[
@@ -504,7 +504,7 @@ const ReportingDashboard = () => {
         </div>
 
         {/* Balance Details */}
-        {balancesData && (
+        {balancesData && balancesData.topClientBalances && balancesData.topProviderBalances && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Top Client Balances */}
             <TopPassengerBalancesTable 

@@ -119,6 +119,7 @@ export const createFontRenderedContainer = (content, width = '600px') => {
   container.style.fontSize = '14px';
   container.style.lineHeight = '1.5';
   container.style.color = '#000';
+  container.style.marginBottom = '20px';
   
   // Add font imports to the container
   const styleElement = document.createElement('style');
@@ -246,6 +247,9 @@ export const createStyledReceiptHTML = (receipt) => {
           </div>
         </div>
       </div>
+      
+      <!-- Bottom margin for better readability -->
+      <div style="height: 40px; background: white;"></div>
     </div>
   `;
 };
