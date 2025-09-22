@@ -630,4 +630,19 @@
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.2);
   }
+  
+  /* Dark theme dropdown options */
+  select option {
+    background-color: var(--color-dark-800) !important;
+    color: var(--color-dark-100) !important;
+  }
+  
+  select option:hover {
+    background-color: var(--color-dark-700) !important;
+  }
+  
+  select option:checked {
+    background-color: var(--color-primary-500) !important;
+    color: white !important;
+  }
 }

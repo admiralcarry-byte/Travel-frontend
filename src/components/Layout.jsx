@@ -73,8 +73,8 @@ const Layout = ({ children, showNavigation = true }) => {
         </svg>
       )
     },
-    // Admin and Seller navigation items
-    ...(isAdmin || isSeller ? [
+    // Seller navigation items
+    ...(isSeller ? [
       { 
         path: '/inventory', 
         label: 'Slots', 
@@ -84,12 +84,25 @@ const Layout = ({ children, showNavigation = true }) => {
           </svg>
         )
       },
+    ] : []),
+    // // Payment Reports - Admin only
+    // ...(isAdmin ? [{
+    //   path: '/reports/payments', 
+    //   label: 'Payment Reports', 
+    //   icon: (
+    //     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+    //     </svg>
+    //   )
+    // }] : []),
+    // Admin-only navigation items
+    ...(isAdmin ? [
       { 
-        path: '/reports', 
-        label: 'Reports', 
+        path: '/inventory', 
+        label: 'Slots', 
         icon: (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
         )
       },
@@ -102,19 +115,6 @@ const Layout = ({ children, showNavigation = true }) => {
           </svg>
         )
       },
-    ] : []),
-    // Payment Reports - Admin only
-    ...(isAdmin ? [{
-      path: '/reports/payments', 
-      label: 'Payment Reports', 
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-        </svg>
-      )
-    }] : []),
-    // Admin-only navigation items
-    ...(isAdmin ? [
       {
         path: '/admin-insights', 
         label: 'Admin Insights', 

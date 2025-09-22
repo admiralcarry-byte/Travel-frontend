@@ -4,6 +4,10 @@ const TopServicesTable = ({ services, title = "Top Selling Services" }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const formatCurrency = (amount) => {
+    // Handle null, undefined, NaN, or invalid numbers
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return '$0.00';
+    }
     if (amount >= 1000000) {
       return `$${(amount / 1000000).toFixed(1)}M`;
     } else if (amount >= 1000) {

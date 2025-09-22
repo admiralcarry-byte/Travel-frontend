@@ -3,9 +3,12 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 import KPICard from '../components/KPICard';
 import LineChart from '../components/LineChart';
+import BarChart from '../components/BarChart';
 import InteractiveBarChart from '../components/InteractiveBarChart';
 import PieChart from '../components/PieChart';
 import DataTable from '../components/DataTable';
+import PaymentMethodsTable from '../components/PaymentMethodsTable';
+import { formatCurrencyCompact } from '../utils/formatNumbers';
 
 const AdminInsightsDashboard = () => {
   const { user } = useAuth();
@@ -17,6 +20,9 @@ const AdminInsightsDashboard = () => {
   const [sellerPerformance, setSellerPerformance] = useState([]);
   const [transactionDetails, setTransactionDetails] = useState([]);
   const [monthlyTrends, setMonthlyTrends] = useState([]);
+  const [paymentMethodsData, setPaymentMethodsData] = useState(null);
+  const [salesData, setSalesData] = useState(null);
+  const [profitData, setProfitData] = useState(null);
   
   // Seller activity states
   const [selectedSeller, setSelectedSeller] = useState(null);
@@ -37,7 +43,7 @@ const AdminInsightsDashboard = () => {
   // Pagination states
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 20,
+    limit: 10,
     totalCount: 0,
     totalPages: 0
   });
@@ -83,14 +89,17 @@ const AdminInsightsDashboard = () => {
           ...seller,
           sellerName: seller.sellerName || 'Unknown Seller',
           sellerEmail: seller.sellerEmail || 'No email',
+          // Backend returns data directly, not nested under performance
+          totalSales: seller.totalSales || 0,
+          totalProfit: seller.totalProfit || 0,
+          saleCount: seller.saleCount || 0,
           performance: {
-            ...seller.performance,
-            totalSales: seller.performance?.totalSales || 0,
-            totalProfit: seller.performance?.totalProfit || 0,
-            profitMargin: seller.performance?.profitMargin || 0,
-            saleCount: seller.performance?.saleCount || 0,
-            averageSaleValue: seller.performance?.averageSaleValue || 0,
-            ranking: seller.performance?.ranking || 0
+            totalSales: seller.totalSales || 0,
+            totalProfit: seller.totalProfit || 0,
+            profitMargin: seller.profitMargin || 0,
+            saleCount: seller.saleCount || 0,
+            averageSaleValue: seller.averageSaleValue || 0,
+            ranking: seller.ranking || 0
           }
         }));
         setSellerPerformance(validSellers);
@@ -178,6 +187,58 @@ const AdminInsightsDashboard = () => {
     }
   }, [filters.sellerId]);
 
+  // Fetch payment methods data
+  const fetchPaymentMethods = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      if (filters.period) params.append('period', filters.period);
+      if (filters.startDate) params.append('startDate', filters.startDate);
+      if (filters.endDate) params.append('endDate', filters.endDate);
+
+      const response = await api.get(`/api/reports/payment-methods?${params}`);
+      if (response.data.success) {
+        setPaymentMethodsData(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching payment methods:', error);
+    }
+  }, [filters.period, filters.startDate, filters.endDate]);
+
+  // Fetch sales and profit data for charts
+  const fetchChartData = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      if (filters.period) params.append('period', filters.period);
+      if (filters.startDate) params.append('startDate', filters.startDate);
+      if (filters.endDate) params.append('endDate', filters.endDate);
+
+      const response = await api.get(`/api/admin-insights/overview?${params}`);
+      if (response.data.success && response.data.data.insights) {
+        const insights = response.data.data.insights;
+        
+        // Set sales data for Sales Over Time chart
+        setSalesData({
+          chartData: {
+            labels: ['Total Sales'],
+            values: [insights.businessMetrics?.totalRevenue || 0],
+            profitValues: [insights.businessMetrics?.totalProfit || 0]
+          }
+        });
+        
+        // Set profit data for Profit by Seller chart
+        setProfitData({
+          chartData: {
+            labels: ['Total Profit'],
+            values: [insights.businessMetrics?.totalProfit || 0],
+            saleValues: [insights.businessMetrics?.totalRevenue || 0]
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching chart data:', error);
+    }
+  }, [filters.period, filters.startDate, filters.endDate]);
+
   // Fetch all data
   const fetchAllData = useCallback(async () => {
     setLoading(true);
@@ -188,7 +249,9 @@ const AdminInsightsDashboard = () => {
         fetchOverview(),
         fetchSellerPerformance(),
         fetchTransactionDetails(),
-        fetchMonthlyTrends()
+        fetchMonthlyTrends(),
+        fetchPaymentMethods(),
+        fetchChartData()
       ]);
     } catch (error) {
       setError('Failed to fetch insights data');
@@ -196,7 +259,7 @@ const AdminInsightsDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [fetchOverview, fetchSellerPerformance, fetchTransactionDetails, fetchMonthlyTrends]);
+  }, [fetchOverview, fetchSellerPerformance, fetchTransactionDetails, fetchMonthlyTrends, fetchPaymentMethods, fetchChartData]);
 
   // Initial data fetch
   useEffect(() => {
@@ -226,6 +289,15 @@ const AdminInsightsDashboard = () => {
     setPagination(prev => ({
       ...prev,
       page: newPage
+    }));
+  };
+
+  // Handle rows per page change
+  const handleRowsPerPageChange = (newLimit) => {
+    setPagination(prev => ({
+      ...prev,
+      limit: parseInt(newLimit),
+      page: 1 // Reset to first page when changing rows per page
     }));
   };
 
@@ -474,7 +546,7 @@ const AdminInsightsDashboard = () => {
                 color="green"
               />
               <KPICard
-                title="Total Clients"
+                title="Total Passengers"
                 value={overview.businessMetrics?.totalClients || 0}
                 subtitle={`${overview.businessMetrics?.newClients || 0} new`}
                 icon="users"
@@ -508,24 +580,41 @@ const AdminInsightsDashboard = () => {
                 />
               )}
 
-              {/* Seller Performance */}
-              {sellerPerformance.length > 0 && (
-                <InteractiveBarChart
-                  title="Top Sellers by Profit"
-                  data={sellerPerformance.slice(0, 8).map(seller => ({
-                    label: seller.sellerName || 'Unknown Seller',
-                    sellerId: seller.sellerId,
-                    sellerEmail: seller.sellerEmail,
-                    profit: seller.performance?.totalProfit || 0,
-                    revenue: seller.performance?.totalSales || 0
+            </div>
+
+            {/* Additional Charts Row - Sales Over Time and Profit by Seller */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Sales Over Time */}
+              {salesData && salesData.chartData && salesData.chartData.labels && salesData.chartData.values && salesData.chartData.profitValues && (
+                <LineChart
+                  title="Sales Over Time"
+                  data={salesData.chartData.labels.map((label, index) => ({
+                    label,
+                    value: salesData.chartData.values[index] || 0,
+                    profit: salesData.chartData.profitValues[index] || 0
                   }))}
-                  bars={[
-                    { dataKey: 'profit', name: 'Profit', color: '#10B981' },
-                    { dataKey: 'revenue', name: 'Revenue', color: '#3B82F6' }
+                  lines={[
+                    { dataKey: 'value', name: 'Sales', color: '#3B82F6' },
+                    { dataKey: 'profit', name: 'Profit', color: '#10B981' }
                   ]}
                   height={350}
-                  onSellerClick={handleSellerSelect}
-                  selectedSeller={selectedSeller}
+                />
+              )}
+
+              {/* Profit by Seller */}
+              {profitData && profitData.chartData && profitData.chartData.labels && profitData.chartData.values && profitData.chartData.saleValues && (
+                <BarChart
+                  title="Profit by Seller"
+                  data={profitData.chartData.labels.map((label, index) => ({
+                    label,
+                    value: profitData.chartData.values[index] || 0,
+                    sales: profitData.chartData.saleValues[index] || 0
+                  }))}
+                  bars={[
+                    { dataKey: 'value', name: 'Profit', color: '#10B981' },
+                    { dataKey: 'sales', name: 'Sales', color: '#3B82F6' }
+                  ]}
+                  height={350}
                 />
               )}
             </div>
@@ -586,6 +675,13 @@ const AdminInsightsDashboard = () => {
                 )}
               </div>
             )}
+
+            {/* Payment Methods Analysis */}
+            {paymentMethodsData && (
+              <div className="mt-8">
+                <PaymentMethodsTable data={paymentMethodsData} />
+              </div>
+            )}
           </div>
         )}
 
@@ -636,10 +732,10 @@ const AdminInsightsDashboard = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                          ${(seller.performance?.totalSales || 0).toLocaleString()}
+                          {formatCurrencyCompact(seller.performance?.totalSales || 0)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-green-400">
-                          ${(seller.performance?.totalProfit || 0).toLocaleString()}
+                          {formatCurrencyCompact(seller.performance?.totalProfit || 0)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
                           {seller.performance?.profitMargin || 0}%
@@ -648,7 +744,7 @@ const AdminInsightsDashboard = () => {
                           {seller.performance?.saleCount || 0}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                          ${(seller.performance?.averageSaleValue || 0).toLocaleString()}
+                          {formatCurrencyCompact(seller.performance?.averageSaleValue || 0)}
                         </td>
                       </tr>
                     ))}
@@ -674,7 +770,7 @@ const AdminInsightsDashboard = () => {
                         Sale ID
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
-                        Client
+                        Passenger
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
                         Seller
@@ -709,10 +805,10 @@ const AdminInsightsDashboard = () => {
                           {transaction.sellerName}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                          ${transaction.totalSalePrice.toLocaleString()}
+                          {formatCurrencyCompact(transaction.totalSalePrice)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-green-400">
-                          ${transaction.profit.toLocaleString()}
+                          {formatCurrencyCompact(transaction.profit)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -735,12 +831,26 @@ const AdminInsightsDashboard = () => {
               </div>
               
               {/* Pagination */}
-              {pagination.totalPages > 1 && (
-                <div className="px-6 py-4 border-t border-white/10">
-                  <div className="flex items-center justify-between">
+              <div className="px-6 py-4 border-t border-white/10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
                     <div className="text-sm text-dark-300">
                       Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.totalCount)} of {pagination.totalCount} transactions
                     </div>
+                    <div className="flex items-center space-x-2">
+                      <label className="text-sm text-dark-300">Rows per page:</label>
+                      <select
+                        value={pagination.limit}
+                        onChange={(e) => handleRowsPerPageChange(e.target.value)}
+                        className="bg-dark-700 border border-dark-600 text-dark-100 text-sm rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      >
+                        <option value={10}>10</option>
+                        <option value={15}>15</option>
+                        <option value={20}>20</option>
+                      </select>
+                    </div>
+                  </div>
+                  {pagination.totalPages > 1 && (
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => handlePageChange(pagination.page - 1)}
@@ -760,9 +870,9 @@ const AdminInsightsDashboard = () => {
                         Next
                       </button>
                     </div>
-                  </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         )}

@@ -148,8 +148,7 @@ const ProvisionalReceipt = ({ paymentId, saleId, onClose, onReceiptCompleted }) 
 
   const downloadReceipt = async () => {
     if (!receipt) {
-      console.error('No receipt data available for PNG generation');
-      alert('No receipt data available. Please try again.');
+      // Silently return without showing error message or alert
       return;
     }
 

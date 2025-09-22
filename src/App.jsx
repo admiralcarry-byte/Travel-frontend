@@ -276,7 +276,7 @@ const AppRoutes = () => {
             <Route
               path="/reports"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireAdmin>
                   <Layout>
                     <ReportingDashboard />
                   </Layout>
@@ -286,7 +286,7 @@ const AppRoutes = () => {
             <Route
               path="/reports/payments"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireAdmin>
                   <Layout>
                     <PaymentReports />
                   </Layout>
@@ -296,7 +296,7 @@ const AppRoutes = () => {
             <Route
               path="/daily-reports"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requireAdmin>
                   <Layout>
                     <DailyReports />
                   </Layout>

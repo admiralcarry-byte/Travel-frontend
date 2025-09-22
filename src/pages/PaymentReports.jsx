@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
@@ -8,6 +9,7 @@ import Modal from '../components/Modal';
 import FormField from '../components/FormField';
 
 const PaymentReports = () => {
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('bank-transfers');
@@ -26,20 +28,35 @@ const PaymentReports = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [sellers, setSellers] = useState([]);
 
-  // Fetch sellers for filter dropdown
+  // Fetch sellers for filter dropdown (only when authenticated and not loading)
   useEffect(() => {
+    if (!isAuthenticated || authLoading) return;
+    
     const fetchSellers = async () => {
       try {
-        const response = await api.get('/users/sellers');
+        const response = await api.get('/api/users/sellers');
         if (response.data.success) {
           setSellers(response.data.data.sellers || []);
         }
       } catch (error) {
         console.error('Error fetching sellers:', error);
+        // Check if it's an authentication error
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          console.log('Authentication error - user may need to log in again');
+        }
+        // Set empty array if fetch fails (e.g., not authenticated or no sellers)
+        setSellers([]);
       }
     };
     fetchSellers();
-  }, []);
+  }, [isAuthenticated, authLoading]);
+
+  // Fetch default report on component mount (only when authenticated and not loading)
+  useEffect(() => {
+    if (!isAuthenticated || authLoading) return;
+    
+    fetchReport(activeTab);
+  }, [activeTab, isAuthenticated, authLoading]);
 
   const fetchReport = async (reportType) => {
     setLoading(true);
@@ -51,7 +68,7 @@ const PaymentReports = () => {
         if (value) params.append(key, value);
       });
 
-      const response = await api.get(`/reports/payments/${reportType}?${params}`);
+      const response = await api.get(`/api/reports/payments/${reportType}?${params}`);
       
       if (response.data.success) {
         setReports(prev => ({
@@ -63,7 +80,13 @@ const PaymentReports = () => {
       }
     } catch (error) {
       console.error(`Error fetching ${reportType} report:`, error);
-      setError(error.response?.data?.message || 'Failed to fetch report');
+      // Check if it's an authentication error
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        console.log('Authentication error - user may need to log in again');
+        setError('Authentication required. Please log in again.');
+      } else {
+        setError(error.response?.data?.message || 'Failed to fetch report');
+      }
     } finally {
       setLoading(false);
     }
@@ -174,7 +197,12 @@ const PaymentReports = () => {
                 {key.replace(/([A-Z])/g, ' $1').trim()}
               </div>
               <div className="text-lg font-bold text-blue-900 dark:text-blue-100">
-                {typeof value === 'number' ? (key.includes('Amount') ? formatCurrency(value) : value.toLocaleString()) : value}
+                {typeof value === 'number' 
+                  ? (key.includes('Amount') ? formatCurrency(value) : value.toLocaleString()) 
+                  : typeof value === 'object' 
+                    ? JSON.stringify(value) 
+                    : String(value)
+                }
               </div>
             </div>
           ))}
@@ -230,6 +258,63 @@ const PaymentReports = () => {
     }
   };
 
+  // Show loading state while authentication is being checked
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  // Show message if user is not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Payment Reports</h1>
+            <p className="text-gray-600 dark:text-gray-400">Financial reconciliation and audit reports</p>
+          </div>
+        </div>
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-8">
+          <div className="text-center">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900 mb-4">
+              <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-blue-900 dark:text-blue-100 mb-2">Authentication Required</h3>
+            <p className="text-blue-700 dark:text-blue-300 mb-6">Please log in to access payment reports and financial data.</p>
+            <div className="flex justify-center space-x-4">
+              <Button 
+                onClick={() => window.location.href = '/login'}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Go to Login
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => window.location.href = '/dashboard'}
+                className="border-blue-600 text-blue-600 hover:bg-blue-50"
+              >
+                Go to Dashboard
+              </Button>
+            </div>
+            <div className="mt-6 text-sm text-blue-600 dark:text-blue-400">
+              <p className="font-medium">Need help?</p>
+              <p>Contact your administrator or use the default credentials:</p>
+              <p className="font-mono text-xs mt-2">
+                Admin: admin@travelagency.com / admin123<br/>
+                Seller: seller@travelagency.com / seller123
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
         {/* Header */}
@@ -258,7 +343,7 @@ const PaymentReports = () => {
               </svg>
               Refresh
             </Button>
-            <Button
+            {/* <Button
               onClick={() => handleExportCSV(activeTab)}
               variant="outline"
               className="flex items-center gap-2"
@@ -267,7 +352,7 @@ const PaymentReports = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               Export CSV
-            </Button>
+            </Button> */}
           </div>
         </div>
 

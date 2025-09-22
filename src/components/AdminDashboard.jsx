@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useSystemStats } from '../contexts/SystemStatsContext';
+import { formatCurrencyCompact } from '../utils/formatNumbers';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -433,7 +434,7 @@ const AdminDashboard = () => {
                 {loading ? (
                   <div className="animate-pulse bg-success-400/20 h-8 w-32 rounded"></div>
                 ) : (
-                  `$${businessStats.totalRevenue.toLocaleString()}`
+                  formatCurrencyCompact(businessStats.totalRevenue)
                 )}
               </p>
               <p className="text-sm text-dark-400 mt-2">All time revenue</p>

@@ -37,7 +37,7 @@ const PaymentMethodsTable = ({ data }) => {
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-dark-100">
               Payment Methods Analysis
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -54,7 +54,7 @@ const PaymentMethodsTable = ({ data }) => {
               id="rowsPerPage"
               value={rowsPerPage}
               onChange={handleRowsPerPageChange}
-              className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="px-3 py-1 text-sm border border-gray-600 rounded-md bg-white dark:bg-gray-700 text-dark-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value={5}>5</option>
               <option value={10}>10</option>
@@ -93,9 +93,9 @@ const PaymentMethodsTable = ({ data }) => {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="bg-dark-800 divide-y divide-white/10">
               {paginatedData.map((detail, index) => (
-                <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <tr key={index} className="hover:bg-dark-700 transition-colors duration-200">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       detail._id.type === 'client' 
@@ -115,7 +115,7 @@ const PaymentMethodsTable = ({ data }) => {
                         </div>
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        <div className="text-sm font-medium text-dark-100">
                           {formatMethodName(detail._id.method)}
                         </div>
                       </div>
@@ -126,16 +126,16 @@ const PaymentMethodsTable = ({ data }) => {
                       {detail._id.currency}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
                     {detail.count.toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
                     {detail.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {detail._id.currency}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
                     ${detail.totalAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
                     ${detail.avgAmountUSD ? detail.avgAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'N/A'}
                   </td>
                 </tr>
@@ -155,7 +155,7 @@ const PaymentMethodsTable = ({ data }) => {
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 text-sm border border-gray-600 rounded-md bg-dark-800 text-dark-100 hover:bg-dark-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Previous
             </button>
@@ -181,7 +181,7 @@ const PaymentMethodsTable = ({ data }) => {
                     className={`px-3 py-1 text-sm border rounded-md ${
                       currentPage === pageNumber
                         ? 'bg-blue-500 border-blue-500 text-white'
-                        : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                        : 'border-gray-600 bg-dark-800 text-dark-100 hover:bg-dark-700'
                     }`}
                   >
                     {pageNumber}
@@ -194,7 +194,7 @@ const PaymentMethodsTable = ({ data }) => {
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 text-sm border border-gray-600 rounded-md bg-dark-800 text-dark-100 hover:bg-dark-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
             </button>

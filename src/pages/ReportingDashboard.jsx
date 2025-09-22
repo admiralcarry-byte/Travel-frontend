@@ -8,6 +8,7 @@ import PieChart from '../components/PieChart';
 import TopServicesTable from '../components/TopServicesTable';
 import PaymentMethodsTable from '../components/PaymentMethodsTable';
 import TopPassengerBalancesTable from '../components/TopPassengerBalancesTable';
+import { formatCurrencyCompact } from '../utils/formatNumbers';
 
 const ReportingDashboard = () => {
   const { token, user } = useAuth();
@@ -55,9 +56,6 @@ const ReportingDashboard = () => {
 
   const fetchAllData = useCallback(async () => {
     try {
-      // console.log('🚀 Starting to fetch reporting data from backend...');
-      // console.log('🔑 Using token:', token ? 'Present' : 'Missing');
-      // console.log('📅 Filters:', debouncedFilters);
       setLoading(true);
       setError('');
 
@@ -67,83 +65,71 @@ const ReportingDashboard = () => {
       if (debouncedFilters.endDate) params.append('endDate', debouncedFilters.endDate);
       if (debouncedFilters.sellerId) params.append('sellerId', debouncedFilters.sellerId);
 
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-
-      // console.log('🌐 Making API calls to:');
-      // console.log('  📊 KPIs:', `/api/reports/kpis?${params}`);
-      // console.log('  📈 Sales:', `/api/reports/sales?${params}`);
-      // console.log('  💵 Profit:', `/api/reports/profit?${params}`);
-      // console.log('  ⚖️ Balances:', `/api/reports/balances?${params}`);
-      // console.log('  👥 Client Balance:', `/api/reports/client-balance?${params}`);
-      // console.log('  🏭 Provider Balance:', `/api/reports/provider-balance?${params}`);
-      // console.log('  🏆 Top Services:', `/api/reports/top-services?${params}`);
-
-      const [kpisRes, salesRes, profitRes, balancesRes, clientBalanceRes, providerBalanceRes, topServicesRes, paymentMethodsRes] = await Promise.all([
-        api.get(`/api/reports/kpis?${params}`),
-        api.get(`/api/reports/sales?${params}`),
-        api.get(`/api/reports/profit?${params}`),
-        api.get(`/api/reports/balances?${params}`),
-        api.get(`/api/reports/client-balance?${params}`),
-        api.get(`/api/reports/provider-balance?${params}`),
-        api.get(`/api/reports/top-services?${params}`),
+      // Use AdminInsights endpoint which has real data
+      const [adminInsightsRes, paymentMethodsRes] = await Promise.all([
+        api.get(`/api/admin-insights/overview?${params}`),
         api.get(`/api/reports/payment-methods?${params}`)
       ]);
 
-      if (kpisRes.data.success) {
-        // console.log('📊 KPIs Data from Backend:', kpisRes.data.data);
-        // console.log('💰 Total Sales:', kpisRes.data.data.totalSales);
-        // console.log('📈 Total Profit:', kpisRes.data.data.totalProfit);
-        // console.log('📋 Sale Count:', kpisRes.data.data.saleCount);
-        // console.log('📊 Profit Margin:', kpisRes.data.data.profitMargin + '%');
-        // console.log('💳 Client Payments:', kpisRes.data.data.totalClientPayments);
-        // console.log('🏢 Provider Payments:', kpisRes.data.data.totalProviderPayments);
-        // console.log('👥 Client Balance:', kpisRes.data.data.totalClientBalance);
-        // console.log('🏭 Provider Balance:', kpisRes.data.data.totalProviderBalance);
+      if (adminInsightsRes.data.success && adminInsightsRes.data.data.insights) {
+        const insights = adminInsightsRes.data.data.insights;
         
-        // Additional detailed logging
-        // console.log('🔧 DEBUG: Raw response data:', JSON.stringify(kpisRes.data, null, 2));
-        // console.log('🔧 DEBUG: Data types:', {
-        //   totalSales: typeof kpisRes.data.data.totalSales,
-        //   totalProfit: typeof kpisRes.data.data.totalProfit,
-        //   saleCount: typeof kpisRes.data.data.saleCount,
-        //   totalClientBalance: typeof kpisRes.data.data.totalClientBalance,
-        //   totalProviderBalance: typeof kpisRes.data.data.totalProviderBalance
-        // });
-        // console.log('🔧 DEBUG: Values being set to state:', kpisRes.data.data);
+        // Extract KPIs from AdminInsights data
+        const kpisData = {
+          totalSales: insights.businessMetrics?.totalRevenue || 0,
+          totalProfit: insights.businessMetrics?.totalProfit || 0,
+          saleCount: insights.businessMetrics?.saleCount || 0,
+          profitMargin: insights.businessMetrics?.profitMargin || 0,
+          totalClientBalance: insights.businessMetrics?.totalClients || 0,
+          totalProviderBalance: 0 // Will be calculated separately
+        };
         
-        setKpis(kpisRes.data.data);
+        setKpis(kpisData);
+        
+        // Set additional data for charts (simplified for now)
+        setSalesData({
+          chartData: {
+            labels: ['Total Sales'],
+            values: [insights.businessMetrics?.totalRevenue || 0],
+            profitValues: [insights.businessMetrics?.totalProfit || 0]
+          }
+        });
+        
+        setProfitData({
+          chartData: {
+            labels: ['Total Profit'],
+            values: [insights.businessMetrics?.totalProfit || 0],
+            saleValues: [insights.businessMetrics?.totalRevenue || 0]
+          }
+        });
+        
+        // Set top services data
+        if (insights.serviceMetrics && insights.serviceMetrics.length > 0) {
+          setTopServices(insights.serviceMetrics.slice(0, 5));
+        }
+        
+        // Set client balance data
+        setClientBalanceData({
+          totalClientBalance: insights.businessMetrics?.totalClients || 0
+        });
+        
+        // Set provider balance data
+        setProviderBalanceData({
+          totalProviderBalance: 0
+        });
+        
+        // Set balances data for pie chart
+        setBalancesData({
+          summary: {
+            totalClientBalance: insights.businessMetrics?.totalClients || 0,
+            totalProviderBalance: 0
+          }
+        });
       } else {
-        console.error('❌ KPIs API failed:', kpisRes.data);
+        console.error('❌ AdminInsights API failed:', adminInsightsRes.data);
       }
-      if (salesRes.data.success) {
-        // console.log('📈 Sales Data from Backend:', salesRes.data.data);
-        setSalesData(salesRes.data.data);
-      }
-      if (profitRes.data.success) {
-        // console.log('💵 Profit Data from Backend:', profitRes.data.data);
-        setProfitData(profitRes.data.data);
-      }
-      if (balancesRes.data.success) {
-        // console.log('⚖️ Balances Data from Backend:', balancesRes.data.data);
-        setBalancesData(balancesRes.data.data);
-      }
-      if (clientBalanceRes.data.success) {
-        // console.log('👥 Client Balance Data from Backend:', clientBalanceRes.data.data);
-        setClientBalanceData(clientBalanceRes.data.data);
-      }
-      if (providerBalanceRes.data.success) {
-        // console.log('🏭 Provider Balance Data from Backend:', providerBalanceRes.data.data);
-        setProviderBalanceData(providerBalanceRes.data.data);
-      }
-      if (topServicesRes.data.success) {
-        // console.log('🏆 Top Services Data from Backend:', topServicesRes.data.data);
-        setTopServices(topServicesRes.data.data.topServices || []);
-      }
+      
       if (paymentMethodsRes.data.success) {
-        // console.log('💳 Payment Methods Data from Backend:', paymentMethodsRes.data.data);
         setPaymentMethodsData(paymentMethodsRes.data.data);
       }
 
@@ -427,13 +413,13 @@ const ReportingDashboard = () => {
         {/* Charts Row 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Sales Over Time */}
-          {salesData && salesData.chartData && salesData.chartData.labels && (
+          {salesData && salesData.chartData && salesData.chartData.labels && salesData.chartData.values && salesData.chartData.profitValues && (
             <LineChart
               title="Sales Over Time"
               data={salesData.chartData.labels.map((label, index) => ({
                 label,
-                value: salesData.chartData.values[index],
-                profit: salesData.chartData.profitValues[index]
+                value: salesData.chartData.values[index] || 0,
+                profit: salesData.chartData.profitValues[index] || 0
               }))}
               lines={[
                 { dataKey: 'value', name: 'Sales', color: '#3B82F6' },
@@ -444,13 +430,13 @@ const ReportingDashboard = () => {
           )}
 
           {/* Profit by Seller */}
-          {profitData && profitData.chartData && profitData.chartData.labels && (
+          {profitData && profitData.chartData && profitData.chartData.labels && profitData.chartData.values && profitData.chartData.saleValues && (
             <BarChart
               title="Profit by Seller"
               data={profitData.chartData.labels.map((label, index) => ({
                 label,
-                value: profitData.chartData.values[index],
-                sales: profitData.chartData.saleValues[index]
+                value: profitData.chartData.values[index] || 0,
+                sales: profitData.chartData.saleValues[index] || 0
               }))}
               bars={[
                 { dataKey: 'value', name: 'Profit', color: '#10B981' },

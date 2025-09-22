@@ -69,6 +69,10 @@ const MonthlySales = () => {
   };
 
   const formatCurrency = (amount) => {
+    // Handle null, undefined, NaN, or invalid numbers
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return '$0.00';
+    }
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
@@ -224,7 +228,7 @@ const MonthlySales = () => {
               <select
                 value={filters.year}
                 onChange={(e) => handleFilterChange('year', parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-dark-800 text-dark-100"
               >
                 {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
                   <option key={year} value={year}>{year}</option>
@@ -237,7 +241,7 @@ const MonthlySales = () => {
               <select
                 value={filters.month}
                 onChange={(e) => handleFilterChange('month', parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-dark-800 text-dark-100"
               >
                 {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
                   <option key={month} value={month}>
@@ -252,7 +256,7 @@ const MonthlySales = () => {
               <select
                 value={filters.status}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-dark-800 text-dark-100"
               >
                 <option value="">All Status</option>
                 <option value="open">Open</option>
@@ -266,7 +270,7 @@ const MonthlySales = () => {
               <select
                 value={filters.sortBy}
                 onChange={(e) => handleFilterChange('sortBy', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-dark-800 text-dark-100"
               >
                 <option value="createdAt">Date</option>
                 <option value="totalSalePrice">Revenue</option>
@@ -279,7 +283,7 @@ const MonthlySales = () => {
               <select
                 value={filters.sortOrder}
                 onChange={(e) => handleFilterChange('sortOrder', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-dark-800 text-dark-100"
               >
                 <option value="desc">Descending</option>
                 <option value="asc">Ascending</option>
@@ -322,7 +326,7 @@ const MonthlySales = () => {
                       const profitMargin = sale.totalSalePrice > 0 ? ((sale.profit / sale.totalSalePrice) * 100).toFixed(1) : 0;
                       
                       return (
-                        <tr key={sale._id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <tr key={sale._id} className="border-b border-gray-100 hover:bg-dark-700 transition-colors duration-200">
                           <td className="py-3 px-4">
                             <div>
                               <div className="font-medium text-dark-100">
@@ -373,7 +377,7 @@ const MonthlySales = () => {
                     <button
                       onClick={() => handlePageChange(pagination.page - 1)}
                       disabled={pagination.page === 1}
-                      className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-dark-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-dark-300 hover:bg-dark-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Previous
                     </button>
@@ -386,7 +390,7 @@ const MonthlySales = () => {
                           className={`px-3 py-2 border rounded-md text-sm font-medium ${
                             page === pagination.page
                               ? 'bg-primary-500 text-white border-primary-500'
-                              : 'border-gray-300 text-dark-300 hover:bg-gray-50'
+                              : 'border-gray-300 text-dark-300 hover:bg-dark-700'
                           }`}
                         >
                           {page}
@@ -396,7 +400,7 @@ const MonthlySales = () => {
                     <button
                       onClick={() => handlePageChange(pagination.page + 1)}
                       disabled={pagination.page === pagination.pages}
-                      className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-dark-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-dark-300 hover:bg-dark-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Next
                     </button>

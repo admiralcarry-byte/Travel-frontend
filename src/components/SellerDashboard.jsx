@@ -25,13 +25,10 @@ const SellerDashboard = () => {
         setLoading(true);
         const token = localStorage.getItem('token');
         
-        // Fetch recent sales (limit to 3)
-        const salesResponse = await api.get('/api/sales?limit=3');
+        // Fetch recent sales for current seller (limit to 3)
+        const salesResponse = await api.get('/api/sales/seller/monthly-sales?limit=3');
 
-        // Fetch sales statistics
-        const statsResponse = await api.get('/api/sales/stats');
-
-        // Fetch monthly stats for current salesperson
+        // Fetch monthly stats for current salesperson (this also provides the stats data)
         const monthlyStatsResponse = await api.get('/api/sales/seller/monthly-stats');
 
         if (salesResponse.data.success) {
@@ -48,8 +45,8 @@ const SellerDashboard = () => {
           setSales(transformedSales);
         }
 
-        if (statsResponse.data.success) {
-          const statsData = statsResponse.data.data;
+        if (monthlyStatsResponse.data.success) {
+          const statsData = monthlyStatsResponse.data.data;
           const overview = statsData.overview;
           const statusBreakdown = statsData.statusBreakdown;
           
@@ -63,10 +60,8 @@ const SellerDashboard = () => {
             pendingSales: pendingCount,
             totalSales: overview.totalSales || 0
           });
-        }
-
-        if (monthlyStatsResponse.data.success) {
-          setMonthlyStats(monthlyStatsResponse.data.data);
+          
+          setMonthlyStats(statsData);
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -270,7 +265,8 @@ const SellerDashboard = () => {
             Quick Actions
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="flex justify-center">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-6xl">
             <button 
               onClick={() => navigate('/sales/new')}
               className="group card hover-lift p-8"
@@ -304,23 +300,7 @@ const SellerDashboard = () => {
                 </div>
               </div>
             </button>
-            
-            <button 
-              onClick={() => navigate('/reports')}
-              className="group card hover-lift p-8"
-            >
-              <div className="flex items-center space-x-6">
-                <div className="icon-container bg-success-500 group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
-                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <div className="text-2xl font-bold text-dark-100 mb-3 group-hover:text-success-400 transition-colors">View Reports</div>
-                  <div className="text-dark-300 group-hover:text-success-300 transition-colors">Analyze sales performance and track your growth</div>
-                </div>
-              </div>
-            </button>
+            </div>
           </div>
         </div>
 
