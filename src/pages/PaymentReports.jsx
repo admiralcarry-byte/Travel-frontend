@@ -30,9 +30,9 @@ const PaymentReports = () => {
   useEffect(() => {
     const fetchSellers = async () => {
       try {
-        const response = await api.get('/users?role=seller');
+        const response = await api.get('/users/sellers');
         if (response.data.success) {
-          setSellers(response.data.data.users || []);
+          setSellers(response.data.data.sellers || []);
         }
       } catch (error) {
         console.error('Error fetching sellers:', error);
