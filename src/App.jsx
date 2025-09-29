@@ -12,6 +12,7 @@ import ClientDetails from './pages/ClientDetails';
 import ProvidersList from './pages/ProvidersList';
 import ProviderForm from './pages/ProviderForm';
 import ProviderDetails from './pages/ProviderDetails';
+import ProviderTypeManagement from './pages/ProviderTypeManagement';
 import VendorDashboard from './pages/VendorDashboard';
 import ServicesList from './pages/ServicesList';
 import ServiceForm from './pages/ServiceForm';
@@ -109,6 +110,16 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <Layout>
               <ProviderDetails />
+            </Layout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/provider-types" 
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ProviderTypeManagement />
             </Layout>
           </ProtectedRoute>
         } 

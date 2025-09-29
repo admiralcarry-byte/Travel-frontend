@@ -34,17 +34,114 @@ const VendorDashboard = () => {
         setProvider(providerResponse.data.data.provider);
       }
 
-      // Fetch provider payment summary
+      // Fetch sales data for this provider (same data source as Sale Summary)
       const params = new URLSearchParams();
       if (dateRange.startDate) params.append('startDate', dateRange.startDate);
       if (dateRange.endDate) params.append('endDate', dateRange.endDate);
+      params.append('providerId', providerId);
 
-      const summaryResponse = await api.get(`/api/vendor-payments/provider/${providerId}/summary?${params}`);
-      if (summaryResponse.data.success) {
-        setProviderTotals(summaryResponse.data.data.providerTotals);
-        setRecentPayments(summaryResponse.data.data.recentPayments);
-        setOverduePayments(summaryResponse.data.data.overduePayments);
-        setVendorPayments(summaryResponse.data.data.vendorPayments);
+      const salesResponse = await api.get(`/api/sales?${params}`);
+      if (salesResponse.data.success) {
+        const sales = salesResponse.data.data.sales || [];
+        
+        // Calculate totals from sales data (same logic as Sale Summary)
+        const providerTotals = {
+          totalPayments: 0,
+          totalCommissions: 0,
+          totalProfit: 0,
+          totalRevenue: 0,
+          totalCost: 0,
+          overduePayments: 0,
+          overdueCount: 0,
+          paymentCount: sales.length
+        };
+
+        const recentPayments = [];
+        const paymentHistory = [];
+
+        sales.forEach(sale => {
+          // Calculate provider-specific totals from this sale
+          sale.services.forEach(service => {
+            if (service.providerId && service.providerId._id === providerId) {
+              const serviceRevenue = (service.priceClient || 0) * (service.quantity || 1);
+              const serviceCost = (service.costProvider || 0) * (service.quantity || 1);
+              const serviceCommission = serviceRevenue * ((service.providerId?.commissionRate || 0) / 100);
+
+              // For now, use the service cost as the provider cost
+              // The actual payment data will be fetched separately if needed
+              const effectiveProviderCost = serviceCost;
+
+              providerTotals.totalRevenue += serviceRevenue;
+              providerTotals.totalCost += effectiveProviderCost;
+              providerTotals.totalCommissions += serviceCommission;
+              providerTotals.totalPayments += effectiveProviderCost; // Use actual payment amount
+              providerTotals.totalProfit += serviceRevenue - effectiveProviderCost;
+
+              // Add to payment history
+              paymentHistory.push({
+                _id: sale._id,
+                saleId: { id: sale.saleNumber || sale._id },
+                serviceDetails: {
+                  serviceTitle: service.serviceId?.destino || service.serviceId?.title || 'Unknown Service',
+                  quantity: service.quantity || 1
+                },
+                profit: {
+                  grossRevenue: serviceRevenue,
+                  providerCost: effectiveProviderCost, // Use actual payment amount
+                  netProfit: serviceRevenue - effectiveProviderCost,
+                  currency: service.currency || 'USD'
+                },
+                commission: {
+                  amount: serviceCommission,
+                  rate: service.providerId?.commissionRate || 0,
+                  currency: service.currency || 'USD'
+                },
+                paymentDetails: {
+                  status: 'pending' // Default status
+                },
+                dueDate: new Date(sale.createdAt.getTime() + (30 * 24 * 60 * 60 * 1000)),
+                isOverdue: new Date() > new Date(sale.createdAt.getTime() + (30 * 24 * 60 * 60 * 1000)),
+                daysOverdue: Math.max(0, Math.floor((new Date() - sale.createdAt) / (1000 * 60 * 60 * 24)) - 30)
+              });
+            }
+          });
+
+          // Add client payments to recent payments (simplified)
+          if (sale.paymentsClient && sale.paymentsClient.length > 0) {
+            sale.paymentsClient.forEach(payment => {
+              recentPayments.push({
+                _id: payment._id,
+                saleId: { id: sale.saleNumber || sale._id },
+                serviceDetails: {
+                  serviceTitle: sale.services[0]?.serviceId?.destino || 'Unknown Service'
+                },
+                paymentDetails: {
+                  amount: 0, // Will be populated when payment data is available
+                  currency: 'USD',
+                  method: 'unknown',
+                  date: new Date(),
+                  status: 'pending'
+                }
+              });
+            });
+          }
+        });
+
+        // Calculate overdue payments
+        paymentHistory.forEach(payment => {
+          if (payment.isOverdue) {
+            providerTotals.overduePayments += payment.profit.providerCost;
+            providerTotals.overdueCount += 1;
+          }
+        });
+
+        // Sort recent payments by date
+        recentPayments.sort((a, b) => new Date(b.paymentDetails.date) - new Date(a.paymentDetails.date));
+
+        setProviderTotals(providerTotals);
+        setRecentPayments(recentPayments.slice(0, 5));
+        setOverduePayments(paymentHistory.filter(p => p.isOverdue));
+        setVendorPayments(paymentHistory);
       }
 
     } catch (error) {

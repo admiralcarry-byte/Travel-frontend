@@ -3,6 +3,7 @@ import api from '../utils/api';
 import PaymentForm from './PaymentForm';
 import Modal from './Modal';
 import ProvisionalReceipt from './ProvisionalReceipt';
+import { formatMethodName, formatMethodNameShort } from '../utils/paymentMethodUtils';
 
 const PaymentsTable = ({ saleId, onPaymentAdded }) => {
   const [payments, setPayments] = useState([]);
@@ -274,8 +275,8 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
                     </div>
                   </td>
                   <td className="px-3 py-4">
-                    <div className="truncate text-sm text-dark-100" title={payment.method}>
-                      {payment.method}
+                    <div className="truncate text-sm text-dark-100" title={formatMethodName(payment.method)}>
+                      {formatMethodNameShort(payment.method)}
                     </div>
                   </td>
                   <td className="px-3 py-4">
@@ -283,10 +284,10 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
                       <div className="text-sm font-medium text-dark-100 truncate" title={formatCurrency(payment.amount, payment.currency)}>
                         {formatCurrency(payment.amount, payment.currency)}
                       </div>
-                      {payment.exchangeRate && payment.baseCurrency && (
-                        <div className="text-xs text-dark-400 truncate" title={`≈ ${formatCurrency(payment.amount * payment.exchangeRate, payment.baseCurrency)} (Rate: ${payment.exchangeRate.toFixed(4)})`}>
-                          ≈ {formatCurrency(payment.amount * payment.exchangeRate, payment.baseCurrency)}
-                          <span className="ml-1">(Rate: {payment.exchangeRate.toFixed(4)})</span>
+                      {payment.originalAmount && payment.originalCurrency && (
+                        <div className="text-xs text-dark-400 truncate" title={`Original: ${formatCurrency(payment.originalAmount, payment.originalCurrency)} (Rate: ${payment.exchangeRate?.toFixed(4) || 'N/A'})`}>
+                          Original: {formatCurrency(payment.originalAmount, payment.originalCurrency)}
+                          <span className="ml-1">(Rate: {payment.exchangeRate?.toFixed(4) || 'N/A'})</span>
                         </div>
                       )}
                     </div>

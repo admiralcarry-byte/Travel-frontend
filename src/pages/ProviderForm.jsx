@@ -22,6 +22,7 @@ const ProviderForm = () => {
       }
     }
   });
+  const [providerTypes, setProviderTypes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -42,13 +43,25 @@ const ProviderForm = () => {
     setError('');
   };
 
-  const providerTypes = [
-    { value: 'hotel', label: 'Hotel' },
-    { value: 'airline', label: 'Airline' },
-    { value: 'transfer', label: 'Transfer' },
-    { value: 'excursion', label: 'Excursion' },
-    { value: 'insurance', label: 'Insurance' }
-  ];
+  // Fetch provider types on component mount
+  useEffect(() => {
+    fetchProviderTypes();
+  }, []);
+
+  const fetchProviderTypes = async () => {
+    try {
+      const response = await api.get('/api/provider-types/active');
+      if (response.data.success) {
+        const types = response.data.data.providerTypes.map(type => ({
+          value: type.name,
+          label: type.name
+        }));
+        setProviderTypes(types);
+      }
+    } catch (error) {
+      console.error('Failed to fetch provider types:', error);
+    }
+  };
 
   const paymentTermsOptions = [
     { value: 'immediate', label: 'Immediate Payment' },
@@ -207,14 +220,13 @@ const ProviderForm = () => {
 
                 <div>
                   <label htmlFor="type" className="block text-sm font-medium text-dark-200">
-                    Provider Type *
+                    Provider Type
                   </label>
                   <select
                     id="type"
                     name="type"
                     value={formData.type}
                     onChange={handleChange}
-                    required
                     className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
                   >
                     <option value="">Select provider type</option>
@@ -229,8 +241,11 @@ const ProviderForm = () => {
 
               <div>
                 <label htmlFor="description" className="block text-sm font-medium text-dark-200">
-                  Description
+                  Notas/Descripción
                 </label>
+                <p className="text-sm text-dark-400 mb-2">
+                  If provider type is not specified above, include it here along with any additional notes.
+                </p>
                 <textarea
                   id="description"
                   name="description"
@@ -238,14 +253,14 @@ const ProviderForm = () => {
                   onChange={handleChange}
                   rows={3}
                   className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
-                  placeholder="Enter provider description"
+                  placeholder="Enter provider description and type information if not specified above"
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="commissionRate" className="block text-sm font-medium text-dark-200">
-                    Commission Rate (%) *
+                    Commission Rate (%)
                   </label>
                   <input
                     type="number"
@@ -256,7 +271,6 @@ const ProviderForm = () => {
                     min="0"
                     max="100"
                     step="0.1"
-                    required
                     className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
                     placeholder="Enter commission rate (0-100)"
                   />
@@ -267,14 +281,13 @@ const ProviderForm = () => {
 
                 <div>
                   <label htmlFor="paymentTerms" className="block text-sm font-medium text-dark-200">
-                    Payment Terms *
+                    Payment Terms
                   </label>
                   <select
                     id="paymentTerms"
                     name="paymentTerms"
                     value={formData.paymentTerms}
                     onChange={handleChange}
-                    required
                     className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
                   >
                     {paymentTermsOptions.map(term => (
@@ -297,7 +310,7 @@ const ProviderForm = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="contactInfo-phone" className="block text-sm font-medium text-dark-200">
-                    Phone Number *
+                    Phone Number
                   </label>
                   <input
                     type="tel"
@@ -305,7 +318,6 @@ const ProviderForm = () => {
                     name="contactInfo.phone"
                     value={formData.contactInfo.phone}
                     onChange={handleChange}
-                    required
                     className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
                     placeholder="Enter phone number"
                   />
@@ -313,7 +325,7 @@ const ProviderForm = () => {
 
                 <div>
                   <label htmlFor="contactInfo-email" className="block text-sm font-medium text-dark-200">
-                    Email Address *
+                    Email Address
                   </label>
                   <input
                     type="email"
@@ -321,7 +333,6 @@ const ProviderForm = () => {
                     name="contactInfo.email"
                     value={formData.contactInfo.email}
                     onChange={handleChange}
-                    required
                     className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
                     placeholder="Enter email address"
                   />
@@ -346,7 +357,7 @@ const ProviderForm = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="contactInfo-address-street" className="block text-sm font-medium text-dark-200">
-                    Street Address *
+                    Street Address
                   </label>
                   <input
                     type="text"
@@ -354,7 +365,6 @@ const ProviderForm = () => {
                     name="contactInfo.address.street"
                     value={formData.contactInfo.address.street}
                     onChange={handleChange}
-                    required
                     className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
                     placeholder="Enter street address"
                   />
@@ -362,7 +372,7 @@ const ProviderForm = () => {
 
                 <div>
                   <label htmlFor="contactInfo-address-city" className="block text-sm font-medium text-dark-200">
-                    City *
+                    City
                   </label>
                   <input
                     type="text"
@@ -370,7 +380,6 @@ const ProviderForm = () => {
                     name="contactInfo.address.city"
                     value={formData.contactInfo.address.city}
                     onChange={handleChange}
-                    required
                     className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
                     placeholder="Enter city"
                   />
@@ -393,7 +402,7 @@ const ProviderForm = () => {
 
                 <div>
                   <label htmlFor="contactInfo-address-country" className="block text-sm font-medium text-dark-200">
-                    Country *
+                    Country
                   </label>
                   <input
                     type="text"
@@ -401,7 +410,6 @@ const ProviderForm = () => {
                     name="contactInfo.address.country"
                     value={formData.contactInfo.address.country}
                     onChange={handleChange}
-                    required
                     className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
                     placeholder="Enter country"
                   />

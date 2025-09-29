@@ -7,14 +7,397 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
 import { formatCurrencyCompact, formatWithWarning } from '../utils/formatNumbers';
 
+// Component for individual provider cards with expandable details
+const ProviderCard = ({ provider, serviceIndex, providerIndex }) => {
+  const [providerDetails, setProviderDetails] = useState(provider);
+  const [loadingProvider, setLoadingProvider] = useState(true);
+  const [errorProvider, setErrorProvider] = useState('');
+
+  useEffect(() => {
+    const setupProviderDetails = () => {
+      // Debug: Log the provider data to understand the structure
+      console.log('ProviderCard - Raw provider data:', provider);
+      console.log('ProviderCard - Provider keys:', Object.keys(provider));
+
+      // Use populated provider data directly if available
+      let providerName = 'Unknown Provider';
+      let providerType = 'General';
+
+      if (provider.providerId && typeof provider.providerId === 'object') {
+        // Provider is populated from database
+        providerName = provider.providerId.name || 'Unknown Provider';
+        providerType = provider.providerId.type || 'General';
+      } else if (provider.name) {
+        // Provider name is directly available
+        providerName = provider.name;
+        providerType = provider.type || 'General';
+      }
+
+      const providerDetails = {
+        name: providerName,
+        type: providerType,
+        costProvider: provider.costProvider !== undefined && provider.costProvider !== null ? provider.costProvider : null,
+        currency: provider.currency || 'USD',
+        startDate: provider.startDate || provider.serviceDates?.startDate || null,
+        endDate: provider.endDate || provider.serviceDates?.endDate || null,
+        documents: provider.documents || []
+      };
+
+      console.log('ProviderCard - Processed provider details:', providerDetails);
+      console.log('ProviderCard - Cost provider value:', provider.costProvider);
+      console.log('ProviderCard - Start date:', provider.startDate);
+      console.log('ProviderCard - End date:', provider.endDate);
+      console.log('ProviderCard - Documents:', provider.documents);
+      setProviderDetails(providerDetails);
+      setLoadingProvider(false);
+    };
+
+    setupProviderDetails();
+  }, [provider]);
+
+  if (loadingProvider) return <p className="text-dark-300">Loading provider...</p>;
+  if (errorProvider) return <ErrorDisplay message={errorProvider} />;
+
+  const handleViewDocuments = () => {
+    if (!providerDetails.documents || providerDetails.documents.length === 0) {
+      alert('No documents available for this provider.');
+      return;
+    }
+
+    const fileList = providerDetails.documents.map((doc, docIndex) => {
+      // Handle different document scenarios
+      let fileUrl = '';
+      let canView = false;
+
+      if (doc.url && doc.url.startsWith('http')) {
+        // Full URL provided
+        fileUrl = doc.url;
+        canView = true;
+      } else if (doc.url && doc.url.trim() !== '') {
+        // Relative URL - construct full URL
+        fileUrl = `${api.getUri()}${doc.url}`;
+        canView = true;
+      } else if (doc.fileObject) {
+        // File object available - create object URL for viewing
+        try {
+          fileUrl = URL.createObjectURL(doc.fileObject);
+          canView = true;
+        } catch (error) {
+          console.error('Error creating object URL:', error);
+          fileUrl = '#';
+          canView = false;
+        }
+      } else {
+        // No URL or file object available - file was uploaded but not accessible
+        fileUrl = '#';
+        canView = false;
+      }
+
+      return `
+        <div class="document-item">
+          <div class="document-header">
+            <div class="file-icon">
+              ${doc.filename.toLowerCase().endsWith('.pdf') ?
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14,2 14,8 20,8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10,9 9,9 8,9"></polyline></svg>' :
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21,15 16,10 5,21"></polyline></svg>'
+        }
+            </div>
+            <div class="file-info">
+              <div class="filename">${doc.filename}</div>
+              <div class="file-type">${doc.type || 'document'}</div>
+            </div>
+          </div>
+          <div class="document-actions">
+            ${canView ?
+          `<button onclick="window.open('${fileUrl}', '_blank')" class="view-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              View
+            </button>` :
+          `<button onclick="alert('File was uploaded but URL is not available. This may be due to upload failure or server configuration.\\n\\nCurrent file: ${doc.filename}')" class="view-btn-disabled" title="File uploaded but URL not available - click for details">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              View
+            </button>`
+        }
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const modal = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+    modal.document.write(`
+      <html>
+        <head>
+          <title>Provider Documents - ${providerDetails.name}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+              padding: 24px; 
+              background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); 
+              color: #ffffff; 
+              min-height: 100vh;
+            }
+            .modal-container {
+              background: #2a2a4a;
+              border-radius: 12px;
+              padding: 32px;
+              max-width: 700px;
+              margin: 40px auto;
+              box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            }
+            h2 {
+              color: #f97316;
+              font-size: 28px;
+              margin-bottom: 24px;
+              font-weight: 700;
+              text-align: center;
+            }
+            .document-item {
+              background: #1e1e3a;
+              border: 1px solid #3a3a5a;
+              border-radius: 10px;
+              padding: 16px;
+              margin-bottom: 16px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              transition: all 0.3s ease;
+            }
+            .document-item:hover {
+              transform: translateY(-3px);
+              box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+            }
+            .document-header {
+              display: flex;
+              align-items: center;
+              flex: 1;
+            }
+            .file-icon {
+              color: #f97316;
+              margin-right: 12px;
+            }
+            .file-info {
+              flex: 1;
+            }
+            .filename {
+              font-size: 14px;
+              font-weight: 500;
+              color: #ffffff;
+              margin-bottom: 4px;
+              word-break: break-all;
+            }
+            .file-type {
+              font-size: 12px;
+              color: #a1a1aa;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            .document-actions {
+              margin-left: 16px;
+            }
+            .view-btn {
+              background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+              color: white;
+              border: none;
+              border-radius: 8px;
+              padding: 8px 16px;
+              font-size: 12px;
+              font-weight: 500;
+              cursor: pointer;
+              transition: all 0.3s ease;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+            }
+            .view-btn:hover {
+              background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+              transform: translateY(-1px);
+              box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
+            }
+            .view-btn-disabled {
+              background: #6b7280;
+              color: #d1d5db;
+              border: none;
+              border-radius: 8px;
+              padding: 8px 16px;
+              font-size: 12px;
+              font-weight: 500;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              opacity: 0.8;
+              transition: all 0.3s ease;
+            }
+            .view-btn-disabled:hover {
+              background: #4b5563;
+              color: #f3f4f6;
+              opacity: 1;
+            }
+            .close-btn { 
+              margin-top: 24px; 
+              padding: 12px 24px; 
+              background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); 
+              color: white; 
+              border: none; 
+              border-radius: 8px; 
+              cursor: pointer; 
+              font-size: 14px;
+              font-weight: 500;
+              transition: all 0.3s ease;
+              display: block;
+              margin-left: auto;
+              margin-right: auto;
+            }
+            .close-btn:hover {
+              background: linear-gradient(135deg, #7c7c7c 0%, #5a5a5a 100%);
+              transform: translateY(-1px);
+            }
+          </style>
+        </head>
+        <body>
+          <div class="modal-container">
+            <h2>Provider Documents for ${providerDetails.name}</h2>
+            ${providerDetails.documents.length > 0 ?
+        `<div class="documents-list">${fileList}</div>` :
+        `<div class="empty-state">No documents available for this provider.</div>`
+      }
+            <button onclick="window.close()" class="close-btn">Close</button>
+          </div>
+        </body>
+      </html>
+    `);
+  };
+
+  return (
+    <div className="bg-dark-700/50 border border-white/10 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-dark-100">
+            {providerDetails.name}
+          </h3>
+          <p className="text-sm text-dark-300">
+            Type: {providerDetails.type}
+          </p>
+        </div>
+
+      </div>
+
+      {/* Always display all information directly on the card */}
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-dark-400">Cost</label>
+            <p className="text-dark-100 font-medium">
+              {providerDetails.costProvider !== null ? `${providerDetails.costProvider} ${providerDetails.currency}` : 'Not specified'}
+            </p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-dark-400">Documents</label>
+            <div className="flex items-center space-x-2">
+              <p className="text-dark-100 font-medium">
+                {providerDetails.documents.length} file(s)
+              </p>
+              {providerDetails.documents.length > 0 && (
+                <button
+                  onClick={handleViewDocuments}
+                  className="inline-flex items-center justify-center w-6 h-6 bg-primary-500 hover:bg-primary-600 text-white rounded-full transition-colors"
+                  title="View Documents"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" strokeWidth={2} />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {(providerDetails.startDate || providerDetails.endDate) && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-dark-400">Start Date</label>
+              <p className="text-dark-100 font-medium">
+                {providerDetails.startDate ? new Date(providerDetails.startDate).toLocaleDateString() : 'N/A'}
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-dark-400">End Date</label>
+              <p className="text-dark-100 font-medium">
+                {providerDetails.endDate ? new Date(providerDetails.endDate).toLocaleDateString() : 'N/A'}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Component to display individual provider with name fetching
+const ProviderDisplay = ({ provider, providerIndex }) => {
+  const [providerName, setProviderName] = useState(provider.providerName || provider.name || 'Loading...');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // If we don't have a provider name, try to fetch it
+    if (!provider.providerName && !provider.name && provider.providerId) {
+      fetchProviderName();
+    }
+  }, [provider.providerId]);
+
+  const fetchProviderName = async () => {
+    if (!provider.providerId) return;
+
+    try {
+      setLoading(true);
+      const response = await api.get(`/api/providers/${provider.providerId}`);
+      if (response.data.success) {
+        setProviderName(response.data.data.provider.name);
+      } else {
+        setProviderName('Unknown Provider');
+      }
+    } catch (error) {
+      console.error('Error fetching provider name:', error);
+      setProviderName('Unknown Provider');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between py-3 px-4 bg-dark-700/50 rounded-lg border border-white/10 w-full mx-0">
+      <div className="flex items-center space-x-3 flex-1 min-w-0">
+        <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+        <span className="text-sm text-dark-100 font-medium flex-1 truncate">
+          {loading ? 'Loading...' : providerName}
+        </span>
+      </div>
+      {provider.costProvider && (
+        <span className="text-sm font-semibold text-blue-400 ml-4 flex-shrink-0">
+          ${provider.costProvider.toFixed(2)}
+        </span>
+      )}
+    </div>
+  );
+};
+
 const SaleSummary = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [sale, setSale] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState('');
+  const [showServices, setShowServices] = useState(false);
+  const [showProviders, setShowProviders] = useState(false);
+  const [showPassengers, setShowPassengers] = useState(false);
 
   useEffect(() => {
     fetchSale();
@@ -24,25 +407,28 @@ const SaleSummary = () => {
     try {
       setLoading(true);
       setError(''); // Clear any previous errors
-      
+
       // Validate ObjectId format
       if (!id || !/^[0-9a-fA-F]{24}$/.test(id)) {
         setError('Invalid sale ID format. The ID should be a 24-character hexadecimal string.');
         setLoading(false);
         return;
       }
-      
+
       // console.log('SaleSummary - ID from URL params:', id);
       // console.log('SaleSummary - API URL:', `/api/sales/${id}`);
-      
+
       const response = await api.get(`/api/sales/${id}`);
 
       if (response.data.success) {
+        console.log('SaleSummary - Raw sale data:', response.data.data.sale);
+        console.log('SaleSummary - Services:', response.data.data.sale.services);
+        console.log('SaleSummary - Providers in services:', response.data.data.sale.services?.map(s => s.providers));
         setSale(response.data.data.sale);
       }
     } catch (error) {
       console.error('Error fetching sale:', error);
-      
+
       if (error.response?.status === 404) {
         setError('The requested sale was not found. This could mean the sale has been deleted, the ID is incorrect, or the sale never existed.');
       } else if (error.response?.status === 401) {
@@ -70,36 +456,6 @@ const SaleSummary = () => {
     fetchSale();
   };
 
-  const handleFileUpload = async (event) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    setUploading(true);
-    setUploadError('');
-
-    try {
-      const formData = new FormData();
-      Array.from(files).forEach(file => {
-        formData.append('documents', file);
-      });
-      formData.append('type', 'other');
-
-      const response = await api.post(`/api/sales/${id}/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-
-      if (response.data.success) {
-        // Refresh sale data to show new documents
-        fetchSale();
-      }
-    } catch (error) {
-      setUploadError(error.response?.data?.message || 'Failed to upload documents');
-    } finally {
-      setUploading(false);
-    }
-  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -159,7 +515,7 @@ const SaleSummary = () => {
               <p className="text-dark-400 mb-8 text-sm">
                 Sale ID: {id}
               </p>
-              
+
               {/* Helpful suggestions */}
               <div className="bg-dark-600 rounded-lg p-6 mb-8 text-left">
                 <h4 className="text-lg font-semibold text-dark-100 mb-4">What you can do:</h4>
@@ -182,7 +538,7 @@ const SaleSummary = () => {
                   </li>
                 </ul>
               </div>
-              
+
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button
                   onClick={() => navigate('/sales')}
@@ -241,7 +597,7 @@ const SaleSummary = () => {
               <p className="text-dark-400 mb-8 text-sm">
                 Sale ID: {id}
               </p>
-              
+
               {/* Helpful suggestions */}
               <div className="bg-dark-600 rounded-lg p-6 mb-8 text-left">
                 <h4 className="text-lg font-semibold text-dark-100 mb-4">What you can do:</h4>
@@ -264,7 +620,7 @@ const SaleSummary = () => {
                   </li>
                 </ul>
               </div>
-              
+
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button
                   onClick={() => navigate('/sales')}
@@ -309,6 +665,12 @@ const SaleSummary = () => {
                 {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
               </span>
               <button
+                onClick={() => navigate(`/sales/${sale.id}/edit`)}
+                className="px-4 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600 transition-colors"
+              >
+                Edit
+              </button>
+              <button
                 onClick={() => navigate('/sales')}
                 className="px-4 py-2 bg-dark-600 text-white rounded-md hover:bg-dark-700"
               >
@@ -321,146 +683,280 @@ const SaleSummary = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Client Information */}
+            {/* Sale Information */}
             <div className="bg-dark-700 shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-dark-100 mb-4">Passenger Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <h2 className="text-xl font-semibold text-dark-100 mb-4">Sale Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-dark-200">Name</label>
-                  <p className="text-dark-100">{sale.clientId?.name} {sale.clientId?.surname}</p>
+                  <label className="block text-sm font-medium text-dark-200">Created By</label>
+                  <p className="text-dark-100">{sale.createdBy?.username}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-dark-200">Email</label>
-                  <p className="text-dark-100">{sale.clientId?.email}</p>
+                  <label className="block text-sm font-medium text-dark-200">Created Date</label>
+                  <p className="text-dark-100">{new Date(sale.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-dark-200">Phone</label>
-                  <p className="text-dark-100">{sale.clientId?.phone}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-dark-200">Passport</label>
-                  <p className="text-dark-100">{sale.clientId?.passportNumber}</p>
+                  <label className="block text-sm font-medium text-dark-200">Last Updated</label>
+                  <p className="text-dark-100">{new Date(sale.updatedAt).toLocaleDateString()}</p>
                 </div>
               </div>
             </div>
 
             {/* Passengers */}
             <div className="bg-dark-700 shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-dark-100 mb-4">Companions ({sale.passengers.length})</h2>
-              <div className="space-y-4">
-                {sale.passengers.map((passengerSale, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-dark-100">
-                          {passengerSale.passengerId?.name} {passengerSale.passengerId?.surname}
-                        </h3>
-                        <p className="text-sm text-dark-300">
-                          DOB: {new Date(passengerSale.passengerId?.dob).toLocaleDateString()}
-                        </p>
-                        <p className="text-sm text-dark-400">
-                          Passport: {passengerSale.passengerId?.passportNumber}
-                        </p>
-                        {passengerSale.notes && (
-                          <p className="text-sm text-dark-400 mt-1">
-                            Notes: {passengerSale.notes}
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-semibold text-dark-100">
-                          ${passengerSale.price.toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-dark-100">
+                  Passengers ({sale.passengers.length})
+                </h2>
+                <button
+                  onClick={() => setShowPassengers(!showPassengers)}
+                  className="inline-flex items-center justify-center w-10 h-10 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-all duration-200 hover:scale-105"
+                >
+                  {showPassengers ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                </button>
               </div>
+              {showPassengers && (
+                <div className="space-y-4">
+                  {sale.passengers.map((passengerSale, index) => {
+                    // Debug logging
+                    console.log(`Passenger ${index}:`, passengerSale);
+                    console.log(`Passenger ${index} passengerId:`, passengerSale.passengerId);
+                    console.log(`Passenger ${index} isMainClient:`, passengerSale.isMainClient);
+                    
+                    // Show all passengers (both main client and companions)
+                    // Handle both cases: passengerId as object or passengerId as reference
+                    const passengerData = passengerSale.passengerId || passengerSale;
+                    
+                    // Additional debug logging for main client
+                    if (passengerSale.isMainClient) {
+                      console.log(`Main client passengerData:`, passengerData);
+                      console.log(`Main client email:`, passengerData?.email);
+                      console.log(`Main client phone:`, passengerData?.phone);
+                    }
+                    
+                    if (passengerData) {
+                      return (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4">
+                          <div>
+                            <h3 className="font-medium text-dark-100">
+                              {passengerData?.name} {passengerData?.surname}
+                              {passengerSale.isMainClient && (
+                                <span className="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+                                  Main Passenger
+                                </span>
+                              )}
+                            </h3>
+                            <p className="text-sm text-dark-300">
+                              Email: {passengerData?.email || 'N/A'}
+                            </p>
+                            <p className="text-sm text-dark-300">
+                              Phone: {passengerData?.phone || 'N/A'}
+                            </p>
+                            <p className="text-sm text-dark-400">
+                              Passport: {passengerData?.passportNumber || 'N/A'}
+                            </p>
+                            {passengerSale.notes && (
+                              <p className="text-sm text-dark-400 mt-1">
+                                Notes: {passengerSale.notes}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Services */}
             <div className="bg-dark-700 shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-dark-100 mb-4">Services ({sale.services.length})</h2>
-              <div className="space-y-4">
-                {sale.services.map((serviceSale, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className="font-medium text-dark-100">
-                          {serviceSale.serviceId?.title}
-                        </h3>
-                        <p className="text-sm text-dark-300">
-                          {serviceSale.serviceId?.description}
-                        </p>
-                        <p className="text-sm text-dark-400">
-                          Provider: {serviceSale.providerId?.name} |
-                          Type: {serviceSale.serviceId?.type} |
-                          Quantity: {serviceSale.quantity}
-                        </p>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-dark-100">
+                  Services ({sale.services.length})
+                </h2>
+                <button
+                  onClick={() => setShowServices(!showServices)}
+                  className="inline-flex items-center justify-center w-10 h-10 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-all duration-200 hover:scale-105"
+                >
+                  {showServices ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+
+              {showServices && (
+                <div className="space-y-4">
+                  {/* Destination Card */}
+                  {sale.destination && (
+                    <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg p-4">
+                      <div className="flex items-center mb-3">
+                        <svg className="w-5 h-5 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <h3 className="text-lg font-semibold text-blue-300">Destination</h3>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-semibold text-dark-100">
-                          ${(serviceSale.priceClient * serviceSale.quantity).toFixed(2)}
-                        </p>
-                        <p className="text-sm text-dark-400">
-                          Cost: ${(serviceSale.costProvider * serviceSale.quantity).toFixed(2)}
-                        </p>
-                        <p className="text-sm text-green-600">
-                          Profit: ${((serviceSale.priceClient - serviceSale.costProvider) * serviceSale.quantity).toFixed(2)}
-                        </p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-blue-200">Location</label>
+                          <p className="text-blue-100 font-medium">{sale.destination.name}</p>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-blue-200">Country</label>
+                          <p className="text-blue-100">{sale.destination.country}</p>
+                        </div>
+                        {sale.destination.city && (
+                          <div>
+                            <label className="block text-xs font-medium text-blue-200">City</label>
+                            <p className="text-blue-100">{sale.destination.city}</p>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Documents */}
-            <div className="bg-dark-700 shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-dark-100 mb-4">Documents</h2>
-              
-              <div className="flex items-center space-x-3">
-                <input
-                  type="file"
-                  multiple
-                  onChange={handleFileUpload}
-                  disabled={uploading}
-                  className="hidden"
-                  id="document-upload"
-                  accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xls,.xlsx,.txt"
-                />
-                <label
-                  htmlFor="document-upload"
-                  className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white cursor-pointer ${
-                    uploading 
-                      ? 'bg-gray-500 cursor-not-allowed' 
-                      : 'bg-primary-500 hover:bg-primary-600'
-                  }`}
-                >
-                  {uploading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Uploading...
-                    </>
-                  ) : (
-                    'Choose File'
                   )}
-                </label>
-                
-                {sale.documents && sale.documents.length > 0 && (
-                  <button
-                    onClick={() => window.open(`${api.getUri()}${sale.documents[0].url}`, '_blank')}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-                  >
-                    View
-                  </button>
-                )}
-              </div>
-              
-              {uploadError && (
-                <p className="text-sm text-red-600 mt-2">{uploadError}</p>
+
+                  {/* Individual Service Cards - Simple Display */}
+                  <div className="space-y-4">
+                    {sale.services.map((serviceSale, index) => {
+                      const serviceName = serviceSale.serviceId?.destino || serviceSale.serviceId?.title || serviceSale.serviceName || 'Unknown Service';
+                      const serviceDescription = serviceSale.serviceId?.description || serviceSale.notes || 'No description available';
+
+                      return (
+                        <div key={index} className="bg-green-600/20 border border-green-500/30 rounded-lg p-4">
+                          <h3 className="text-lg font-semibold text-green-300 mb-2">
+                            {serviceName}
+                          </h3>
+                          <p className="text-sm text-green-100">
+                            {serviceDescription}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
             </div>
+
+            {/* Providers Section */}
+            <div className="bg-dark-700 shadow rounded-lg p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-dark-100">
+                  Providers ({(() => {
+                    // Calculate unique providers count
+                    const seenProviders = new Set();
+                    let providerCount = 0;
+
+                    sale.services.forEach((serviceSale) => {
+                      // Handle multiple providers per service (prioritize this over single provider)
+                      if (serviceSale.providers && serviceSale.providers.length > 0) {
+                        serviceSale.providers.forEach((provider) => {
+                          const providerKey = provider.providerId?._id || provider.providerId || provider._id;
+                          if (!seenProviders.has(providerKey)) {
+                            seenProviders.add(providerKey);
+                            providerCount++;
+                          }
+                        });
+                      }
+                      // Handle single provider per service (only if no providers array exists)
+                      else if (serviceSale.providerId && (!serviceSale.providers || serviceSale.providers.length === 0)) {
+                        const providerKey = serviceSale.providerId?._id || serviceSale.providerId;
+                        if (!seenProviders.has(providerKey)) {
+                          seenProviders.add(providerKey);
+                          providerCount++;
+                        }
+                      }
+                    });
+
+                    return providerCount;
+                  })()})
+                </h2>
+                <button
+                  onClick={() => setShowProviders(!showProviders)}
+                  className="inline-flex items-center justify-center w-10 h-10 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-all duration-200 hover:scale-105"
+                >
+                  {showProviders ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+
+              {showProviders && (
+                <div className="space-y-4">
+                  {(() => {
+                    // Collect all unique providers across all services
+                    const allProviders = [];
+                    const seenProviders = new Set();
+
+                    sale.services.forEach((serviceSale, serviceIndex) => {
+                      // Handle multiple providers per service (prioritize this over single provider)
+                      if (serviceSale.providers && serviceSale.providers.length > 0) {
+                        serviceSale.providers.forEach((provider, providerIndex) => {
+                          // Create a unique identifier for the provider
+                          const providerKey = provider.providerId?._id || provider.providerId || provider._id || `${serviceIndex}-${providerIndex}`;
+
+                          if (!seenProviders.has(providerKey)) {
+                            seenProviders.add(providerKey);
+                            allProviders.push({
+                              ...provider,
+                              uniqueKey: providerKey,
+                              serviceIndex,
+                              providerIndex
+                            });
+                          }
+                        });
+                      }
+                      // Handle single provider per service (only if no providers array exists)
+                      else if (serviceSale.providerId && (!serviceSale.providers || serviceSale.providers.length === 0)) {
+                        const providerKey = serviceSale.providerId?._id || serviceSale.providerId;
+
+                        if (!seenProviders.has(providerKey)) {
+                          seenProviders.add(providerKey);
+                          allProviders.push({
+                            ...serviceSale,
+                            uniqueKey: providerKey,
+                            serviceIndex,
+                            providerIndex: 0
+                          });
+                        }
+                      }
+                    });
+
+                    // Render each unique provider only once
+                    return allProviders.map((provider) => (
+                      <ProviderCard
+                        key={provider.uniqueKey}
+                        provider={provider}
+                        serviceIndex={provider.serviceIndex}
+                        providerIndex={provider.providerIndex}
+                      />
+                    ));
+                  })()}
+                </div>
+              )}
+            </div>
+
 
             {/* Notes */}
             {sale.notes && (
@@ -553,25 +1049,6 @@ const SaleSummary = () => {
 
             {/* Profit Chart */}
             <ProfitChart sale={sale} />
-
-            {/* Sale Information */}
-            <div className="bg-dark-700 shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-dark-100 mb-4">Sale Information</h2>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-dark-200">Created By</label>
-                  <p className="text-dark-100">{sale.createdBy?.username}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-dark-200">Created Date</label>
-                  <p className="text-dark-100">{new Date(sale.createdAt).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-dark-200">Last Updated</label>
-                  <p className="text-dark-100">{new Date(sale.updatedAt).toLocaleDateString()}</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

@@ -8,43 +8,29 @@ const ServiceForm = () => {
   const isEditing = Boolean(id);
 
   const [formData, setFormData] = useState({
-    title: '',
+    destino: '',
     type: '',
     description: '',
     providerId: '',
-    cost: '',
+    costProvider: 0,
     currency: 'USD',
+    commissionRate: 10,
+    paymentTerms: 'net_30',
+    providerNotes: '',
     metadata: {}
   });
   const [providers, setProviders] = useState([]);
-  const [filteredProviders, setFilteredProviders] = useState([]);
+  const [serviceTypes, setServiceTypes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [providersLoading, setProvidersLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  // Currency conversion state
   const [exchangeRate, setExchangeRate] = useState('');
   const [convertedAmount, setConvertedAmount] = useState(null);
   const [manualExchangeRate, setManualExchangeRate] = useState(false);
 
-  const serviceTypes = [
-    { value: 'hotel', label: 'Hotel' },
-    { value: 'airline', label: 'Airline' },
-    { value: 'transfer', label: 'Transfer' },
-    { value: 'excursion', label: 'Excursion' },
-    { value: 'insurance', label: 'Insurance' },
-    // { value: 'car_rental', label: 'Car Rental' },
-    // { value: 'medical_assistance', label: 'Medical Assistance' }
-  ];
-
-  const currencies = [
-    { value: 'USD', label: 'USD - US Dollar' },
-    { value: 'EUR', label: 'EUR - Euro' },
-    { value: 'GBP', label: 'GBP - British Pound' },
-    { value: 'JPY', label: 'JPY - Japanese Yen' },
-    { value: 'CAD', label: 'CAD - Canadian Dollar' },
-    { value: 'AUD', label: 'AUD - Australian Dollar' },
-    { value: 'ARS', label: 'ARS - Argentine Peso' }
-  ];
 
   useEffect(() => {
     if (isEditing) {
@@ -52,16 +38,20 @@ const ServiceForm = () => {
     } else {
       // Reset form when creating a new service
       setFormData({
-        title: '',
+        destino: '',
         type: '',
         description: '',
         providerId: '',
-        cost: '',
+        costProvider: 0,
         currency: 'USD',
+        commissionRate: 10,
+        paymentTerms: 'net_30',
+        providerNotes: '',
         metadata: {}
       });
     }
     fetchProviders();
+    fetchServiceTypes();
   }, [id, isEditing]);
 
   // Currency conversion effects
@@ -73,33 +63,17 @@ const ServiceForm = () => {
       setConvertedAmount(null);
       setManualExchangeRate(false);
     }
-  }, [formData.currency, formData.cost, manualExchangeRate]);
+  }, [formData.currency, formData.costProvider, manualExchangeRate]);
 
   useEffect(() => {
-    if (manualExchangeRate && exchangeRate && formData.cost) {
-      setConvertedAmount(parseFloat(formData.cost) * parseFloat(exchangeRate));
-    } else if (!manualExchangeRate && exchangeRate && formData.cost) {
-      setConvertedAmount(parseFloat(formData.cost) * parseFloat(exchangeRate));
+    if (manualExchangeRate && exchangeRate && formData.costProvider) {
+      setConvertedAmount(parseFloat(formData.costProvider) / parseFloat(exchangeRate));
+    } else if (!manualExchangeRate && exchangeRate && formData.costProvider) {
+      setConvertedAmount(parseFloat(formData.costProvider) / parseFloat(exchangeRate));
     }
-  }, [exchangeRate, formData.cost, manualExchangeRate]);
+  }, [exchangeRate, formData.costProvider, manualExchangeRate]);
 
-  useEffect(() => {
-    // Filter providers based on selected service type
-    if (formData.type) {
-      const filtered = providers.filter(provider => provider.type === formData.type);
-      setFilteredProviders(filtered);
-      
-      // Reset provider selection if current provider doesn't match the new type
-      if (formData.providerId) {
-        const currentProvider = providers.find(p => (p._id || p.id) === formData.providerId);
-        if (currentProvider && currentProvider.type !== formData.type) {
-          setFormData(prev => ({ ...prev, providerId: '' }));
-        }
-      }
-    } else {
-      setFilteredProviders(providers);
-    }
-  }, [formData.type, providers]);
+
 
   const fetchService = async () => {
     try {
@@ -109,12 +83,15 @@ const ServiceForm = () => {
       if (response.data.success) {
         const service = response.data.data.service;
         setFormData({
-          title: service.title || '',
+          destino: service.destino || '',
           type: service.type || '',
           description: service.description || '',
           providerId: service.providerId?._id || service.providerId?.id || '',
-          cost: service.cost || '',
+          costProvider: service.costProvider || 0,
           currency: service.currency || 'USD',
+          commissionRate: service.commissionRate || 10,
+          paymentTerms: service.paymentTerms || 'net_30',
+          providerNotes: service.providerNotes || '',
           metadata: service.metadata || {}
         });
       }
@@ -122,6 +99,21 @@ const ServiceForm = () => {
       setError(error.response?.data?.message || 'Failed to fetch service details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchServiceTypes = async () => {
+    try {
+      const response = await api.get('/api/provider-types/active');
+      if (response.data.success) {
+        const types = response.data.data.providerTypes.map(type => ({
+          value: type.name,
+          label: type.name
+        }));
+        setServiceTypes(types);
+      }
+    } catch (error) {
+      console.error('Failed to fetch service types:', error);
     }
   };
 
@@ -133,7 +125,6 @@ const ServiceForm = () => {
       if (response.data.success) {
         // console.log('Providers fetched:', response.data.data.providers);
         setProviders(response.data.data.providers);
-        setFilteredProviders(response.data.data.providers);
       } else {
         console.error('Failed to fetch providers:', response.data.message);
         setError('Failed to fetch providers');
@@ -146,14 +137,25 @@ const ServiceForm = () => {
     }
   };
 
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    setError('');
+  };
+
+  // Currency conversion functions
   const fetchExchangeRate = async () => {
     try {
-      const response = await api.get(`/api/payments/exchange-rate?from=${formData.currency}&to=USD`);
+      const response = await api.get(`/api/payments/exchange-rate?from=USD&to=${formData.currency}`);
 
       if (response.data.success) {
         setExchangeRate(response.data.data.rate.toString());
-        if (formData.cost) {
-          setConvertedAmount(parseFloat(formData.cost) * response.data.data.rate);
+        if (formData.costProvider) {
+          setConvertedAmount(parseFloat(formData.costProvider) / response.data.data.rate);
         }
       }
     } catch (error) {
@@ -182,31 +184,26 @@ const ServiceForm = () => {
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    setError('');
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      // Convert cost to number and include exchange rate data
       const serviceData = {
-        ...formData,
-        cost: parseFloat(formData.cost),
-        // Include exchange rate information if not USD
-        ...(formData.currency !== 'USD' && exchangeRate && {
-          exchangeRate: parseFloat(exchangeRate),
-          baseCurrency: 'USD'
-        })
+        ...formData
       };
+
+      // Include exchange rate information if currency is not USD
+      if (formData.currency !== 'USD' && exchangeRate) {
+        serviceData.exchangeRate = parseFloat(exchangeRate);
+        serviceData.baseCurrency = 'USD';
+        serviceData.originalAmount = parseFloat(formData.costProvider);
+        serviceData.originalCurrency = formData.currency;
+        // Store the converted USD amount as the costProvider
+        serviceData.costProvider = convertedAmount || parseFloat(formData.costProvider) / parseFloat(exchangeRate);
+        serviceData.currency = 'USD'; // Always store as USD
+      }
 
       let response;
       if (isEditing) {
@@ -258,18 +255,18 @@ const ServiceForm = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="title" className="block text-sm font-medium text-dark-200">
-                    Service Title *
+                  <label htmlFor="destino" className="block text-sm font-medium text-dark-200">
+                    Destino (Destination) *
                   </label>
                   <input
                     type="text"
-                    id="title"
-                    name="title"
-                    value={formData.title}
+                    id="destino"
+                    name="destino"
+                    value={formData.destino}
                     onChange={handleChange}
                     required
                     className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
-                    placeholder="Enter service title"
+                    placeholder="Enter destination (country or city)"
                   />
                 </div>
 
@@ -312,9 +309,9 @@ const ServiceForm = () => {
               </div>
             </div>
 
-            {/* Provider and Pricing */}
+            {/* Provider Selection */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium text-dark-100">Provider & Pricing</h3>
+              <h3 className="text-lg font-medium text-dark-100">Provider Selection</h3>
               
               <div>
                 <label htmlFor="providerId" className="block text-sm font-medium text-dark-200">
@@ -326,123 +323,166 @@ const ServiceForm = () => {
                   value={formData.providerId}
                   onChange={handleChange}
                   required
-                  disabled={providersLoading || !formData.type}
+                  disabled={providersLoading}
                   className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50 disabled:bg-dark-700/50 disabled:text-dark-400"
                 >
                   <option value="">
                     {providersLoading 
                       ? 'Loading providers...' 
-                      : !formData.type 
-                        ? 'Select service type first' 
-                        : filteredProviders.length === 0
-                          ? 'No providers available'
-                          : 'Select provider'
+                      : providers.length === 0
+                        ? 'No providers available'
+                        : 'Select provider'
                     }
                   </option>
-                  {filteredProviders.map(provider => (
+                  {providers.map(provider => (
                     <option key={provider._id || provider.id} value={provider._id || provider.id}>
-                      {provider.name} ({provider.type.charAt(0).toUpperCase() + provider.type.slice(1)})
+                      {provider.name} ({provider.type ? provider.type.charAt(0).toUpperCase() + provider.type.slice(1) : 'No type'})
                     </option>
                   ))}
                 </select>
-                {!formData.type && (
-                  <p className="mt-1 text-sm text-dark-400">
-                    Please select a service type to see available providers
-                  </p>
-                )}
-                {formData.type && filteredProviders.length === 0 && !providersLoading && (
-                  <p className="mt-1 text-sm text-warning-400">
-                    No providers found for {formData.type} type. Total providers: {providers.length}
-                  </p>
-                )}
               </div>
 
+              {/* Partnership Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="cost" className="block text-sm font-medium text-dark-200">
-                    Cost *
+                  <label htmlFor="costProvider" className="block text-sm font-medium text-dark-200">
+                    Provider Cost *
                   </label>
                   <input
                     type="number"
-                    id="cost"
-                    name="cost"
-                    value={formData.cost}
+                    id="costProvider"
+                    name="costProvider"
+                    value={formData.costProvider}
                     onChange={handleChange}
                     required
                     min="0"
                     step="0.01"
                     className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
-                    placeholder="Enter cost"
+                    placeholder="0.00"
                   />
                 </div>
 
                 <div>
                   <label htmlFor="currency" className="block text-sm font-medium text-dark-200">
-                    Currency *
+                    Currency
                   </label>
                   <select
                     id="currency"
                     name="currency"
                     value={formData.currency}
                     onChange={handleChange}
-                    required
                     className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
                   >
-                    {currencies.map(currency => (
-                      <option key={currency.value} value={currency.value}>
-                        {currency.label}
-                      </option>
-                    ))}
+                    <option value="USD">USD - US Dollar</option>
+                    <option value="ARS">ARS - Argentine Peso</option>
                   </select>
                 </div>
               </div>
 
-              {/* Exchange Rate Section */}
+              {/* Currency Conversion Section */}
               {formData.currency && formData.currency !== 'USD' && (
-                <div className="space-y-4 p-4 bg-dark-700/30 border border-white/10 rounded-lg">
-                  <div className="flex items-center justify-between">
+                <div className="bg-primary-500/5 border border-primary-500/20 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
                     <h4 className="text-sm font-medium text-dark-200">Currency Conversion</h4>
                     <button
                       type="button"
                       onClick={toggleManualExchangeRate}
-                      className="text-xs text-primary-400 hover:text-primary-300 underline"
+                      className="text-xs px-3 py-1 rounded-full border border-primary-500/30 text-primary-400 hover:bg-primary-500/10 transition-colors"
                     >
-                      {manualExchangeRate ? 'Use Auto Rate' : 'Set Manual Rate'}
+                      {manualExchangeRate ? 'Use Auto Rate' : 'Manual Entry'}
                     </button>
                   </div>
-
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="exchangeRate" className="block text-sm font-medium text-dark-300">
-                        Exchange Rate ({formData.currency} to USD) *
+                      <label htmlFor="exchangeRate" className="block text-sm font-medium text-dark-200 mb-2">
+                        {manualExchangeRate ? 'Manual Exchange Rate *' : 'Auto Exchange Rate'}
                       </label>
                       <input
                         type="number"
                         id="exchangeRate"
                         value={exchangeRate}
                         onChange={handleExchangeRateChange}
-                        required
+                        disabled={!manualExchangeRate}
                         min="0"
-                        step="0.000001"
-                        className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
-                        placeholder="Enter exchange rate"
+                        step="0.0001"
+                        className={`mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50 ${!manualExchangeRate ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
+                        placeholder={`Enter exchange rate (1 USD = ? ${formData.currency})`}
                       />
                       <p className="mt-1 text-xs text-dark-400">
-                        {manualExchangeRate ? 'Manual rate' : 'Auto-fetched rate'}
+                        {manualExchangeRate 
+                          ? `Enter the rate for 1 USD = ? ${formData.currency}`
+                          : 'Rate automatically fetched from external API'
+                        }
                       </p>
                     </div>
-
+                    
                     <div>
-                      <label className="block text-sm font-medium text-dark-300">
-                        Converted Amount (USD)
+                      <label className="block text-sm font-medium text-dark-200 mb-2">
+                        USD Equivalent
                       </label>
-                      <div className="mt-1 px-3 py-2 bg-dark-600/50 border border-white/10 rounded-md text-dark-100">
-                        {convertedAmount ? `$${convertedAmount.toFixed(2)}` : 'Enter cost and rate'}
+                      <div className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm bg-gray-100 text-gray-700">
+                        {convertedAmount ? `$${convertedAmount.toFixed(2)} USD` : 'Enter amount and rate'}
                       </div>
                     </div>
                   </div>
                 </div>
               )}
+
+              {/* Partnership Details Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="commissionRate" className="block text-sm font-medium text-dark-200">
+                    Commission Rate (%)
+                  </label>
+                  <input
+                    type="number"
+                    id="commissionRate"
+                    name="commissionRate"
+                    value={formData.commissionRate}
+                    onChange={handleChange}
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
+                    placeholder="10"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="paymentTerms" className="block text-sm font-medium text-dark-200">
+                    Payment Terms
+                  </label>
+                  <select
+                    id="paymentTerms"
+                    name="paymentTerms"
+                    value={formData.paymentTerms}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
+                  >
+                    <option value="immediate">Immediate</option>
+                    <option value="net_15">Net 15</option>
+                    <option value="net_30">Net 30</option>
+                    <option value="net_45">Net 45</option>
+                    <option value="net_60">Net 60</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="providerNotes" className="block text-sm font-medium text-dark-200">
+                  Partnership Notes
+                </label>
+                <textarea
+                  id="providerNotes"
+                  name="providerNotes"
+                  value={formData.providerNotes}
+                  onChange={handleChange}
+                  rows={2}
+                  className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
+                  placeholder="Additional notes about this provider partnership..."
+                />
+              </div>
             </div>
 
             {/* Form Actions */}

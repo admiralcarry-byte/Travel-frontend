@@ -5,6 +5,7 @@ import api from '../utils/api';
 const ProvidersList = () => {
   const navigate = useNavigate();
   const [providers, setProviders] = useState([]);
+  const [providerTypes, setProviderTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -14,15 +15,6 @@ const ProvidersList = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const isInitialLoad = useRef(true);
-
-  const providerTypes = [
-    { value: '', label: 'All Types' },
-    { value: 'hotel', label: 'Hotels' },
-    { value: 'airline', label: 'Airlines' },
-    { value: 'transfer', label: 'Transfers' },
-    { value: 'excursion', label: 'Excursions' },
-    { value: 'insurance', label: 'Insurance' }
-  ];
 
   // Debounce search term
   useEffect(() => {
@@ -36,6 +28,7 @@ const ProvidersList = () => {
   // Initial load effect
   useEffect(() => {
     fetchProviders(true);
+    fetchProviderTypes();
     isInitialLoad.current = false;
   }, []);
 
@@ -46,6 +39,21 @@ const ProvidersList = () => {
       fetchProviders(false);
     }
   }, [currentPage, debouncedSearchTerm, typeFilter, rowsPerPage]);
+
+  const fetchProviderTypes = useCallback(async () => {
+    try {
+      const response = await api.get('/api/provider-types/active');
+      if (response.data.success) {
+        const types = response.data.data.providerTypes.map(type => ({
+          value: type.name,
+          label: type.name
+        }));
+        setProviderTypes([{ value: '', label: 'All Types' }, ...types]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch provider types:', error);
+    }
+  }, []);
 
   const fetchProviders = useCallback(async (isInitialLoad = false) => {
     try {
@@ -153,7 +161,7 @@ const ProvidersList = () => {
 
         {/* Search and Filters */}
         <div className="card-glass p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div>
               <label htmlFor="search" className="block text-sm font-semibold text-dark-200 mb-4">
                 Search Providers
@@ -191,6 +199,15 @@ const ProvidersList = () => {
                 style={{height: "52px"}}
               >
                 Add New Provider
+              </button>
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={() => navigate('/provider-types')}
+                className="btn-secondary w-full"
+                style={{height: "52px"}}
+              >
+                Add New Type
               </button>
             </div>
           </div>
@@ -261,7 +278,7 @@ const ProvidersList = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="badge badge-primary">
-                            {provider.type.charAt(0).toUpperCase() + provider.type.slice(1)}
+                            {provider.type ? provider.type.charAt(0).toUpperCase() + provider.type.slice(1) : 'No type'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

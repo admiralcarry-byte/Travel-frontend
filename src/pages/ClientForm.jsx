@@ -166,7 +166,7 @@ const CompanionForm = ({ onAddCompanion, onCancel }) => {
 
   return (
     <div className="space-y-4">
-      <h4 className="text-md font-medium text-dark-100 mb-4">Add Companion</h4>
+      <h4 className="text-md font-medium text-dark-100 mb-4">Add Acompañante</h4>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -251,6 +251,7 @@ const CompanionForm = ({ onAddCompanion, onCancel }) => {
             name="phone"
             value={formData.phone}
             onChange={handleChange}
+            placeholder="+999"
             className={`input-field text-sm ${errors.phone ? 'border-red-500' : ''}`}
           />
           {errors.phone && <p className="mt-1 text-sm text-red-400">{errors.phone}</p>}
@@ -312,7 +313,7 @@ const CompanionForm = ({ onAddCompanion, onCancel }) => {
           onClick={handleSubmit}
           className="btn-primary text-sm"
         >
-          Add Companion
+          Add Acompañante
         </button>
       </div>
     </div>
@@ -592,7 +593,7 @@ const ClientForm = () => {
 
       if (response.data.success) {
         const clientId = response.data.data.mainClient?._id || response.data.data.client._id;
-        setSuccess(companions.length > 0 ? 'Passenger and companions created successfully!' : 'Passenger created successfully!');
+        setSuccess(companions.length > 0 ? 'Passenger and Acompañantes created successfully!' : 'Passenger created successfully!');
         
         if (createSaleAfterClient) {
           // Navigate to sale wizard with the new client pre-selected
@@ -820,6 +821,7 @@ const ClientForm = () => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
+                  placeholder="+999"
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50 ${
                     validationErrors.phone ? 'border-red-500' : 'border-white/20'
                   }`}
@@ -890,13 +892,13 @@ const ClientForm = () => {
             {/* Companions Section */}
             <div className="pt-6 border-t border-white/10">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-dark-100">Companions</h3>
+                <h3 className="text-lg font-medium text-dark-100">Acompañantes</h3>
                 <button
                   type="button"
                   onClick={() => setShowCompanionForm(!showCompanionForm)}
                   className="btn-primary text-sm"
                 >
-                  {showCompanionForm ? 'Cancel' : 'Add Companion'}
+                  {showCompanionForm ? 'Cancel' : 'Add Acompañante'}
                 </button>
               </div>
 
@@ -916,7 +918,7 @@ const ClientForm = () => {
               {/* Companions List */}
               {companions.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-dark-200">Added Companions ({companions.length})</h4>
+                  <h4 className="text-sm font-medium text-dark-200">Added Acompañantes ({companions.length})</h4>
                   {companions.map((companion, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-dark-700/30 rounded-lg border border-white/10">
                       <div>

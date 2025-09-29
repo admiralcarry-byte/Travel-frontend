@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { formatMethodName, getMethodIcon } from '../utils/paymentMethodUtils';
 
 const PaymentMethodsTable = ({ data }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -205,36 +206,5 @@ const PaymentMethodsTable = ({ data }) => {
   );
 };
 
-// Helper function to format method names
-const formatMethodName = (method) => {
-  const methodNames = {
-    'cash': 'Cash',
-    'credit_card': 'Credit Card',
-    'debit_card': 'Debit Card',
-    'bank_transfer': 'Bank Transfer',
-    'paypal': 'PayPal',
-    'stripe': 'Stripe',
-    'check': 'Check',
-    'wire_transfer': 'Wire Transfer',
-    'cryptocurrency': 'Cryptocurrency'
-  };
-  return methodNames[method] || method.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-};
-
-// Helper function to get method icons
-const getMethodIcon = (method) => {
-  const icons = {
-    'cash': '$',
-    'credit_card': '💳',
-    'debit_card': '💳',
-    'bank_transfer': '🏦',
-    'paypal': 'P',
-    'stripe': 'S',
-    'check': '✓',
-    'wire_transfer': '↗',
-    'cryptocurrency': '₿'
-  };
-  return icons[method] || '💳';
-};
 
 export default PaymentMethodsTable;

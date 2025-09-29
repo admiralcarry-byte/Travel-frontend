@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import ProviderCreationModal from '../components/ProviderCreationModal';
 
 const CupoForm = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    serviceId: '',
+    serviceTemplateId: '',
+    providerId: '',
     totalSeats: '',
     metadata: {
       date: '',
+      completionDate: '',
       roomType: '',
       flightClass: '',
       providerRef: '',
@@ -20,6 +23,20 @@ const CupoForm = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  // Service Template management state
+  const [serviceTemplates, setServiceTemplates] = useState([]);
+  const [serviceLoading, setServiceLoading] = useState(false);
+  const [showAddServiceModal, setShowAddServiceModal] = useState(false);
+  const [showEditServiceModal, setShowEditServiceModal] = useState(false);
+  const [serviceName, setServiceName] = useState('');
+  const [serviceInformation, setServiceInformation] = useState('');
+  const [editingService, setEditingService] = useState(null);
+  
+  // Provider management state
+  const [providers, setProviders] = useState([]);
+  const [providerLoading, setProviderLoading] = useState(false);
+  const [showProviderModal, setShowProviderModal] = useState(false);
 
   const flightClasses = [
     { value: '', label: 'Select flight class' },
@@ -36,19 +53,120 @@ const CupoForm = () => {
   ];
 
   useEffect(() => {
-    fetchServices();
+    fetchServiceTemplates();
+    fetchProviders();
+    
+    // Set up periodic refresh for real-time synchronization
+    const interval = setInterval(() => {
+      fetchServiceTemplates();
+      fetchProviders();
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchServices = async () => {
+  const fetchServiceTemplates = async () => {
     try {
-      const response = await api.get('/api/services?limit=100');
-
+      setServiceLoading(true);
+      const response = await api.get('/api/service-templates');
       if (response.data.success) {
-        setServices(response.data.data.services);
+        setServiceTemplates(response.data.data.serviceTemplates);
       }
     } catch (error) {
-      setError('Failed to fetch services');
+      console.error('Failed to fetch service templates:', error);
+      setError('Failed to fetch service templates');
+    } finally {
+      setServiceLoading(false);
     }
+  };
+
+  const addService = async () => {
+    if (serviceName.trim()) {
+      try {
+        const response = await api.post('/api/service-templates', {
+          name: serviceName.trim(),
+          description: serviceInformation.trim(),
+          category: 'General'
+        });
+        
+        if (response.data.success) {
+          // Refresh service templates to ensure real-time sync
+          await fetchServiceTemplates();
+          setServiceName('');
+          setServiceInformation('');
+          setShowAddServiceModal(false);
+        }
+      } catch (error) {
+        console.error('Failed to create service:', error);
+        setError(error.response?.data?.message || 'Failed to create service');
+      }
+    }
+  };
+
+  const editService = (service) => {
+    setEditingService(service);
+    setServiceName(service.name);
+    setServiceInformation(service.description || '');
+    setShowEditServiceModal(true);
+  };
+
+  const updateService = async () => {
+    if (serviceName.trim() && editingService) {
+      try {
+        const response = await api.put(`/api/service-templates/${editingService._id}`, {
+          name: serviceName.trim(),
+          description: serviceInformation.trim()
+        });
+        
+        if (response.data.success) {
+          // Refresh service templates to ensure real-time sync
+          await fetchServiceTemplates();
+          setServiceName('');
+          setServiceInformation('');
+          setEditingService(null);
+          setShowEditServiceModal(false);
+        }
+      } catch (error) {
+        console.error('Failed to update service:', error);
+        setError(error.response?.data?.message || 'Failed to update service');
+      }
+    }
+  };
+
+  const cancelEdit = () => {
+    setServiceName('');
+    setServiceInformation('');
+    setEditingService(null);
+    setShowEditServiceModal(false);
+  };
+
+  const openAddServiceModal = () => {
+    setServiceName('');
+    setServiceInformation('');
+    setShowAddServiceModal(true);
+  };
+
+  const fetchProviders = async () => {
+    try {
+      setProviderLoading(true);
+      const response = await api.get('/api/providers?limit=100');
+      if (response.data.success) {
+        setProviders(response.data.data.providers);
+      }
+    } catch (error) {
+      console.error('Failed to fetch providers:', error);
+      setError('Failed to fetch providers');
+    } finally {
+      setProviderLoading(false);
+    }
+  };
+
+  const handleProviderCreated = (newProvider) => {
+    // Add the new provider to the providers list and refresh the list for real-time sync
+    setProviders(prev => [...prev, newProvider]);
+    // Also refresh providers to ensure real-time sync
+    fetchProviders();
+    setShowProviderModal(false);
   };
 
   const handleChange = (e) => {
@@ -123,21 +241,82 @@ const CupoForm = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="serviceId" className="block text-sm font-medium text-dark-200">
-                    Service *
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="serviceTemplateId" className="block text-sm font-medium text-dark-200">
+                      Service *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={openAddServiceModal}
+                      className="text-xs text-primary-400 hover:text-primary-300 underline"
+                    >
+                      + Add New Service
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <select
+                      id="serviceTemplateId"
+                      name="serviceTemplateId"
+                      value={formData.serviceTemplateId}
+                      onChange={handleChange}
+                      required
+                      disabled={serviceLoading}
+                      className="input-field mt-1 pr-16"
+                    >
+                      <option value="">
+                        {serviceLoading ? 'Loading services...' : 'Select service'}
+                      </option>
+                      {serviceTemplates.map((service, index) => (
+                        <option key={service._id || `service-${index}`} value={service._id}>
+                          {service.name} - {service.description}
+                        </option>
+                      ))}
+                    </select>
+                    {/* Edit button positioned to the left of the dropdown arrow */}
+                    {formData.serviceTemplateId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const selectedService = serviceTemplates.find(s => s._id === formData.serviceTemplateId);
+                          if (selectedService) editService(selectedService);
+                        }}
+                        className="absolute right-8 top-1/2 transform -translate-y-1/2 text-primary-400 hover:text-primary-300"
+                        title="Edit selected service"
+                      >
+                        ✏️
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="providerId" className="block text-sm font-medium text-dark-200">
+                      Provider *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowProviderModal(true)}
+                      className="text-xs text-primary-400 hover:text-primary-300 underline"
+                    >
+                      + Add New Provider
+                    </button>
+                  </div>
                   <select
-                    id="serviceId"
-                    name="serviceId"
-                    value={formData.serviceId}
+                    id="providerId"
+                    name="providerId"
+                    value={formData.providerId}
                     onChange={handleChange}
                     required
+                    disabled={providerLoading}
                     className="input-field mt-1"
                   >
-                    <option value="">Select service</option>
-                    {services.map((service, index) => (
-                      <option key={service.id || service._id || `service-${index}`} value={service.id || service._id}>
-                        {service.title} - {service.providerId?.name}
+                    <option value="">
+                      {providerLoading ? 'Loading providers...' : 'Select provider'}
+                    </option>
+                    {providers.map((provider, index) => (
+                      <option key={provider._id || `provider-${index}`} value={provider._id}>
+                        {provider.name} ({provider.type || 'No type'})
                       </option>
                     ))}
                   </select>
@@ -188,7 +367,7 @@ const CupoForm = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="metadata-date" className="block text-sm font-medium text-dark-200">
-                    Date *
+                    Start Date *
                   </label>
                   <input
                     type="date"
@@ -201,6 +380,24 @@ const CupoForm = () => {
                   />
                 </div>
 
+                <div>
+                  <label htmlFor="metadata-completionDate" className="block text-sm font-medium text-dark-200">
+                    Completion Date *
+                  </label>
+                  <input
+                    type="date"
+                    id="metadata-completionDate"
+                    name="metadata.completionDate"
+                    value={formData.metadata.completionDate}
+                    onChange={handleChange}
+                    required
+                    min={formData.metadata.date ? new Date(new Date(formData.metadata.date).getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0] : ''}
+                    className="input-field mt-1"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="metadata-flightClass" className="block text-sm font-medium text-dark-200">
                     Flight Class
@@ -218,6 +415,10 @@ const CupoForm = () => {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div>
+                  {/* Empty div for grid layout */}
                 </div>
               </div>
 
@@ -289,6 +490,117 @@ const CupoForm = () => {
           </form>
         </div>
       </div>
+
+      {/* Add Service Modal */}
+      {showAddServiceModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-medium text-dark-100 mb-4">Add New Service Template</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-1">
+                  Service Name *
+                </label>
+                <input
+                  type="text"
+                  value={serviceName}
+                  onChange={(e) => setServiceName(e.target.value)}
+                  placeholder="Enter service name"
+                  className="input-field"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={serviceInformation}
+                  onChange={(e) => setServiceInformation(e.target.value)}
+                  placeholder="Enter service description"
+                  rows={3}
+                  className="input-field"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setShowAddServiceModal(false)}
+                className="px-4 py-2 text-sm font-medium text-dark-300 bg-dark-700/50 hover:bg-dark-700 border border-white/10 rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={addService}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md"
+              >
+                Create Service
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Service Modal */}
+      {showEditServiceModal && editingService && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-medium text-dark-100 mb-4">Edit Service Template</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-1">
+                  Service Name *
+                </label>
+                <input
+                  type="text"
+                  value={serviceName}
+                  onChange={(e) => setServiceName(e.target.value)}
+                  placeholder="Enter service name"
+                  className="input-field"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={serviceInformation}
+                  onChange={(e) => setServiceInformation(e.target.value)}
+                  placeholder="Enter service description"
+                  rows={3}
+                  className="input-field"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="px-4 py-2 text-sm font-medium text-dark-300 bg-dark-700/50 hover:bg-dark-700 border border-white/10 rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={updateService}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md"
+              >
+                Update Service
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Provider Creation Modal */}
+      <ProviderCreationModal
+        isOpen={showProviderModal}
+        onClose={() => setShowProviderModal(false)}
+        onProviderCreated={handleProviderCreated}
+      />
     </div>
   );
 };

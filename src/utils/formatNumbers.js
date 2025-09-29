@@ -50,15 +50,58 @@ export const formatCurrency = (amount, currency = 'USD', locale = 'en-US') => {
 };
 
 /**
- * Format currency with large number abbreviations
+ * Format currency with large number abbreviations and proper currency symbol
  * @param {number} amount - The amount to format
- * @param {string} currency - Currency symbol (default: '$')
+ * @param {string} currency - Currency code (default: 'USD')
  * @param {number} decimals - Number of decimal places (default: 1)
  * @returns {string} Formatted currency string with abbreviations
  */
-export const formatCurrencyCompact = (amount, currency = '$', decimals = 1) => {
-  return formatLargeNumber(amount, decimals, currency);
+export const formatCurrencyCompact = (amount, currency = 'USD', decimals = 1) => {
+  if (amount === null || amount === undefined || isNaN(amount)) {
+    return formatLargeNumber(0, decimals, getCurrencySymbol(currency));
+  }
+
+  return formatLargeNumber(amount, decimals, getCurrencySymbol(currency));
 };
+
+/**
+ * Get currency symbol for display
+ * @param {string} currency - Currency code
+ * @returns {string} Currency symbol
+ */
+export const getCurrencySymbol = (currency) => {
+  const symbols = {
+    'USD': '$',
+    'ARS': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'JPY': '¥',
+    'CAD': 'C$',
+    'AUD': 'A$',
+    'CHF': 'CHF',
+    'CNY': '¥',
+    'BRL': 'R$',
+    'MXN': '$',
+    'INR': '₹',
+    'KRW': '₩',
+    'SGD': 'S$',
+    'HKD': 'HK$',
+    'NZD': 'NZ$',
+    'ZAR': 'R',
+    'TRY': '₺',
+    'AED': 'د.إ',
+    'SAR': '﷼',
+    'EGP': '£',
+    'THB': '฿',
+    'MYR': 'RM',
+    'IDR': 'Rp',
+    'PHP': '₱',
+    'VND': '₫'
+  };
+  
+  return symbols[currency?.toUpperCase()] || '$';
+};
+
 
 /**
  * Format percentage with proper decimal places

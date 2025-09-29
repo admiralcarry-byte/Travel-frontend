@@ -8,6 +8,8 @@ import PieChart from '../components/PieChart';
 import TopServicesTable from '../components/TopServicesTable';
 import PaymentMethodsTable from '../components/PaymentMethodsTable';
 import TopPassengerBalancesTable from '../components/TopPassengerBalancesTable';
+import CurrencyReport from '../components/CurrencyReport';
+import PaymentReports from '../components/PaymentReports';
 import { formatCurrencyCompact } from '../utils/formatNumbers';
 
 const ReportingDashboard = () => {
@@ -33,7 +35,8 @@ const ReportingDashboard = () => {
       period: 'monthly',
       startDate: startDate.toISOString().split('T')[0],
       endDate: endDate.toISOString().split('T')[0],
-      sellerId: ''
+      sellerId: '',
+      currency: null
     };
   };
 
@@ -64,6 +67,7 @@ const ReportingDashboard = () => {
       if (debouncedFilters.startDate) params.append('startDate', debouncedFilters.startDate);
       if (debouncedFilters.endDate) params.append('endDate', debouncedFilters.endDate);
       if (debouncedFilters.sellerId) params.append('sellerId', debouncedFilters.sellerId);
+      if (debouncedFilters.currency) params.append('currency', debouncedFilters.currency);
 
       // Use AdminInsights endpoint which has real data
       const [adminInsightsRes, paymentMethodsRes] = await Promise.all([
@@ -246,10 +250,8 @@ const ReportingDashboard = () => {
         )}
 
         {/* Filters */}
-        <div className="card-glass p-6 mb-6"
-          style={{display: 'none'}}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="card-glass p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <div>
               <label className="block text-sm font-semibold text-dark-200 mb-2">
                 Period
@@ -306,6 +308,23 @@ const ReportingDashboard = () => {
                     {seller.username}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-dark-200 mb-2">
+                Currency
+              </label>
+              <select
+                value={filters.currency || ''}
+                onChange={(e) => handleFilterChange('currency', e.target.value || null)}
+                className="input-field"
+              >
+                <option value="">All Currencies</option>
+                <option value="USD">USD - US Dollar</option>
+                <option value="ARS">ARS - Argentine Peso</option>
+                <option value="EUR">EUR - Euro</option>
+                <option value="GBP">GBP - British Pound</option>
               </select>
             </div>
 
@@ -486,6 +505,22 @@ const ReportingDashboard = () => {
           <TopServicesTable 
             services={topServices} 
             title="Top Selling Services"
+          />
+        </div>
+
+        {/* Currency Report */}
+        <div className="mb-8">
+          <CurrencyReport 
+            filters={filters}
+            onFiltersChange={setFilters}
+          />
+        </div>
+
+        {/* Payment Reports */}
+        <div className="mb-8">
+          <PaymentReports 
+            filters={filters}
+            onFiltersChange={setFilters}
           />
         </div>
 

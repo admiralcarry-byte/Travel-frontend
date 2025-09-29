@@ -8,8 +8,8 @@ const ReservationFlow = () => {
   const [cupo, setCupo] = useState(null);
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
+  const [selectedClientPassengers, setSelectedClientPassengers] = useState([]);
   const [seatsToReserve, setSeatsToReserve] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -19,9 +19,6 @@ const ReservationFlow = () => {
   const [selectedServices, setSelectedServices] = useState([]);
   const [showServices, setShowServices] = useState(false);
   
-  // Payment methods state
-  const [paymentMethods, setPaymentMethods] = useState([]);
-  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
 
   useEffect(() => {
     const initializeReservation = async () => {
@@ -57,7 +54,6 @@ const ReservationFlow = () => {
     initializeReservation();
     fetchClients();
     fetchServices();
-    fetchPaymentMethods();
   }, [location.state, location.search, navigate]);
 
   const fetchClients = async () => {
@@ -84,29 +80,34 @@ const ReservationFlow = () => {
     }
   };
 
-  const fetchPaymentMethods = async () => {
-    try {
-      setLoadingPaymentMethods(true);
-      const response = await api.get('/api/system/payment-methods');
 
+  const fetchClientPassengers = async (clientId) => {
+    try {
+      const response = await api.get(`/api/clients/${clientId}/passengers`);
       if (response.data.success) {
-        // Filter to only show client payment methods for reservations
-        const clientPaymentMethods = response.data.data.paymentMethods.filter(
-          method => method.type === 'client'
-        );
-        setPaymentMethods(clientPaymentMethods);
+        setSelectedClientPassengers(response.data.data.passengers);
+        
+        // Calculate total seats: 1 main passenger + companions
+        const passengers = response.data.data.passengers;
+        const mainPassengers = passengers.filter(p => p.relationshipType === 'main_passenger');
+        const companions = passengers.filter(p => p.relationshipType === 'companion');
+        
+        // Total seats = 1 main passenger + number of companions
+        const totalSeats = 1 + companions.length;
+        setSeatsToReserve(totalSeats);
       }
     } catch (error) {
-      console.error('Failed to fetch payment methods:', error);
-      setError('Failed to fetch payment methods');
-    } finally {
-      setLoadingPaymentMethods(false);
+      console.error('Failed to fetch client passengers:', error);
+      // If fetching passengers fails, default to 1 seat
+      setSeatsToReserve(1);
     }
   };
 
   const handleClientSelect = (client) => {
     setSelectedClient(client);
     setShowServices(true);
+    // Fetch passengers for the selected client to calculate seats
+    fetchClientPassengers(client._id);
   };
 
   const handleServiceToggle = (service) => {
@@ -118,17 +119,18 @@ const ReservationFlow = () => {
         return [...prev, {
           serviceId: service._id,
           providerId: service.providerId._id,
-          serviceName: service.title,
-          priceClient: service.cost,
-          costProvider: service.cost * 0.8, // 20% markup example
-          currency: service.currency || 'USD',
+        serviceName: service.destino,
+        priceClient: 0, // Will be set by user
+        costProvider: 0, // Will be set by user
+        currency: 'USD', // Default currency
           quantity: 1,
           serviceDates: {
             startDate: new Date(),
             endDate: new Date(Date.now() + 24 * 60 * 60 * 1000) // Default to tomorrow
           },
           documents: [],
-          notes: ''
+          notes: '',
+          invoiceFile: null // Will be set by user
         }];
       }
     });
@@ -160,16 +162,24 @@ const ReservationFlow = () => {
     );
   };
 
+  const handleInvoiceUpload = (serviceId, file) => {
+    if (file) {
+      setSelectedServices(prev => 
+        prev.map(s => 
+          s.serviceId === serviceId 
+            ? { ...s, invoiceFile: file }
+            : s
+        )
+      );
+    }
+  };
+
   const handleReserve = async () => {
     if (!selectedClient || seatsToReserve <= 0) {
       setError('Please select a passenger and enter valid number of seats');
       return;
     }
 
-    if (!paymentMethod) {
-      setError('Please select a payment method');
-      return;
-    }
 
     if (seatsToReserve > cupo.availableSeats) {
       setError(`Only ${cupo.availableSeats} seats available`);
@@ -185,9 +195,75 @@ const ReservationFlow = () => {
     setError('');
 
     try {
-      const response = await api.put(`/api/cupos/${cupo._id || cupo.id}/reserve`, {
-        seatsToReserve: seatsToReserve,
-        clientId: selectedClient._id
+      // Prepare passengers data including main client and companions
+      const passengers = [
+        {
+          isMainClient: true,
+          clientId: selectedClient._id,
+          price: 0, // Main passenger price
+          notes: 'Main passenger'
+        }
+      ];
+
+      // Add companions if any (exclude main passenger)
+      const companions = selectedClientPassengers.filter(p => 
+        p.relationshipType === 'companion' && p._id !== selectedClient._id
+      );
+      companions.forEach(companion => {
+        passengers.push({
+          passengerId: companion._id,
+          price: 0, // Companion price
+          notes: `Companion: ${companion.name} ${companion.surname}`
+        });
+      });
+
+      // Prepare services data including cupo service and any additional services
+      const services = [];
+
+      // Add any additional selected services (don't add cupo service as it's handled separately)
+      selectedServices.forEach(service => {
+        services.push({
+          serviceId: service.serviceId,
+          providerId: service.providerId,
+          serviceName: service.serviceName,
+          priceClient: service.priceClient || 0, // Price per passenger - backend will multiply by quantity
+          costProvider: service.costProvider || 0,
+          currency: service.currency || 'USD',
+          quantity: seatsToReserve, // Set quantity to number of seats
+          serviceDates: service.serviceDates || {
+            startDate: new Date(),
+            endDate: new Date()
+          },
+          invoiceFile: service.invoiceFile
+        });
+      });
+
+      // Create FormData for file uploads
+      const formData = new FormData();
+      formData.append('seatsToReserve', seatsToReserve);
+      formData.append('clientId', selectedClient._id);
+      formData.append('passengers', JSON.stringify(passengers));
+      formData.append('services', JSON.stringify(services));
+
+      // Add invoice files
+      selectedServices.forEach((service, index) => {
+        if (service.invoiceFile) {
+          formData.append(`invoice_${service.serviceId}`, service.invoiceFile);
+        }
+      });
+
+      console.log('Sending reservation data:', {
+        seatsToReserve,
+        clientId: selectedClient._id,
+        passengers: passengers.length,
+        services: services.length,
+        files: selectedServices.filter(s => s.invoiceFile).length
+      });
+
+      const response = await api.put(`/api/cupos/${cupo._id || cupo.id}/reserve`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
       if (response.data.success) {
@@ -196,7 +272,7 @@ const ReservationFlow = () => {
         // If a sale was created, navigate to it
         if (response.data.data.sale) {
           setTimeout(() => {
-            navigate(`/sales/${response.data.data.sale.id}`);
+            navigate(`/sales/${response.data.data.sale._id || response.data.data.sale.id}`);
           }, 2000);
         } else {
           // Otherwise, go back to inventory
@@ -264,20 +340,26 @@ const ReservationFlow = () => {
 
               {/* Cupo Information */}
               <div className="bg-dark-700 shadow rounded-lg p-6">
-                <h3 className="text-xl font-semibold text-dark-100 mb-4">Slots Details</h3>
+                <h3 className="text-xl font-semibold text-dark-100 mb-4">Cupo Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-dark-200">Service</label>
-                    <p className="text-dark-100">{cupo.serviceId?.title}</p>
+                    <p className="text-dark-100">{cupo.serviceId?.destino}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-dark-200">Provider</label>
                     <p className="text-dark-100">{cupo.serviceId?.providerId?.name}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-dark-200">Date</label>
+                    <label className="block text-sm font-medium text-dark-200">Start Date</label>
                     <p className="text-dark-100">{cupo.formattedDate}</p>
                   </div>
+                  {cupo.metadata.completionDate && (
+                    <div>
+                      <label className="block text-sm font-medium text-dark-200">Completion Date</label>
+                      <p className="text-dark-100">{new Date(cupo.metadata.completionDate).toLocaleDateString()}</p>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-dark-200">Available Seats</label>
                     <p className="text-dark-100 font-semibold">{cupo.availableSeats}</p>
@@ -319,6 +401,35 @@ const ReservationFlow = () => {
                     </div>
                   ))}
                 </div>
+                
+                {/* Selected Client Info */}
+                {selectedClient && (
+                  <div className="mt-4 p-4 bg-primary-500/10 border border-primary-500/30 rounded-lg">
+                    <h4 className="font-medium text-dark-100 mb-2">
+                      Selected: {selectedClient.name} {selectedClient.surname}
+                    </h4>
+                    {selectedClientPassengers.length > 0 && (
+                      <>
+                        {(() => {
+                          const companions = selectedClientPassengers.filter(p => p.relationshipType === 'companion');
+                          return (
+                            <p className="text-sm text-dark-300">
+                              Total Seats: {1 + companions.length} 
+                              {companions.length > 0 && (
+                                <span className="text-primary-400 ml-2">
+                                  (1 main passenger + {companions.length} companion{companions.length !== 1 ? 's' : ''})
+                                </span>
+                              )}
+                            </p>
+                          );
+                        })()}
+                        <p className="text-sm text-dark-400 mt-1">
+                          Seats automatically calculated based on main passenger + companions
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Services Selection */}
@@ -335,60 +446,17 @@ const ReservationFlow = () => {
                             isSelected ? 'border-primary-500 bg-primary-500/10' : 'border-white/20'
                           }`}
                         >
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <h4 className="font-medium text-dark-100">{service.title}</h4>
-                              <p className="text-sm text-dark-300">{service.description}</p>
-                              <p className="text-sm text-dark-400">
+                              <h4 className="font-medium text-dark-100 mb-2">{service.destino}</h4>
+                              <p className="text-sm text-dark-300 mb-2">{service.description}</p>
+                              <p className="text-sm text-dark-400 mb-3">
                                 Provider: {service.providerId?.name} | 
-                                Type: {service.type} | 
-                                Base Cost: {service.formattedCost}
+                                Type: {service.type}
                               </p>
-                            </div>
-                            <div className="flex items-center space-x-4">
-                              {isSelected && (
-                                <div className="flex space-x-2">
-                                  <div>
-                                    <label className="block text-xs font-medium text-dark-200">
-                                      Passenger Price
-                                    </label>
-                                    <input
-                                      type="number"
-                                      step="0.01"
-                                      value={isSelected.priceClient || ''}
-                                      onChange={(e) => handleServicePriceChange(service._id, 'priceClient', e.target.value)}
-                                      className="w-20 px-2 py-1 border border-white/20 rounded text-sm bg-dark-800/50 text-dark-100 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-medium text-dark-200">
-                                      Provider Cost
-                                    </label>
-                                    <input
-                                      type="number"
-                                      step="0.01"
-                                      value={isSelected.costProvider || ''}
-                                      onChange={(e) => handleServicePriceChange(service._id, 'costProvider', e.target.value)}
-                                      className="w-20 px-2 py-1 border border-white/20 rounded text-sm bg-dark-800/50 text-dark-100 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-medium text-dark-200">
-                                      Qty
-                                    </label>
-                                    <input
-                                      type="number"
-                                      value={isSelected.quantity || 1}
-                                      onChange={(e) => handleServicePriceChange(service._id, 'quantity', e.target.value)}
-                                      className="w-16 px-2 py-1 border border-white/20 rounded text-sm bg-dark-800/50 text-dark-100 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                                      min="1"
-                                    />
-                                  </div>
-                                </div>
-                              )}
                               <button
                                 onClick={() => handleServiceToggle(service)}
-                                className={`px-4 py-2 rounded-md text-sm font-medium ${
+                                className={`px-3 py-1 rounded-md text-sm font-medium ${
                                   isSelected
                                     ? 'bg-red-600 text-white hover:bg-red-700'
                                     : 'btn-primary'
@@ -397,6 +465,115 @@ const ReservationFlow = () => {
                                 {isSelected ? 'Remove' : 'Add'}
                               </button>
                             </div>
+                            
+                            {isSelected && (
+                              <div className="ml-6 w-80 p-4 bg-dark-700/30 rounded-lg border border-white/10">
+                                {/* Service Info Header */}
+                                <div className="flex items-center justify-between mb-4">
+                                  <div>
+                                    <h5 className="font-medium text-dark-100">{service.destino}</h5>
+                                    <p className="text-sm text-dark-300">
+                                      {service.providerId?.name} • {service.type?.charAt(0).toUpperCase() + service.type?.slice(1)}
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-lg font-semibold text-primary-400">
+                                      ${((isSelected.priceClient || 0) * seatsToReserve).toFixed(2)}
+                                    </div>
+                                    <div className="text-xs text-dark-400">Total Price</div>
+                                  </div>
+                                </div>
+
+                                {/* Pricing Section */}
+                                <div className="grid grid-cols-1 gap-4 mb-4">
+                                  <div>
+                                    <label className="block text-sm font-medium text-dark-200 mb-2">
+                                      Price per Passenger *
+                                    </label>
+                                    <div className="relative">
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        value={isSelected.priceClient || ''}
+                                        onChange={(e) => handleServicePriceChange(service._id, 'priceClient', e.target.value)}
+                                        className="w-full px-3 py-2 border border-white/20 rounded-lg text-sm bg-dark-800/50 text-dark-100 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                                        placeholder="0.00"
+                                        min="0"
+                                      />
+                                      <div className="absolute -bottom-5 left-0 text-xs text-dark-400">
+                                        × {seatsToReserve} passenger{seatsToReserve !== 1 ? 's' : ''} = ${((isSelected.priceClient || 0) * seatsToReserve).toFixed(2)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                      <label className="block text-sm font-medium text-dark-200 mb-2">
+                                        Cost of Provider *
+                                      </label>
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        value={isSelected.costProvider || ''}
+                                        onChange={(e) => handleServicePriceChange(service._id, 'costProvider', e.target.value)}
+                                        className="w-full px-3 py-2 border border-white/20 rounded-lg text-sm bg-dark-800/50 text-dark-100 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                                        placeholder="0.00"
+                                        min="0"
+                                      />
+                                    </div>
+                                    
+                                    <div>
+                                      <label className="block text-sm font-medium text-dark-200 mb-2">
+                                        Quantity *
+                                      </label>
+                                      <input
+                                        type="number"
+                                        value={isSelected.quantity || 1}
+                                        onChange={(e) => handleServicePriceChange(service._id, 'quantity', e.target.value)}
+                                        className="w-full px-3 py-2 border border-white/20 rounded-lg text-sm bg-dark-800/50 text-dark-100 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                                        min="1"
+                                      />
+                                      <div className="text-xs text-dark-400 mt-1">
+                                        {isSelected.quantity || 1} unit{(isSelected.quantity || 1) !== 1 ? 's' : ''}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Invoice Section */}
+                                <div>
+                                  <label className="block text-sm font-medium text-dark-200 mb-2">
+                                    Operator's Invoice (Backup)
+                                  </label>
+                                  <div className="flex items-center space-x-3">
+                                    <input
+                                      type="file"
+                                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                      onChange={(e) => handleInvoiceUpload(service._id, e.target.files[0])}
+                                      className="hidden"
+                                      id={`invoice-${service._id}`}
+                                    />
+                                    <label
+                                      htmlFor={`invoice-${service._id}`}
+                                      className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm cursor-pointer transition-colors flex items-center space-x-2"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                      </svg>
+                                      <span>{isSelected.invoiceFile ? 'Change File' : 'Upload Invoice'}</span>
+                                    </label>
+                                    {isSelected.invoiceFile && (
+                                      <div className="flex items-center space-x-2 text-sm text-green-400">
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                        </svg>
+                                        <span>{isSelected.invoiceFile.name}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                           
                           {/* Service Dates for Selected Services */}
@@ -459,6 +636,11 @@ const ReservationFlow = () => {
                     <p className="mt-1 text-sm text-dark-400">
                       Maximum: {cupo.availableSeats} seats available
                     </p>
+                    {selectedClient && selectedClientPassengers.length > 0 && (
+                      <p className="mt-1 text-sm text-primary-400">
+                        ✓ Automatically calculated: 1 main passenger + {selectedClientPassengers.filter(p => p.relationshipType === 'companion').length} companion{selectedClientPassengers.filter(p => p.relationshipType === 'companion').length !== 1 ? 's' : ''} = {seatsToReserve} seat{seatsToReserve !== 1 ? 's' : ''}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -466,85 +648,46 @@ const ReservationFlow = () => {
                       Total Cost (Estimated)
                     </label>
                     <div className="mt-1 p-3 bg-dark-700/50 rounded-md border border-white/10">
-                      <p className="text-lg font-semibold text-dark-100">
-                        ${cupo.serviceId?.cost ? (cupo.serviceId.cost * seatsToReserve).toFixed(2) : 'N/A'}
-                      </p>
-                      <p className="text-sm text-dark-400">
-                        {cupo.serviceId?.currency || 'USD'} per seat
-                        {!cupo.serviceId?.cost && (
-                          <span className="block text-warning-400 text-xs mt-1">
-                            Cost information not available
-                          </span>
-                        )}
-                      </p>
-                      {selectedServices.length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-white/10">
-                          <p className="text-sm text-dark-300">
-                            <strong>Services Total:</strong> ${selectedServices.reduce((sum, s) => sum + (s.priceClient * s.quantity), 0).toFixed(2)}
-                          </p>
-                          <p className="text-lg font-semibold text-primary-400">
-                            <strong>Grand Total:</strong> ${(
-                              (cupo.serviceId?.cost ? cupo.serviceId.cost * seatsToReserve : 0) + 
-                              selectedServices.reduce((sum, s) => sum + (s.priceClient * s.quantity), 0)
-                            ).toFixed(2)}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment Method Selection */}
-              <div>
-                <h3 className="text-xl font-semibold text-dark-100 mb-4">Passenger Payment Method</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="paymentMethod" className="block text-sm font-semibold text-dark-200 mb-4">
-                      Payment Method *
-                    </label>
-                    <select
-                      id="paymentMethod"
-                      value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="input-field"
-                      disabled={loadingPaymentMethods}
-                    >
-                      <option value="">
-                        {loadingPaymentMethods ? 'Loading payment methods...' : 'Select payment method'}
-                      </option>
-                      {paymentMethods.map(method => (
-                        <option key={method.value} value={method.value}>
-                          {method.label}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="mt-1 text-sm text-dark-400">
-                      Choose how the passenger will pay for this reservation
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-dark-200 mb-4">
-                      Payment Information
-                    </label>
-                    <div className="mt-1 p-3 bg-dark-700/50 rounded-md border border-white/10">
-                      <p className="text-sm text-dark-300">
-                        {paymentMethod ? (
+                      {(() => {
+                        // Calculate total cost from selected services (price per passenger × seats)
+                        const totalServiceCost = selectedServices.reduce((sum, s) => 
+                          sum + (s.priceClient * seatsToReserve), 0
+                        );
+                        
+                        return (
                           <>
-                            <strong>Selected:</strong> {paymentMethods.find(m => m.value === paymentMethod)?.label}
+                            <p className="text-lg font-semibold text-dark-100">
+                              ${totalServiceCost.toFixed(2)}
+                            </p>
+                            <p className="text-sm text-dark-400">
+                              USD total for {seatsToReserve} seat{seatsToReserve !== 1 ? 's' : ''}
+                              {selectedServices.length > 0 && (
+                                <span className="block text-xs text-dark-500 mt-1">
+                                  Sum of all service prices × seats
+                                </span>
+                              )}
+                            </p>
+                            {selectedServices.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-white/10">
+                                <p className="text-sm text-dark-300">
+                                  <strong>Services Total (Provider Costs):</strong> ${selectedServices.reduce((sum, s) => sum + s.costProvider, 0).toFixed(2)}
+                                </p>
+                                <p className="text-lg font-semibold text-primary-400">
+                                  <strong>Grand Total:</strong> ${(totalServiceCost + selectedServices.reduce((sum, s) => sum + s.costProvider, 0)).toFixed(2)}
+                                </p>
+                                <p className="text-xs text-dark-500 mt-1">
+                                  Total Cost + Services Total (Provider Costs)
+                                </p>
+                              </div>
+                            )}
                           </>
-                        ) : (
-                          'No payment method selected'
-                        )}
-                      </p>
-                      <p className="text-xs text-dark-400 mt-1">
-                        Payment details will be recorded when the sale is created
-                      </p>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
               </div>
+
 
               {/* Selected Client Summary */}
               {selectedClient && (
@@ -561,11 +704,13 @@ const ReservationFlow = () => {
               <div className="bg-primary-500/10 border border-primary-500/20 p-4 rounded-md">
                 <h4 className="font-medium text-primary-400 mb-2">Reservation Summary</h4>
                 <div className="text-primary-300 space-y-1">
-                  <p><strong>Service:</strong> {cupo.serviceId?.title}</p>
-                  <p><strong>Date:</strong> {cupo.formattedDate}</p>
+                  <p><strong>Service:</strong> {cupo.serviceId?.destino}</p>
+                  <p><strong>Start Date:</strong> {cupo.formattedDate}</p>
+                  {cupo.metadata.completionDate && (
+                    <p><strong>Completion Date:</strong> {new Date(cupo.metadata.completionDate).toLocaleDateString()}</p>
+                  )}
                   <p><strong>Seats:</strong> {seatsToReserve}</p>
                   <p><strong>Passenger:</strong> {selectedClient ? `${selectedClient.name} ${selectedClient.surname}` : 'Not selected'}</p>
-                  <p><strong>Payment Method:</strong> {paymentMethod ? paymentMethods.find(m => m.value === paymentMethod)?.label : 'Not selected'}</p>
                   {selectedServices.length > 0 && (
                     <div>
                       <p><strong>Additional Services ({selectedServices.length}):</strong></p>
@@ -576,18 +721,29 @@ const ReservationFlow = () => {
                       ))}
                     </div>
                   )}
-                  <p><strong>Service Total:</strong> ${cupo.serviceId?.cost ? (cupo.serviceId.cost * seatsToReserve).toFixed(2) : 'N/A'}</p>
-                  {selectedServices.length > 0 && (
-                    <div>
-                      <p><strong>Services Total:</strong> ${selectedServices.reduce((sum, s) => sum + (s.priceClient * s.quantity), 0).toFixed(2)}</p>
-                      <p className="text-lg font-semibold text-primary-300">
-                        <strong>Grand Total:</strong> ${(
-                          (cupo.serviceId?.cost ? cupo.serviceId.cost * seatsToReserve : 0) + 
-                          selectedServices.reduce((sum, s) => sum + (s.priceClient * s.quantity), 0)
-                        ).toFixed(2)}
-                      </p>
-                    </div>
-                  )}
+                  {(() => {
+                    // Calculate totals using the same logic as Total Cost section
+                    const totalServiceCost = selectedServices.reduce((sum, s) => 
+                      sum + (s.priceClient * seatsToReserve), 0
+                    );
+                    const servicesProviderCost = selectedServices.reduce((sum, s) => 
+                      sum + s.costProvider, 0
+                    );
+                    
+                    return (
+                      <>
+                        <p><strong>Service Total:</strong> ${totalServiceCost.toFixed(2)}</p>
+                        {selectedServices.length > 0 && (
+                          <div>
+                            <p><strong>Services Total (Provider Costs):</strong> ${servicesProviderCost.toFixed(2)}</p>
+                            <p className="text-lg font-semibold text-primary-300">
+                              <strong>Grand Total:</strong> ${(totalServiceCost + servicesProviderCost).toFixed(2)}
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -601,7 +757,7 @@ const ReservationFlow = () => {
                 </button>
                 <button
                   onClick={handleReserve}
-                  disabled={loading || !selectedClient || seatsToReserve <= 0 || !paymentMethod}
+                  disabled={loading || !selectedClient || seatsToReserve <= 0}
                   className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Creating Reservation...' : 'Create Reservation'}

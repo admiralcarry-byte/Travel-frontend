@@ -4,6 +4,7 @@ import DailyReport from '../components/DailyReport';
 
 const DailyReports = () => {
   const [reports, setReports] = useState([]);
+  const [todayArrivals, setTodayArrivals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showReport, setShowReport] = useState(false);
@@ -18,8 +19,45 @@ const DailyReports = () => {
   const [customDate, setCustomDate] = useState('');
 
   useEffect(() => {
+    fetchTodayArrivals();
     fetchReports();
   }, [filters]);
+
+  const fetchTodayArrivals = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      
+      if (filters.startDate) params.append('startDate', filters.startDate);
+      if (filters.endDate) params.append('endDate', filters.endDate);
+      
+      const response = await api.get(`/api/daily-reports/today-arrivals?${params.toString()}`);
+      
+      if (response.data.success) {
+        setTodayArrivals(response.data.data.arrivals);
+      }
+    } catch (error) {
+      console.error('Failed to fetch arrivals:', error);
+      setError(error.response?.data?.message || 'Failed to fetch arrivals');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFilterChange = (field, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      startDate: '',
+      endDate: '',
+      status: ''
+    });
+  };
 
   const fetchReports = async () => {
     try {
@@ -192,7 +230,7 @@ const DailyReports = () => {
                 </div>
                 <div className="flex items-end">
                   <button
-                    onClick={() => setFilters({ startDate: '', endDate: '', status: '' })}
+                    onClick={clearFilters}
                     className="btn-secondary w-full"
                   >
                     Clear Filters
@@ -242,19 +280,37 @@ const DailyReports = () => {
             </div>
           )}
 
-          {/* Reports Table */}
+          {/* Arrivals Table */}
           <div className="card">
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-dark-100 mb-4">Daily Reports</h3>
+              <h3 className="text-lg font-semibold text-dark-100 mb-4">
+                {filters.startDate || filters.endDate ? 'Filtered Arrivals' : 'Today\'s Arrivals'}
+              </h3>
+              <p className="text-sm text-dark-400 mb-6">
+                {filters.startDate || filters.endDate 
+                  ? `Passengers arriving between ${filters.startDate || 'any date'} and ${filters.endDate || 'any date'}`
+                  : 'Passengers arriving today based on service end dates'
+                }
+              </p>
               
               {loading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
                 </div>
-              ) : reports.length === 0 ? (
+              ) : todayArrivals.length === 0 ? (
                 <div className="text-center py-8 text-dark-400">
-                  <p>No daily reports found</p>
-                  <p className="text-sm">Generate a report to get started</p>
+                  <p>
+                    {filters.startDate || filters.endDate 
+                      ? 'No passengers found for the selected date range'
+                      : 'No passengers arriving today'
+                    }
+                  </p>
+                  <p className="text-sm">
+                    {filters.startDate || filters.endDate 
+                      ? 'Try adjusting your date filters or check your sales data'
+                      : 'Check back tomorrow or review your sales data'
+                    }
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -262,60 +318,96 @@ const DailyReports = () => {
                     <thead className="bg-dark-700/50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
-                          Date
+                          Passenger
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
-                          Expected
+                          Client
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
-                          Arrived
+                          Service
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
-                          Arrival Rate
+                          Provider
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
-                          Status
+                          Destination
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
-                          WhatsApp
+                          Arrival Date
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
-                          Actions
+                          Sale Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
+                          Total Sale
                         </th>
                       </tr>
                     </thead>
                     <tbody className="bg-dark-800/30 divide-y divide-white/10">
-                      {reports.map((report) => (
-                        <tr key={report._id} className="hover:bg-dark-700/30">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-dark-100">
-                            {new Date(report.reportDate).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                            {report.totalExpected}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                            {report.totalArrived}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                            {report.arrivalRate}%
+                      {todayArrivals.map((arrival, index) => (
+                        <tr key={`${arrival.saleId}-${arrival.passengerId}-${index}`} className="hover:bg-dark-700/30">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-dark-100">
+                              {arrival.passengerDetails.name} {arrival.passengerDetails.surname}
+                            </div>
+                            <div className="text-sm text-dark-400">
+                              {arrival.passengerDetails.passportNumber}
+                            </div>
+                            <div className="text-xs text-dark-500">
+                              {arrival.passengerDetails.nationality}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(report.status)}`}>
-                              {report.status}
+                            <div className="text-sm text-dark-100">
+                              {arrival.clientDetails.name} {arrival.clientDetails.surname}
+                            </div>
+                            <div className="text-sm text-dark-400">
+                              {arrival.clientDetails.email}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-dark-100">
+                              {arrival.serviceDetails.title}
+                            </div>
+                            <div className="text-sm text-dark-400">
+                              {arrival.serviceDetails.type}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
+                            {arrival.serviceDetails.providerName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-dark-100">
+                              {arrival.serviceDetails.location.city}
+                            </div>
+                            <div className="text-sm text-dark-400">
+                              {arrival.serviceDetails.location.country}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
+                            {new Date(arrival.arrivalDate).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              arrival.saleDetails.status === 'open' 
+                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                                : arrival.saleDetails.status === 'closed'
+                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                            }`}>
+                              {arrival.saleDetails.status.toUpperCase()}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getWhatsAppStatusColor(report.whatsappStatus.status)}`}>
-                              {report.whatsappStatus.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button
-                              onClick={() => handleViewReport(report)}
-                              className="text-primary-400 hover:text-primary-300"
-                            >
-                              View Report
-                            </button>
+                            <div className="text-sm font-medium text-dark-100">
+                              {arrival.saleDetails.currency} {arrival.saleDetails.totalSalePrice.toLocaleString()}
+                            </div>
+                            <div className="text-xs text-green-400">
+                              Profit: {arrival.saleDetails.currency} {arrival.saleDetails.profit.toLocaleString()}
+                            </div>
+                            <div className="text-xs text-dark-400">
+                              Margin: {arrival.saleDetails.profitMargin}%
+                            </div>
                           </td>
                         </tr>
                       ))}

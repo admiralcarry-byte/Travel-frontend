@@ -92,7 +92,7 @@ export const SystemStatsProvider = ({ children }) => {
 
       const [salesRes, clientsRes, servicesRes] = await Promise.all([
         api.get('/api/reports/kpis'),
-        api.get('/api/clients?limit=1'),
+        api.get('/api/clients/all-passengers?limit=1'),
         api.get('/api/services?limit=1')
       ]);
 

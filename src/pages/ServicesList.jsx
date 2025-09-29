@@ -6,6 +6,7 @@ const ServicesList = () => {
   const navigate = useNavigate();
   const [services, setServices] = useState([]);
   const [providers, setProviders] = useState([]);
+  const [serviceTypes, setServiceTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState('');
@@ -15,15 +16,6 @@ const ServicesList = () => {
   const [providerFilter, setProviderFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-
-  const serviceTypes = [
-    { value: '', label: 'All Types' },
-    { value: 'hotel', label: 'Hotels' },
-    { value: 'airline', label: 'Airlines' },
-    { value: 'transfer', label: 'Transfers' },
-    { value: 'excursion', label: 'Excursions' },
-    { value: 'insurance', label: 'Insurance' }
-  ];
 
   // Debounce search term
   useEffect(() => {
@@ -38,6 +30,7 @@ const ServicesList = () => {
   useEffect(() => {
     fetchServices(true);
     fetchProviders();
+    fetchServiceTypes();
   }, []);
 
   // Search and filter effect
@@ -45,6 +38,21 @@ const ServicesList = () => {
     fetchServices(false);
   }, [currentPage, debouncedSearchTerm, typeFilter, providerFilter]);
 
+
+  const fetchServiceTypes = async () => {
+    try {
+      const response = await api.get('/api/provider-types/active');
+      if (response.data.success) {
+        const types = response.data.data.providerTypes.map(type => ({
+          value: type.name,
+          label: type.name
+        }));
+        setServiceTypes([{ value: '', label: 'All Types' }, ...types]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch service types:', error);
+    }
+  };
 
   const fetchServices = useCallback(async (isInitialLoad = false) => {
     try {
@@ -73,12 +81,8 @@ const ServicesList = () => {
       const response = await api.get(`/api/services?${params}`);
 
       if (response.data.success) {
-        // Filter services to only show the 5 valid service types
-        const validServiceTypes = ['hotel', 'airline', 'transfer', 'excursion', 'insurance'];
-        const filteredServices = response.data.data.services.filter(service => 
-          validServiceTypes.includes(service.type)
-        );
-        setServices(filteredServices);
+        // Show all services without filtering by hard-coded types
+        setServices(response.data.data.services);
         setTotalPages(response.data.data.pages);
         setError('');
       }
@@ -129,6 +133,21 @@ const ServicesList = () => {
       insurance: 'bg-red-100 text-red-800'
     };
     return colors[type] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getServiceTypeIcon = (type) => {
+    const icons = {
+      hotel: '🏨',
+      airline: '✈️',
+      transfer: '🚗',
+      excursion: '🎯',
+      insurance: '🛡️',
+      restaurant: '🍽️',
+      tour_guide: '👨‍🏫',
+      car_rental: '🚙',
+      medical_assistance: '🏥'
+    };
+    return icons[type] || '📋';
   };
 
   if (loading) {
@@ -290,7 +309,17 @@ const ServicesList = () => {
                       />
                       <div className="absolute inset-0 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center" style={{display: 'none'}}>
                         <div className="text-white text-center">
-                          <div className="text-4xl mb-2">🏨</div>
+                          <div className="text-4xl mb-2">
+                            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 21V7l8-4v18" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V11l-6-4" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 9v.01" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12v.01" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15v.01" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 18v.01" />
+                            </svg>
+                          </div>
                           <div className="text-sm font-medium">Hotel</div>
                         </div>
                       </div>
@@ -309,7 +338,13 @@ const ServicesList = () => {
                       />
                       <div className="absolute inset-0 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center" style={{display: 'none'}}>
                         <div className="text-white text-center">
-                          <div className="text-4xl mb-2">✈️</div>
+                          <div className="text-4xl mb-2">
+                            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 2L2 7l10 5 10-5-10-5z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2 17l10 5 10-5" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2 12l10 5 10-5" />
+                            </svg>
+                          </div>
                           <div className="text-sm font-medium">Airline</div>
                         </div>
                       </div>
@@ -328,7 +363,14 @@ const ServicesList = () => {
                       />
                       <div className="absolute inset-0 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center" style={{display: 'none'}}>
                         <div className="text-white text-center">
-                          <div className="text-4xl mb-2">🎯</div>
+                          <div className="text-4xl mb-2">
+                            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 2L2 7l10 5 10-5-10-5z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2 17l10 5 10-5" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2 12l10 5 10-5" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                          </div>
                           <div className="text-sm font-medium">Excursion</div>
                         </div>
                       </div>
@@ -347,7 +389,14 @@ const ServicesList = () => {
                       />
                       <div className="absolute inset-0 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center" style={{display: 'none'}}>
                         <div className="text-white text-center">
-                          <div className="text-4xl mb-2">🚗</div>
+                          <div className="text-4xl mb-2">
+                            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                              <rect x="1" y="3" width="15" height="13" rx="2" ry="2" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16 8h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 8H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h8" />
+                            </svg>
+                          </div>
                           <div className="text-sm font-medium">Transfer</div>
                         </div>
                       </div>
@@ -366,7 +415,12 @@ const ServicesList = () => {
                       />
                       <div className="absolute inset-0 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center" style={{display: 'none'}}>
                         <div className="text-white text-center">
-                          <div className="text-4xl mb-2">🛡️</div>
+                          <div className="text-4xl mb-2">
+                            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
+                            </svg>
+                          </div>
                           <div className="text-sm font-medium">Insurance</div>
                         </div>
                       </div>
@@ -375,7 +429,14 @@ const ServicesList = () => {
                     <div className="h-48 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
                       <div className="text-white text-center">
                         <div className="text-4xl mb-2">
-                          {/* No specific icons for other types */}
+                          <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 9h6v6H9z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 1v6" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 1v6" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v6" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 17v6" />
+                          </svg>
                         </div>
                         <div className="text-sm font-medium">
                           {service.type.charAt(0).toUpperCase() + service.type.slice(1)}
@@ -388,7 +449,7 @@ const ServicesList = () => {
                   <div className="p-6">
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="text-lg font-semibold text-dark-100 line-clamp-2">
-                        {service.title}
+                        {service.destino}
                       </h3>
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(service.type)}`}>
                         {service.type.charAt(0).toUpperCase() + service.type.slice(1)}
@@ -399,13 +460,26 @@ const ServicesList = () => {
                       {service.description}
                     </p>
 
-                    {/* Provider Badge */}
+                    {/* Providers Badge */}
                     <div className="mb-4">
-                      <div className="flex items-center text-sm text-dark-400">
-                        <span className="font-medium">Provider:</span>
-                        <span className="ml-1 text-primary-400 font-medium">
-                          {service.providerId?.name || 'Unknown Provider'}
-                        </span>
+                      <div className="text-sm text-dark-400">
+                        <span className="font-medium">Providers:</span>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {service.allProviders && service.allProviders.length > 0 ? (
+                            service.allProviders.map((provider, index) => (
+                              <span 
+                                key={provider._id || index}
+                                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-500/20 text-primary-400 border border-primary-500/30"
+                              >
+                                {provider.name}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-primary-400 font-medium">
+                              {service.providerId?.name || 'Unknown Provider'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 

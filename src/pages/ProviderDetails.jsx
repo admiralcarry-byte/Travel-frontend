@@ -259,7 +259,7 @@ const ProviderDetails = () => {
 
               {provider.description && (
                 <div>
-                  <div className="text-sm font-medium text-dark-300">Description</div>
+                  <div className="text-sm font-medium text-dark-300">Notas/Descripción</div>
                   <div className="text-dark-100 ml-6">
                     {provider.description}
                   </div>

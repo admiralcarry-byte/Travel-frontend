@@ -184,13 +184,13 @@ const ClientDetails = () => {
             <div className="card p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-dark-100">
-                  Companions ({passengers.length})
+                  Acompañantes ({passengers.length})
                 </h2>
                 <button
                   onClick={() => setShowPassengerForm(!showPassengerForm)}
                   className="btn-primary text-sm"
                 >
-                  {showPassengerForm ? 'Cancel' : 'Add Companion'}
+                  {showPassengerForm ? 'Cancel' : 'Add Acompañante'}
                 </button>
               </div>
 
@@ -208,8 +208,8 @@ const ClientDetails = () => {
               {/* Passengers List */}
               {passengers.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="text-dark-300 text-lg mb-2">No companions added yet</div>
-                  <p className="text-dark-400 text-sm">Add companions to this passenger to get started</p>
+                  <div className="text-dark-300 text-lg mb-2">No Acompañantes added yet</div>
+                  <p className="text-dark-400 text-sm">Add Acompañantes to this passenger to get started</p>
                 </div>
               ) : (
                 <div className="space-y-4">

@@ -10,6 +10,20 @@ import DataTable from '../components/DataTable';
 import PaymentMethodsTable from '../components/PaymentMethodsTable';
 import { formatCurrencyCompact } from '../utils/formatNumbers';
 
+// Mapping from display names to enum values - moved outside component to prevent re-creation
+const paymentMethodMapping = {
+  'Cash': 'cash',
+  'Bank Transfer': 'bank_transfer',
+  'Credit Card': 'credit_card',
+  'Transfer to Mare Nostrum': 'transfer_to_mare_nostrum',
+  'Transfer to Operator': 'transfer_to_operator',
+  'Deposit to Hivago': 'deposit_to_hivago',
+  'Deposit to Operator': 'deposit_to_operator',
+  'Cheque': 'cheque',
+  'Crypto': 'crypto',
+  'Cryptocurrency': 'crypto'  // Also map 'Cryptocurrency' to 'crypto' for backward compatibility
+};
+
 const AdminInsightsDashboard = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -24,6 +38,10 @@ const AdminInsightsDashboard = () => {
   const [salesData, setSalesData] = useState(null);
   const [profitData, setProfitData] = useState(null);
   
+  
+  // Payment methods from database
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  
   // Seller activity states
   const [selectedSeller, setSelectedSeller] = useState(null);
   const [sellerActivity, setSellerActivity] = useState([]);
@@ -37,7 +55,9 @@ const AdminInsightsDashboard = () => {
     sellerId: '',
     status: '',
     minAmount: '',
-    maxAmount: ''
+    maxAmount: '',
+    paymentType: '',
+    paymentMethod: ''
   });
   
   // Pagination states
@@ -89,17 +109,17 @@ const AdminInsightsDashboard = () => {
           ...seller,
           sellerName: seller.sellerName || 'Unknown Seller',
           sellerEmail: seller.sellerEmail || 'No email',
-          // Backend returns data directly, not nested under performance
-          totalSales: seller.totalSales || 0,
-          totalProfit: seller.totalProfit || 0,
-          saleCount: seller.saleCount || 0,
+          // Backend returns data nested under performance object
+          totalSales: seller.performance?.totalSales || 0,
+          totalProfit: seller.performance?.totalProfit || 0,
+          saleCount: seller.performance?.saleCount || 0,
           performance: {
-            totalSales: seller.totalSales || 0,
-            totalProfit: seller.totalProfit || 0,
-            profitMargin: seller.profitMargin || 0,
-            saleCount: seller.saleCount || 0,
-            averageSaleValue: seller.averageSaleValue || 0,
-            ranking: seller.ranking || 0
+            totalSales: seller.performance?.totalSales || 0,
+            totalProfit: seller.performance?.totalProfit || 0,
+            profitMargin: seller.performance?.profitMargin || 0,
+            saleCount: seller.performance?.saleCount || 0,
+            averageSaleValue: seller.performance?.averageSaleValue || 0,
+            ranking: seller.performance?.ranking || 0
           }
         }));
         setSellerPerformance(validSellers);
@@ -194,6 +214,12 @@ const AdminInsightsDashboard = () => {
       if (filters.period) params.append('period', filters.period);
       if (filters.startDate) params.append('startDate', filters.startDate);
       if (filters.endDate) params.append('endDate', filters.endDate);
+      if (filters.paymentType) params.append('paymentType', filters.paymentType);
+      if (filters.paymentMethod) {
+        // Map display name to enum value
+        const enumValue = paymentMethodMapping[filters.paymentMethod] || filters.paymentMethod;
+        params.append('paymentMethod', enumValue);
+      }
 
       const response = await api.get(`/api/reports/payment-methods?${params}`);
       if (response.data.success) {
@@ -202,7 +228,7 @@ const AdminInsightsDashboard = () => {
     } catch (error) {
       console.error('Error fetching payment methods:', error);
     }
-  }, [filters.period, filters.startDate, filters.endDate]);
+  }, [filters.period, filters.startDate, filters.endDate, filters.paymentType, filters.paymentMethod]);
 
   // Fetch sales and profit data for charts
   const fetchChartData = useCallback(async () => {
@@ -239,6 +265,19 @@ const AdminInsightsDashboard = () => {
     }
   }, [filters.period, filters.startDate, filters.endDate]);
 
+
+  // Fetch payment methods from database
+  const fetchPaymentMethodsFromDB = useCallback(async () => {
+    try {
+      const response = await api.get('/api/manage-currencies');
+      if (response.data.success && response.data.data.paymentMethods) {
+        setPaymentMethods(response.data.data.paymentMethods);
+      }
+    } catch (error) {
+      console.error('Error fetching payment methods from database:', error);
+    }
+  }, []);
+
   // Fetch all data
   const fetchAllData = useCallback(async () => {
     setLoading(true);
@@ -251,7 +290,8 @@ const AdminInsightsDashboard = () => {
         fetchTransactionDetails(),
         fetchMonthlyTrends(),
         fetchPaymentMethods(),
-        fetchChartData()
+        fetchChartData(),
+        fetchPaymentMethodsFromDB()
       ]);
     } catch (error) {
       setError('Failed to fetch insights data');
@@ -259,7 +299,7 @@ const AdminInsightsDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [fetchOverview, fetchSellerPerformance, fetchTransactionDetails, fetchMonthlyTrends, fetchPaymentMethods, fetchChartData]);
+  }, [fetchOverview, fetchSellerPerformance, fetchTransactionDetails, fetchMonthlyTrends, fetchPaymentMethods, fetchChartData, fetchPaymentMethodsFromDB]);
 
   // Initial data fetch
   useEffect(() => {
@@ -267,6 +307,14 @@ const AdminInsightsDashboard = () => {
       fetchAllData();
     }
   }, [user, fetchAllData]);
+
+  // Refetch payment methods data when payment method filter changes
+  useEffect(() => {
+    if (user && user.role === 'admin') {
+      fetchPaymentMethods();
+    }
+  }, [filters.paymentMethod, filters.paymentType, user]);
+
 
   // Handle filter changes
   const handleFilterChange = (field, value) => {
@@ -342,7 +390,9 @@ const AdminInsightsDashboard = () => {
       sellerId: '',
       status: '',
       minAmount: '',
-      maxAmount: ''
+      maxAmount: '',
+      paymentType: '',
+      paymentMethod: ''
     });
     setPagination(prev => ({
       ...prev,
@@ -515,6 +565,40 @@ const AdminInsightsDashboard = () => {
               </select>
             </div>
 
+            <div>
+              <label className="block text-sm font-semibold text-dark-200 mb-2">
+                Payment Type
+              </label>
+              <select
+                value={filters.paymentType}
+                onChange={(e) => handleFilterChange('paymentType', e.target.value)}
+                className="input-field"
+              >
+                <option value="">All Types</option>
+                <option value="client">Customer Payments</option>
+                <option value="provider">Supplier Payments</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-dark-200 mb-2">
+                Payment Method
+              </label>
+              <select
+                value={filters.paymentMethod}
+                onChange={(e) => handleFilterChange('paymentMethod', e.target.value)}
+                className="input-field"
+              >
+                <option value="">All Methods</option>
+                {paymentMethods.map((method) => (
+                  <option key={method._id} value={method.name}>
+                    {method.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+
             <div className="flex items-end">
               <button
                 onClick={clearFilters}
@@ -537,6 +621,7 @@ const AdminInsightsDashboard = () => {
                 subtitle={`${overview.businessMetrics?.saleCount || 0} sales`}
                 icon="money"
                 color="blue"
+                valueType="currency"
               />
               <KPICard
                 title="Total Profit"
@@ -544,6 +629,7 @@ const AdminInsightsDashboard = () => {
                 subtitle={`${overview.businessMetrics?.profitMargin || 0}% margin`}
                 icon="chart"
                 color="green"
+                valueType="currency"
               />
               <KPICard
                 title="Total Passengers"
@@ -551,13 +637,15 @@ const AdminInsightsDashboard = () => {
                 subtitle={`${overview.businessMetrics?.newClients || 0} new`}
                 icon="users"
                 color="yellow"
+                valueType="number"
               />
               <KPICard
                 title="Avg Sale Value"
-                value={overview.businessMetrics?.averageSaleValue || 0}
-                subtitle="Per transaction"
+                value={overview.businessMetrics?.totalClients > 0 ? (overview.businessMetrics?.totalRevenue / overview.businessMetrics?.totalClients) : 0}
+                subtitle="Per passenger"
                 icon="dollar"
                 color="purple"
+                valueType="currency"
               />
             </div>
 
@@ -911,6 +999,8 @@ const AdminInsightsDashboard = () => {
             </div>
           </div>
         )}
+
+
 
         {/* Export Modal */}
         {showExportModal && (

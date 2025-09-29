@@ -20,6 +20,7 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState({});
   const [success, setSuccess] = useState('');
 
   const handleChange = (e) => {
@@ -28,6 +29,13 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
       [e.target.name]: e.target.value
     });
     setError('');
+    // Clear validation error for this field when user starts typing
+    if (validationErrors[e.target.name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [e.target.name]: ''
+      }));
+    }
   };
 
   const handleImageUpload = (e) => {
@@ -98,11 +106,25 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setValidationErrors({});
 
     try {
+      // Clean up form data - remove empty strings for optional fields
+      const cleanedFormData = {
+        ...formData,
+        email: formData.email.trim() || undefined,
+        phone: formData.phone.trim() || undefined,
+        dob: formData.dob || undefined,
+        passportNumber: formData.passportNumber.trim() || undefined,
+        nationality: formData.nationality.trim() || undefined,
+        expirationDate: formData.expirationDate || undefined,
+        gender: formData.gender || undefined,
+        specialRequests: formData.specialRequests.trim() || undefined
+      };
+
       const response = await api.post(
         `/api/clients/${clientId}/passengers`,
-        formData
+        cleanedFormData
       );
 
       if (response.data.success) {
@@ -123,9 +145,23 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
         });
         setPassportImage(null);
         setImagePreview(null);
+        setSuccess('Acompañante added successfully!');
+        setTimeout(() => setSuccess(''), 3000);
       }
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to add companion');
+      console.error('Passenger creation error:', error);
+      
+      if (error.response?.status === 400 && error.response?.data?.errors) {
+        // Handle validation errors
+        const fieldErrors = {};
+        error.response.data.errors.forEach(err => {
+          fieldErrors[err.field] = err.message;
+        });
+        setValidationErrors(fieldErrors);
+        setError('Please fix the validation errors below');
+      } else {
+        setError(error.response?.data?.message || 'Failed to add Acompañante');
+      }
     } finally {
       setLoading(false);
     }
@@ -133,7 +169,7 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
 
   return (
     <div className="card p-6">
-      <h3 className="text-lg font-medium text-dark-100 mb-4">Add New Companion</h3>
+      <h3 className="text-lg font-medium text-dark-100 mb-4">Add New Acompañante</h3>
       
       {error && (
         <div className="bg-error-500/10 border border-error-500/20 text-error-400 px-4 py-3 rounded-md mb-4">
@@ -197,8 +233,11 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
               value={formData.name}
               onChange={handleChange}
               required
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.name ? 'border-red-500' : ''}`}
             />
+            {validationErrors.name && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.name}</p>
+            )}
           </div>
 
           <div>
@@ -211,8 +250,11 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
               value={formData.surname}
               onChange={handleChange}
               required
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.surname ? 'border-red-500' : ''}`}
             />
+            {validationErrors.surname && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.surname}</p>
+            )}
           </div>
 
           <div>
@@ -225,8 +267,11 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
               value={formData.dni}
               onChange={handleChange}
               required
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.dni ? 'border-red-500' : ''}`}
             />
+            {validationErrors.dni && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.dni}</p>
+            )}
           </div>
 
           <div>
@@ -238,8 +283,11 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.email ? 'border-red-500' : ''}`}
             />
+            {validationErrors.email && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.email}</p>
+            )}
           </div>
 
           <div>
@@ -251,82 +299,96 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
               name="phone"
               value={formData.phone}
               onChange={handleChange}
-              className="input-field text-sm"
+              placeholder="+999"
+              className={`input-field text-sm ${validationErrors.phone ? 'border-red-500' : ''}`}
             />
+            {validationErrors.phone && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.phone}</p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-dark-400 mb-1">
-              Date of Birth *
+              Date of Birth
             </label>
             <input
               type="date"
               name="dob"
               value={formData.dob}
               onChange={handleChange}
-              required
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.dob ? 'border-red-500' : ''}`}
             />
+            {validationErrors.dob && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.dob}</p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-dark-400 mb-1">
-              Gender *
+              Gender
             </label>
             <select
               name="gender"
               value={formData.gender}
               onChange={handleChange}
-              required
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.gender ? 'border-red-500' : ''}`}
             >
               <option value="">Select Gender</option>
               <option value="male">Male</option>
               <option value="female">Female</option>
               <option value="other">Other</option>
             </select>
+            {validationErrors.gender && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.gender}</p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-dark-400 mb-1">
-              Passport Number *
+              Passport Number
             </label>
             <input
               type="text"
               name="passportNumber"
               value={formData.passportNumber}
               onChange={handleChange}
-              required
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.passportNumber ? 'border-red-500' : ''}`}
             />
+            {validationErrors.passportNumber && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.passportNumber}</p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-dark-400 mb-1">
-              Nationality *
+              Nationality
             </label>
             <input
               type="text"
               name="nationality"
               value={formData.nationality}
               onChange={handleChange}
-              required
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.nationality ? 'border-red-500' : ''}`}
             />
+            {validationErrors.nationality && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.nationality}</p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-dark-400 mb-1">
-              Expiration Date *
+              Expiration Date
             </label>
             <input
               type="date"
               name="expirationDate"
               value={formData.expirationDate}
               onChange={handleChange}
-              required
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.expirationDate ? 'border-red-500' : ''}`}
             />
+            {validationErrors.expirationDate && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.expirationDate}</p>
+            )}
           </div>
         </div>
 
@@ -341,8 +403,11 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
             onChange={handleChange}
             rows={3}
             placeholder="Dietary restrictions, medical conditions, travel preferences, or any other notes..."
-            className="input-field text-sm"
+            className={`input-field text-sm ${validationErrors.specialRequests ? 'border-red-500' : ''}`}
           />
+          {validationErrors.specialRequests && (
+            <p className="text-red-400 text-xs mt-1">{validationErrors.specialRequests}</p>
+          )}
         </div>
 
         {/* Form Actions */}
@@ -359,7 +424,7 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
             disabled={loading}
             className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Adding...' : 'Add Companion'}
+            {loading ? 'Adding...' : 'Add Acompañante'}
           </button>
         </div>
       </form>

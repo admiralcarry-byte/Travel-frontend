@@ -1,6 +1,6 @@
 import React from 'react';
 
-const KPICard = ({ title, value, subtitle, icon, color = 'blue', trend, trendValue, delay = 0 }) => {
+const KPICard = ({ title, value, subtitle, icon, color = 'blue', trend, trendValue, delay = 0, valueType = 'currency' }) => {
   // Icon mapping for modern SVG icons
   const iconComponents = {
     'money': (
@@ -42,12 +42,20 @@ const KPICard = ({ title, value, subtitle, icon, color = 'blue', trend, trendVal
       const isNegative = val < 0;
       const sign = isNegative ? '-' : '';
       
-      if (absVal >= 1000000) {
-        return `${sign}$${(absVal / 1000000).toFixed(1)}M`;
-      } else if (absVal >= 1000) {
-        return `${sign}$${(absVal / 1000).toFixed(1)}K`;
-      } else {
-        return `${sign}$${absVal.toFixed(2)}`;
+      if (valueType === 'currency') {
+        if (absVal >= 1000000) {
+          return `${sign}$${(absVal / 1000000).toFixed(1)}M`;
+        } else if (absVal >= 1000) {
+          return `${sign}$${(absVal / 1000).toFixed(1)}K`;
+        } else {
+          return `${sign}$${absVal.toFixed(2)}`;
+        }
+      } else if (valueType === 'number') {
+        // Format as plain number with commas
+        return `${sign}${absVal.toLocaleString()}`;
+      } else if (valueType === 'decimal') {
+        // Format as decimal number
+        return `${sign}${absVal.toFixed(2)}`;
       }
     }
     return val;

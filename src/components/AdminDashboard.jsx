@@ -500,27 +500,10 @@ const AdminDashboard = () => {
           {/* Quick Actions */}
           <div className="card-glass p-6">
             <h4 className="text-xl font-semibold text-dark-100 mb-6">Quick Actions</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <button
-                onClick={() => navigate('/reports')}
-                className="group card hover-lift p-4 text-left"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="icon-container bg-primary-500 group-hover:scale-110 transition-transform duration-300">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-dark-100 group-hover:text-primary-400 transition-colors">View Reports</div>
-                    <div className="text-xs text-dark-400">Business analytics</div>
-                  </div>
-                </div>
-              </button>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <button
                 onClick={() => navigate('/clients')}
-                className="group card hover-lift p-4 text-left"
+                className="group card hover-lift p-6 text-left"
               >
                 <div className="flex items-center space-x-3">
                   <div className="icon-container bg-accent-500 group-hover:scale-110 transition-transform duration-300">
@@ -536,25 +519,25 @@ const AdminDashboard = () => {
               </button>
 
               <button
-                onClick={() => navigate('/services')}
-                className="group card hover-lift p-4 text-left"
+                onClick={() => navigate('/admin-insights')}
+                className="group card hover-lift p-6 text-left"
               >
                 <div className="flex items-center space-x-3">
                   <div className="icon-container bg-success-500 group-hover:scale-110 transition-transform duration-300">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-dark-100 group-hover:text-success-400 transition-colors">Manage Services</div>
-                    <div className="text-xs text-dark-400">Service catalog</div>
+                    <div className="text-sm font-semibold text-dark-100 group-hover:text-success-400 transition-colors">Admin Insights</div>
+                    <div className="text-xs text-dark-400">Analytics & reports</div>
                   </div>
                 </div>
               </button>
 
               <button
                 onClick={() => navigate('/sales')}
-                className="group card hover-lift p-4 text-left"
+                className="group card hover-lift p-6 text-left"
               >
                 <div className="flex items-center space-x-3">
                   <div className="icon-container bg-warning-500 group-hover:scale-110 transition-transform duration-300">

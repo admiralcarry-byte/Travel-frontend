@@ -94,7 +94,7 @@ const ClientsList = () => {
       }
     } catch (error) {
       console.error('Error promoting companion:', error);
-      const errorMessage = error.response?.data?.message || 'Failed to promote companion. Please try again.';
+      const errorMessage = error.response?.data?.message || 'Failed to promote Acompañante. Please try again.';
       setError(errorMessage);
     }
   };
@@ -268,7 +268,7 @@ const ClientsList = () => {
                             {client.name || 'Unknown Passenger'} {client.surname || ''}
                             {!client.isMainClient && (
                               <span className="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
-                                Companion
+                                Acompañante
                               </span>
                             )}
                           </div>

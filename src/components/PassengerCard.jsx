@@ -17,22 +17,44 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState({});
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+    setError('');
+    // Clear validation error for this field when user starts typing
+    if (validationErrors[e.target.name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [e.target.name]: ''
+      }));
+    }
   };
 
   const handleSave = async () => {
     setLoading(true);
     setError('');
+    setValidationErrors({});
 
     try {
+      // Clean up form data - remove empty strings for optional fields
+      const cleanedFormData = {
+        ...formData,
+        email: formData.email.trim() || undefined,
+        phone: formData.phone.trim() || undefined,
+        dob: formData.dob || undefined,
+        passportNumber: formData.passportNumber.trim() || undefined,
+        nationality: formData.nationality.trim() || undefined,
+        expirationDate: formData.expirationDate || undefined,
+        specialRequests: formData.specialRequests.trim() || undefined
+      };
+
       const response = await api.put(
         `/api/passengers/${passenger._id}`,
-        formData
+        cleanedFormData
       );
 
       if (response.data.success) {
@@ -40,7 +62,19 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
         setIsEditing(false);
       }
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to update passenger');
+      console.error('Passenger update error:', error);
+      
+      if (error.response?.status === 400 && error.response?.data?.errors) {
+        // Handle validation errors
+        const fieldErrors = {};
+        error.response.data.errors.forEach(err => {
+          fieldErrors[err.field] = err.message;
+        });
+        setValidationErrors(fieldErrors);
+        setError('Please fix the validation errors below');
+      } else {
+        setError(error.response?.data?.message || error.response?.data?.error || 'Failed to update passenger');
+      }
     } finally {
       setLoading(false);
     }
@@ -82,17 +116,11 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
         </div>
       )}
 
-      <div className="flex justify-between items-start mb-4">
+      <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-medium text-dark-100">
             {passenger.fullName || `${passenger.name || ''} ${passenger.surname || ''}`.trim() || 'Unknown Passenger'}
           </h3>
-          <p className="text-sm text-dark-300">
-            DNI: {passenger.dni || 'No DNI'} | {passenger.email || 'No email'}
-          </p>
-          <p className="text-xs text-dark-400">
-            Phone: {passenger.phone || 'No phone'} | Passport: {passenger.passportNumber || 'No passport'}
-          </p>
         </div>
         <div className="flex space-x-2">
           {!isEditing ? (
@@ -141,8 +169,11 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               name="name"
               value={formData.name}
               onChange={handleChange}
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.name ? 'border-red-500' : ''}`}
             />
+            {validationErrors.name && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.name}</p>
+            )}
           </div>
 
           <div>
@@ -154,8 +185,11 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               name="surname"
               value={formData.surname}
               onChange={handleChange}
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.surname ? 'border-red-500' : ''}`}
             />
+            {validationErrors.surname && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.surname}</p>
+            )}
           </div>
 
           <div>
@@ -167,8 +201,11 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               name="dni"
               value={formData.dni}
               onChange={handleChange}
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.dni ? 'border-red-500' : ''}`}
             />
+            {validationErrors.dni && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.dni}</p>
+            )}
           </div>
 
           <div>
@@ -180,8 +217,11 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.email ? 'border-red-500' : ''}`}
             />
+            {validationErrors.email && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.email}</p>
+            )}
           </div>
 
           <div>
@@ -193,8 +233,12 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               name="phone"
               value={formData.phone}
               onChange={handleChange}
-              className="input-field text-sm"
+              placeholder="+999"
+              className={`input-field text-sm ${validationErrors.phone ? 'border-red-500' : ''}`}
             />
+            {validationErrors.phone && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.phone}</p>
+            )}
           </div>
 
           <div>
@@ -206,8 +250,11 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               name="dob"
               value={formData.dob}
               onChange={handleChange}
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.dob ? 'border-red-500' : ''}`}
             />
+            {validationErrors.dob && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.dob}</p>
+            )}
           </div>
 
           <div>
@@ -219,8 +266,11 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               name="passportNumber"
               value={formData.passportNumber}
               onChange={handleChange}
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.passportNumber ? 'border-red-500' : ''}`}
             />
+            {validationErrors.passportNumber && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.passportNumber}</p>
+            )}
           </div>
 
           <div>
@@ -232,8 +282,11 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               name="nationality"
               value={formData.nationality}
               onChange={handleChange}
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.nationality ? 'border-red-500' : ''}`}
             />
+            {validationErrors.nationality && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.nationality}</p>
+            )}
           </div>
 
           <div>
@@ -245,8 +298,11 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               name="expirationDate"
               value={formData.expirationDate}
               onChange={handleChange}
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.expirationDate ? 'border-red-500' : ''}`}
             />
+            {validationErrors.expirationDate && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.expirationDate}</p>
+            )}
           </div>
 
           <div className="md:col-span-2">
@@ -259,75 +315,15 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               onChange={handleChange}
               rows={3}
               placeholder="Dietary restrictions, medical conditions, travel preferences, or any other notes..."
-              className="input-field text-sm"
+              className={`input-field text-sm ${validationErrors.specialRequests ? 'border-red-500' : ''}`}
             />
+            {validationErrors.specialRequests && (
+              <p className="text-red-400 text-xs mt-1">{validationErrors.specialRequests}</p>
+            )}
           </div>
         </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="font-medium text-dark-400">Email:</span>
-              <span className="ml-2 text-dark-100">{passenger.email || 'Not provided'}</span>
-            </div>
-            <div>
-              <span className="font-medium text-dark-400">Phone:</span>
-              <span className="ml-2 text-dark-100">{passenger.phone || 'Not provided'}</span>
-            </div>
-            <div>
-              <span className="font-medium text-dark-400">Date of Birth:</span>
-              <span className="ml-2 text-dark-100">
-                {passenger.dob ? new Date(passenger.dob).toLocaleDateString() : 'Not provided'}
-              </span>
-            </div>
-            <div>
-              <span className="font-medium text-dark-400">Nationality:</span>
-              <span className="ml-2 text-dark-100">{passenger.nationality || 'Not provided'}</span>
-            </div>
-            <div>
-              <span className="font-medium text-dark-400">Expiration Date:</span>
-              <span className="ml-2 text-dark-100">
-                {passenger.expirationDate ? new Date(passenger.expirationDate).toLocaleDateString() : 'Not provided'}
-              </span>
-            </div>
-            <div>
-              <span className="font-medium text-dark-400">Status:</span>
-              <span className={`ml-2 badge ${
-                passenger.isPassportValid 
-                  ? 'badge-success' 
-                  : 'badge-error'
-              }`}>
-                {passenger.isPassportValid ? 'Valid' : 'Expired'}
-              </span>
-            </div>
-          </div>
+      ) : null}
 
-          {passenger.specialRequests && (
-            <div className="mt-4 pt-4 border-t border-white/10">
-              <div className="text-sm">
-                <span className="font-medium text-dark-400">Special Requests / Notes:</span>
-                <p className="mt-1 text-dark-100 whitespace-pre-wrap">{passenger.specialRequests}</p>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {passenger.passportImage && (
-        <div className="mt-4 pt-4 border-t border-white/10">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-dark-400">Passport Image:</span>
-            <a
-                        href={`${api.getUri()}/uploads/passports/${passenger.passportImage}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary-400 hover:text-primary-300 text-sm"
-            >
-              View Image
-            </a>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

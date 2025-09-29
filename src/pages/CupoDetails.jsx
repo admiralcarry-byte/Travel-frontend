@@ -83,7 +83,7 @@ const CupoDetails = () => {
             onClick={() => navigate('/inventory')}
             className="btn-primary"
           >
-            Back to Slots
+            Back to Cupos
           </button>
         </div>
       </div>
@@ -101,7 +101,7 @@ const CupoDetails = () => {
             onClick={() => navigate('/inventory')}
             className="btn-primary"
           >
-            Back to Slots
+            Back to Cupos
           </button>
         </div>
       </div>
@@ -115,13 +115,13 @@ const CupoDetails = () => {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-dark-100 mb-2">Cupo Details</h1>
-            <p className="text-dark-300">View detailed information about this slot item</p>
+            <p className="text-dark-300">View detailed information about this cupo item</p>
           </div>
           <button
             onClick={() => navigate('/inventory')}
             className="btn-secondary"
           >
-            ← Back to Slots
+            ← Back to Cupos
           </button>
         </div>
 
@@ -132,7 +132,7 @@ const CupoDetails = () => {
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-dark-100 mb-2">
-                    {cupo.serviceId?.title || 'Unknown Service'}
+                    {cupo.serviceId?.destino || 'Unknown Service'}
                   </h2>
                   <p className="text-dark-300 mb-4">
                     {cupo.serviceId?.description || 'No description available'}
@@ -147,12 +147,12 @@ const CupoDetails = () => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-bold text-primary-400 mb-1">
-                    {cupo.serviceId?.cost ? 
-                      `${cupo.serviceId?.currency || 'USD'} ${cupo.serviceId.cost.toLocaleString()}` : 
+                  {/* <div className="text-3xl font-bold text-primary-400 mb-1">
+                    {cupo.serviceId?.sellingPrice ? 
+                      `${cupo.serviceId?.baseCurrency || 'USD'} ${cupo.serviceId.sellingPrice.toLocaleString()}` : 
                       'Price N/A'
                     }
-                  </div>
+                  </div> */}
                   <div className="text-sm text-dark-400">
                     {cupo.serviceId?.type?.charAt(0).toUpperCase() + cupo.serviceId?.type?.slice(1) || 'Service'}
                   </div>
@@ -244,9 +244,17 @@ const CupoDetails = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {cupo.metadata.date && (
                     <div className="flex justify-between">
-                      <span className="text-dark-300">Date:</span>
+                      <span className="text-dark-300">Start Date:</span>
                       <span className="text-dark-100">
                         {new Date(cupo.metadata.date).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                  {cupo.metadata.completionDate && (
+                    <div className="flex justify-between">
+                      <span className="text-dark-300">Completion Date:</span>
+                      <span className="text-dark-100">
+                        {new Date(cupo.metadata.completionDate).toLocaleDateString()}
                       </span>
                     </div>
                   )}
@@ -306,7 +314,7 @@ const CupoDetails = () => {
                   onClick={() => navigate('/inventory')}
                   className="w-full px-4 py-2 bg-dark-700 text-dark-200 rounded-md hover:bg-dark-600 border border-white/10 transition-all duration-300"
                 >
-                  Back to Slots
+                  Back to Cupos
                 </button>
               </div>
             </div>

@@ -108,7 +108,7 @@ const ServiceManagement = () => {
 
     if (searchTerm) {
       filtered = filtered.filter(service =>
-        service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        service.destino.toLowerCase().includes(searchTerm.toLowerCase()) ||
         service.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         service.providerId?.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
@@ -206,12 +206,10 @@ const ServiceManagement = () => {
   const handleEditService = (service) => {
     setEditingService(service);
     setServiceFormData({
-      title: service.title,
+        destino: service.destino,
       type: service.type,
       description: service.description,
-      providerId: service.providerId._id || service.providerId,
-      cost: service.cost,
-      currency: service.currency
+      providerId: service.providerId._id || service.providerId
     });
     setShowServiceForm(true);
   };
@@ -380,7 +378,7 @@ const ServiceManagement = () => {
             {filteredServices.map(service => (
               <div key={service._id} className="card p-6">
                 <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-lg font-medium text-dark-100">{service.title}</h3>
+                  <h3 className="text-lg font-medium text-dark-100">{service.destino}</h3>
                   <span className="text-xs bg-primary-500/20 text-primary-400 px-2 py-1 rounded-full">
                     {service.type}
                   </span>
@@ -441,13 +439,13 @@ const ServiceManagement = () => {
                 <div className="flex justify-between items-start mb-4">
                   <h3 className="text-lg font-medium text-dark-100">{provider.name}</h3>
                   <span className="text-xs bg-primary-500/20 text-primary-400 px-2 py-1 rounded-full">
-                    {provider.type}
+                    {provider.type || 'No type'}
                   </span>
                 </div>
                 <p className="text-sm text-dark-300 mb-4">{provider.description}</p>
                 <div className="space-y-2 text-sm">
-                  <p><strong>Email:</strong> {provider.contactInfo.email}</p>
-                  <p><strong>Phone:</strong> {provider.contactInfo.phone}</p>
+                  <p><strong>Email:</strong> {provider.contactInfo?.email || 'No email'}</p>
+                  <p><strong>Phone:</strong> {provider.contactInfo?.phone || 'No phone'}</p>
                   <p><strong>Status:</strong> 
                     <span className={`ml-1 ${
                       provider.status === 'active' ? 'text-green-400' : 'text-red-400'
@@ -487,12 +485,12 @@ const ServiceManagement = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-dark-200 mb-1">
-                    Service Title *
+                    Destino (Destination) *
                   </label>
                   <input
                     type="text"
-                    value={serviceFormData.title}
-                    onChange={(e) => setServiceFormData({...serviceFormData, title: e.target.value})}
+                    value={serviceFormData.destino}
+                    onChange={(e) => setServiceFormData({...serviceFormData, destino: e.target.value})}
                     required
                     className="input-field"
                   />
@@ -543,7 +541,7 @@ const ServiceManagement = () => {
                   <option value="">Select provider</option>
                   {providers.map(provider => (
                     <option key={provider._id} value={provider._id}>
-                      {provider.name} ({provider.type})
+                      {provider.name} ({provider.type || 'No type'})
                     </option>
                   ))}
                 </select>

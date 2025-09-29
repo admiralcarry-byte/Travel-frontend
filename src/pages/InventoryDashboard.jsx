@@ -14,13 +14,15 @@ const InventoryDashboard = () => {
     serviceId: '',
     status: '',
     minAvailableSeats: '',
-    date: ''
+    date: '',
+    completionDate: ''
   });
   const [debouncedFilters, setDebouncedFilters] = useState({
     serviceId: '',
     status: '',
     minAvailableSeats: '',
-    date: ''
+    date: '',
+    completionDate: ''
   });
 
   const debouncedFiltersRef = useRef(debouncedFilters);
@@ -54,7 +56,8 @@ const InventoryDashboard = () => {
     { value: 'active', label: 'Active' },
     { value: 'inactive', label: 'Inactive' },
     { value: 'sold_out', label: 'Sold Out' },
-    { value: 'cancelled', label: 'Cancelled' }
+    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'completed', label: 'Completed' }
   ], []);
 
   const fetchCupos = useCallback(async (isInitialLoad = false) => {
@@ -136,7 +139,8 @@ const InventoryDashboard = () => {
       serviceId: '',
       status: '',
       minAvailableSeats: '',
-      date: ''
+      date: '',
+      completionDate: ''
     });
     setCurrentPage(1);
   }, []);
@@ -150,7 +154,7 @@ const InventoryDashboard = () => {
     }
 
     if (!cupo.serviceId.providerId || (!cupo.serviceId.providerId.id && !cupo.serviceId.providerId._id)) {
-      setError(`Invalid provider data. Service: ${cupo.serviceId.title}, Provider: ${cupo.serviceId.providerId ? 'exists but no ID' : 'missing'}. Cannot create reservation.`);
+        setError(`Invalid provider data. Service: ${cupo.serviceId.destino}, Provider: ${cupo.serviceId.providerId ? 'exists but no ID' : 'missing'}. Cannot create reservation.`);
       return;
     }
 
@@ -161,7 +165,7 @@ const InventoryDashboard = () => {
         prefillData: {
           serviceId: cupo.serviceId.id || cupo.serviceId._id,
           providerId: cupo.serviceId.providerId.id || cupo.serviceId.providerId._id,
-          serviceTitle: cupo.serviceId.title,
+          serviceTitle: cupo.serviceId.destino,
           date: cupo.metadata.date,
           availableSeats: cupo.availableSeats
         }
@@ -193,10 +197,10 @@ const InventoryDashboard = () => {
         {/* Header */}
         <div className="text-center">
           <h1 className="text-5xl sm:text-6xl font-bold gradient-text mb-6 font-poppins">
-            Slots Dashboard
+            Cupos Dashboard
           </h1>
           <p className="text-xl text-dark-300 max-w-3xl mx-auto mb-8">
-            Manage pre-purchased slots (cupos) and reservations
+            Manage pre-purchased cupos and reservations
           </p>
           <button
             onClick={() => navigate('/cupos/new')}
@@ -232,7 +236,7 @@ const InventoryDashboard = () => {
 
         {/* Filters */}
         <div className="card-glass p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm font-semibold text-dark-200 mb-4">
                 Service
@@ -245,7 +249,7 @@ const InventoryDashboard = () => {
                 <option value="">All Services</option>
                 {services.map((service, index) => (
                   <option key={service._id || service.id || `service-${index}`} value={service._id || service.id}>
-                    {service.title}
+                        {service.destino}
                   </option>
                 ))}
               </select>
@@ -283,12 +287,24 @@ const InventoryDashboard = () => {
 
             <div>
               <label className="block text-sm font-semibold text-dark-200 mb-4">
-                Date
+                Start Date
               </label>
               <input
                 type="date"
                 value={filters.date}
                 onChange={(e) => handleFilterChange('date', e.target.value)}
+                className="input-field"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-dark-200 mb-4">
+                Completion Date
+              </label>
+              <input
+                type="date"
+                value={filters.completionDate}
+                onChange={(e) => handleFilterChange('completionDate', e.target.value)}
                 className="input-field"
               />
             </div>
@@ -314,7 +330,7 @@ const InventoryDashboard = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                   </svg>
                 </div>
-                <div className="text-dark-200 text-xl font-bold">No slots found</div>
+                <div className="text-dark-200 text-xl font-bold">No cupos found</div>
               </div>
               <div className="text-center">
                 <p className="text-dark-400 text-sm mb-6">
@@ -341,7 +357,7 @@ const InventoryDashboard = () => {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-dark-100 line-clamp-2">
-                          {cupo.serviceId?.title}
+                          {cupo.serviceId?.destino}
                         </h3>
                         <p className="text-sm text-dark-300 mt-1">
                           {cupo.serviceId?.providerId?.name}
@@ -349,10 +365,20 @@ const InventoryDashboard = () => {
                         <p className="text-sm text-dark-400">
                           {cupo.serviceId?.type} • {cupo.formattedDate}
                         </p>
+                        {cupo.metadata.completionDate && (
+                          <p className="text-sm text-dark-400">
+                            Completion: {new Date(cupo.metadata.completionDate).toLocaleDateString()}
+                          </p>
+                        )}
                       </div>
                       <div className="flex flex-col space-y-1 min-w-0">
-                        <span className={`badge ${cupo.status === 'active' ? 'badge-success' : cupo.status === 'inactive' ? 'badge-warning' : 'badge-error'} justify-center`}>
-                          {cupo.status.replace('_', ' ')}
+                        <span className={`badge ${
+                          cupo.status === 'active' ? 'badge-success' : 
+                          cupo.status === 'inactive' ? 'badge-warning' : 
+                          cupo.status === 'completed' ? 'badge-secondary' :
+                          'badge-error'
+                        } justify-center`}>
+                          {cupo.status.replace('_', ' ').toUpperCase()}
                         </span>
                         <span className={`badge ${cupo.availabilityStatus === 'available' ? 'badge-success' : cupo.availabilityStatus === 'limited_availability' ? 'badge-warning' : 'badge-error'} justify-center`}>
                           {cupo.availabilityStatus === 'limited_availability' ? 'LIMITED AVAIL...' : cupo.availabilityStatus.replace('_', ' ')}
@@ -414,6 +440,7 @@ const InventoryDashboard = () => {
                       <button
                         onClick={() => handleReserve(cupo)}
                         disabled={
+                          cupo.status === 'completed' ||
                           cupo.availableSeats === 0 || 
                           !cupo.serviceId || 
                           (!cupo.serviceId.id && !cupo.serviceId._id) || 
@@ -421,6 +448,7 @@ const InventoryDashboard = () => {
                           (!cupo.serviceId.providerId.id && !cupo.serviceId.providerId._id)
                         }
                         className={`flex-1 px-3 py-2 text-sm rounded-md transition-all duration-300 ${
+                          cupo.status === 'completed' ||
                           cupo.availableSeats === 0 || 
                           !cupo.serviceId || 
                           (!cupo.serviceId.id && !cupo.serviceId._id) || 
@@ -430,7 +458,9 @@ const InventoryDashboard = () => {
                             : 'btn-primary'
                         }`}
                         title={
-                          !cupo.serviceId || (!cupo.serviceId.id && !cupo.serviceId._id)
+                          cupo.status === 'completed'
+                            ? 'Service completed'
+                            : !cupo.serviceId || (!cupo.serviceId.id && !cupo.serviceId._id)
                             ? 'Missing service data'
                             : !cupo.serviceId.providerId || (!cupo.serviceId.providerId.id && !cupo.serviceId.providerId._id)
                             ? 'Missing provider data'
@@ -439,7 +469,9 @@ const InventoryDashboard = () => {
                             : 'Click to reserve'
                         }
                       >
-                        {cupo.availableSeats === 0 
+                        {cupo.status === 'completed'
+                          ? 'Completed'
+                          : cupo.availableSeats === 0 
                           ? 'Sold Out' 
                           : !cupo.serviceId || (!cupo.serviceId.id && !cupo.serviceId._id)
                           ? 'No Service'
@@ -450,7 +482,13 @@ const InventoryDashboard = () => {
                       </button>
                       <button
                         onClick={() => navigate(`/cupos/${cupo.id || cupo._id}`)}
-                        className="px-3 py-2 bg-dark-700 text-dark-200 text-sm rounded-md hover:bg-dark-600 border border-white/10 transition-all duration-300"
+                        disabled={cupo.status === 'completed'}
+                        className={`px-3 py-2 text-sm rounded-md border border-white/10 transition-all duration-300 ${
+                          cupo.status === 'completed'
+                            ? 'bg-dark-800 text-dark-500 cursor-not-allowed'
+                            : 'bg-dark-700 text-dark-200 hover:bg-dark-600'
+                        }`}
+                        title={cupo.status === 'completed' ? 'Service completed' : 'View details'}
                       >
                         View
                       </button>

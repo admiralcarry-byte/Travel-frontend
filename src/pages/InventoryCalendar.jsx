@@ -136,7 +136,7 @@ const InventoryCalendar = () => {
           prefillData: {
             serviceId: cupo.serviceId.id,
             providerId: cupo.serviceId.providerId.id,
-            serviceTitle: cupo.serviceId.title,
+            serviceTitle: cupo.serviceId.destino,
             date: cupo.metadata.date,
             availableSeats: cupo.availableSeats
           }
@@ -276,7 +276,7 @@ const InventoryCalendar = () => {
                                 cupo.availableSeats > 0 ? 'hover:opacity-80' : 'cursor-not-allowed opacity-60'
                               }`}
                             >
-                              <div className="font-medium truncate">{cupo.serviceId?.title}</div>
+                              <div className="font-medium truncate">{cupo.serviceId?.destino}</div>
                               <div>{cupo.availableSeats} seats</div>
                             </div>
                           ))}
@@ -311,7 +311,7 @@ const InventoryCalendar = () => {
                             cupo.availableSeats > 0 ? 'hover:opacity-80' : 'cursor-not-allowed opacity-60'
                           }`}
                         >
-                          <div className="font-medium truncate">{cupo.serviceId?.title}</div>
+                          <div className="font-medium truncate">{cupo.serviceId?.destino}</div>
                           <div className="text-xs">{cupo.availableSeats} seats</div>
                           <div className="text-xs">{cupo.serviceId?.providerId?.name}</div>
                         </div>
@@ -344,7 +344,7 @@ const InventoryCalendar = () => {
                   >
                     <div className="flex justify-between items-start">
                       <div>
-                        <h3 className="font-medium text-gray-900">{cupo.serviceId?.title}</h3>
+                        <h3 className="font-medium text-gray-900">{cupo.serviceId?.destino}</h3>
                         <p className="text-sm text-gray-600">{cupo.serviceId?.providerId?.name}</p>
                         {cupo.metadata.roomType && (
                           <p className="text-sm text-gray-500">Room: {cupo.metadata.roomType}</p>

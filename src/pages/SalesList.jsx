@@ -41,6 +41,32 @@ const TruncatedText = ({ text, className = '', title = '' }) => {
 
 const SalesList = () => {
   const navigate = useNavigate();
+  
+  // Helper function to get earliest start date from all services
+  const getEarliestStartDate = (sale) => {
+    if (!sale.services || sale.services.length === 0) return null;
+    
+    const startDates = sale.services
+      .filter(service => service.serviceDates && service.serviceDates.startDate)
+      .map(service => new Date(service.serviceDates.startDate));
+    
+    if (startDates.length === 0) return null;
+    
+    return new Date(Math.min(...startDates));
+  };
+  
+  // Helper function to get latest end date from all services
+  const getLatestEndDate = (sale) => {
+    if (!sale.services || sale.services.length === 0) return null;
+    
+    const endDates = sale.services
+      .filter(service => service.serviceDates && service.serviceDates.endDate)
+      .map(service => new Date(service.serviceDates.endDate));
+    
+    if (endDates.length === 0) return null;
+    
+    return new Date(Math.max(...endDates));
+  };
   const [sales, setSales] = useState([]);
   const [clients, setClients] = useState([]);
   const [providers, setProviders] = useState([]);
@@ -193,13 +219,10 @@ const SalesList = () => {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const response = await api.get('/api/users');
+      const response = await api.get('/api/users/sellers');
       if (response.data.success) {
-        // Filter to only show sellers and admins (team members who can create sales)
-        const teamMembers = response.data.data.users.filter(user => 
-          ['admin', 'seller'].includes(user.role) && user.isActive
-        );
-        setUsers(teamMembers);
+        // The sellers endpoint already returns only sellers and admins
+        setUsers(response.data.data.sellers);
       }
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -457,7 +480,7 @@ const SalesList = () => {
                   <option value="">All Providers</option>
                   {providers.map(provider => (
                     <option key={provider._id} value={provider._id}>
-                      {provider.name} ({provider.type})
+                      {provider.name} ({provider.type || 'No type'})
                     </option>
                   ))}
                 </select>
@@ -475,7 +498,7 @@ const SalesList = () => {
                   <option value="">All Salespeople</option>
                   {users.map(user => (
                     <option key={user._id} value={user._id}>
-                      {user.fullName || user.username} ({user.role})
+                      {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username} ({user.role})
                     </option>
                   ))}
                 </select>
@@ -691,7 +714,7 @@ const SalesList = () => {
                                 {client.name.toUpperCase()} {client.surname.toUpperCase()}
                                 {!client.isMainClient && (
                                   <span className="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
-                                    Companion
+                                    Acompañante
                                   </span>
                                 )}
                               </div>
@@ -748,7 +771,7 @@ const SalesList = () => {
                                       fetchClients(false);
                                     }
                                   } catch (error) {
-                                    console.error('Error promoting companion:', error);
+                                    console.error('Error promoting Acompañante:', error);
                                   }
                                 }}
                                 className="text-blue-400 hover:text-blue-300 text-xs"
@@ -852,16 +875,13 @@ const SalesList = () => {
                 <table className="w-full divide-y divide-white/10 table-fixed min-w-[1200px]">
                   <thead className="bg-dark-700">
                     <tr>
-                      <th className="w-24 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
-                        Sale ID
-                      </th>
                       <th className="w-48 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
                         Passenger
                       </th>
-                      <th className="w-24 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
-                        Companions
+                      <th className="w-32 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                        Acompañantes
                       </th>
-                      <th className="w-24 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                      <th className="w-28 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
                         Services
                       </th>
                       <th className="w-32 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
@@ -877,6 +897,12 @@ const SalesList = () => {
                         Status
                       </th>
                       <th className="w-32 px-4 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                        Start Date
+                      </th>
+                      <th className="w-32 px-4 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                        End Date
+                      </th>
+                      <th className="w-32 px-4 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
                         Salesperson
                       </th>
                       <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
@@ -888,13 +914,12 @@ const SalesList = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
-                    {sales.map((sale) => (
+                    {sales.map((sale) => {
+                      const earliestStartDate = getEarliestStartDate(sale);
+                      const latestEndDate = getLatestEndDate(sale);
+                      
+                      return (
                       <tr key={sale.id || sale._id || Math.random()} className="table-row cursor-pointer">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-dark-100">
-                            #{(sale.id || sale._id || 'unknown').toString().slice(-8)}
-                          </div>
-                        </td>
                         <td className="px-6 py-4">
                           <div>
                             <TruncatedText 
@@ -911,7 +936,7 @@ const SalesList = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-dark-100">
-                            {sale.passengers.length} companion{sale.passengers.length !== 1 ? 's' : ''}
+                            {sale.passengers.length} Passenger{sale.passengers.length !== 1 ? 's' : ''}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -947,6 +972,16 @@ const SalesList = () => {
                           </div>
                         </td>
                         <td className="px-4 py-4">
+                          <div className="text-sm text-dark-100">
+                            {earliestStartDate ? earliestStartDate.toLocaleDateString() : 'N/A'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="text-sm text-dark-100">
+                            {latestEndDate ? latestEndDate.toLocaleDateString() : 'N/A'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
                           <TruncatedText 
                             text={sale.createdBy?.fullName || sale.createdBy?.username || 'Unknown'}
                             className="text-sm text-dark-100"
@@ -974,7 +1009,8 @@ const SalesList = () => {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
