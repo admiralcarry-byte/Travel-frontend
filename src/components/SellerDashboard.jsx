@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
+import { formatCurrencyCompact } from '../utils/formatNumbers';
 
 const SellerDashboard = () => {
   const navigate = useNavigate();
@@ -145,7 +146,7 @@ const SellerDashboard = () => {
                   </div>
                 </div>
                 <h3 className="text-lg font-bold text-dark-100 mb-2">Monthly Revenue</h3>
-                <p className="text-3xl font-bold text-primary-400 mb-1">${monthlyStats.overview.totalRevenue.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-primary-400 mb-1">{formatCurrencyCompact(monthlyStats.overview.totalRevenue)}</p>
                 <p className="text-sm text-primary-300">From {monthlyStats.overview.totalSales} sales</p>
               </div>
 
@@ -159,7 +160,7 @@ const SellerDashboard = () => {
                   </div>
                 </div>
                 <h3 className="text-lg font-bold text-dark-100 mb-2">Monthly Profit</h3>
-                <p className="text-3xl font-bold text-success-400 mb-1">${monthlyStats.overview.totalProfit.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-success-400 mb-1">{formatCurrencyCompact(monthlyStats.overview.totalProfit)}</p>
                 <p className="text-sm text-success-300">{monthlyStats.overview.avgProfitMargin}% margin</p>
               </div>
 
@@ -173,7 +174,7 @@ const SellerDashboard = () => {
                   </div>
                 </div>
                 <h3 className="text-lg font-bold text-dark-100 mb-2">Avg Sale Value</h3>
-                <p className="text-3xl font-bold text-accent-400 mb-1">${monthlyStats.overview.avgSaleValue.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-accent-400 mb-1">{formatCurrencyCompact(monthlyStats.overview.avgSaleValue)}</p>
                 <p className="text-sm text-accent-300">Per transaction</p>
               </div>
 
@@ -187,7 +188,7 @@ const SellerDashboard = () => {
                   </div>
                 </div>
                 <h3 className="text-lg font-bold text-dark-100 mb-2">Avg Profit</h3>
-                <p className="text-3xl font-bold text-info-400 mb-1">${monthlyStats.overview.avgProfit.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-info-400 mb-1">{formatCurrencyCompact(monthlyStats.overview.avgProfit)}</p>
                 <p className="text-sm text-info-300">Per sale</p>
               </div>
             </div>
@@ -211,7 +212,7 @@ const SellerDashboard = () => {
             </div>
             
             <h3 className="text-2xl font-bold text-dark-100 mb-3">Total Sales</h3>
-            <p className="text-5xl font-bold text-primary-400 mb-3">${stats.totalRevenue.toLocaleString()}</p>
+            <p className="text-5xl font-bold text-primary-400 mb-3">{formatCurrencyCompact(stats.totalRevenue)}</p>
             <p className="text-sm text-primary-300">From {stats.totalSales} sales</p>
           </div>
           
@@ -381,7 +382,7 @@ const SellerDashboard = () => {
                   <div className="flex items-center space-x-6">
                     <div className="text-right">
                       <div className="text-3xl font-bold text-dark-100 mb-3">
-                        ${sale.amount.toLocaleString()}
+                        {formatCurrencyCompact(sale.amount)}
                       </div>
                       <span className={`badge ${
                         sale.status === 'completed' 

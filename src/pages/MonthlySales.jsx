@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
+import { formatCurrencyCompact } from '../utils/formatNumbers';
 
 const MonthlySales = () => {
   const navigate = useNavigate();
@@ -69,14 +70,8 @@ const MonthlySales = () => {
   };
 
   const formatCurrency = (amount) => {
-    // Handle null, undefined, NaN, or invalid numbers
-    if (amount === null || amount === undefined || isNaN(amount)) {
-      return '$0.00';
-    }
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
+    // Use compact formatting for better readability
+    return formatCurrencyCompact(amount, 'USD', 2);
   };
 
   const formatDate = (dateString) => {

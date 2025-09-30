@@ -632,7 +632,7 @@ const AdminInsightsDashboard = () => {
                 valueType="currency"
               />
               <KPICard
-                title="Total Passengers"
+                title="Total Users"
                 value={overview.businessMetrics?.totalClients || 0}
                 subtitle={`${overview.businessMetrics?.newClients || 0} new`}
                 icon="users"

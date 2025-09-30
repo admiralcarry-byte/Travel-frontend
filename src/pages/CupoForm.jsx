@@ -81,11 +81,11 @@ const CupoForm = () => {
   };
 
   const addService = async () => {
-    if (serviceName.trim()) {
+    if (serviceName?.trim()) {
       try {
         const response = await api.post('/api/service-templates', {
           name: serviceName.trim(),
-          description: serviceInformation.trim(),
+          description: serviceInformation?.trim() || '',
           category: 'General'
         });
         
@@ -111,11 +111,11 @@ const CupoForm = () => {
   };
 
   const updateService = async () => {
-    if (serviceName.trim() && editingService) {
+    if (serviceName?.trim() && editingService) {
       try {
         const response = await api.put(`/api/service-templates/${editingService._id}`, {
           name: serviceName.trim(),
-          description: serviceInformation.trim()
+          description: serviceInformation?.trim() || ''
         });
         
         if (response.data.success) {

@@ -33,7 +33,10 @@ const ProfitChart = ({ sale }) => {
         <div>
           <div className="flex justify-between items-center mb-1">
             <span className="text-sm font-medium text-dark-200">Total Sale Price</span>
-            <span className={`text-sm font-bold text-dark-100 ${formattedSalePrice.warning ? 'text-red-500' : ''}`}>
+            <span 
+              className={`text-sm font-bold ${formattedSalePrice.warning ? 'text-red-500' : 'text-blue-500'}`}
+              style={{ color: formattedSalePrice.warning ? '#ef4444' : '#3b82f6' }}
+            >
               {formattedSalePrice.value}
               {formattedSalePrice.warning && <span className="text-xs text-red-400 ml-1">⚠️</span>}
             </span>
@@ -50,7 +53,10 @@ const ProfitChart = ({ sale }) => {
         <div>
           <div className="flex justify-between items-center mb-1">
             <span className="text-sm font-medium text-dark-200">Total Cost</span>
-            <span className={`text-sm font-bold text-dark-100 ${formattedCost.warning ? 'text-red-500' : ''}`}>
+            <span 
+              className={`text-sm font-bold ${formattedCost.warning ? 'text-red-500' : 'text-red-500'}`}
+              style={{ color: '#ef4444' }}
+            >
               {formattedCost.value}
               {formattedCost.warning && <span className="text-xs text-red-400 ml-1">⚠️</span>}
             </span>
@@ -67,7 +73,10 @@ const ProfitChart = ({ sale }) => {
         <div>
           <div className="flex justify-between items-center mb-1">
             <span className="text-sm font-medium text-dark-200">Passenger Payments</span>
-            <span className={`text-sm font-bold text-dark-100 ${formattedClientPayments.warning ? 'text-red-500' : ''}`}>
+            <span 
+              className={`text-sm font-bold ${formattedClientPayments.warning ? 'text-red-500' : 'text-green-500'}`}
+              style={{ color: formattedClientPayments.warning ? '#ef4444' : '#22c55e' }}
+            >
               {formattedClientPayments.value}
               {formattedClientPayments.warning && <span className="text-xs text-red-400 ml-1">⚠️</span>}
             </span>
@@ -84,7 +93,10 @@ const ProfitChart = ({ sale }) => {
         <div>
           <div className="flex justify-between items-center mb-1">
             <span className="text-sm font-medium text-dark-200">Provider Payments</span>
-            <span className={`text-sm font-bold text-dark-100 ${formattedProviderPayments.warning ? 'text-red-500' : ''}`}>
+            <span 
+              className={`text-sm font-bold ${formattedProviderPayments.warning ? 'text-red-500' : 'text-orange-500'}`}
+              style={{ color: formattedProviderPayments.warning ? '#ef4444' : '#f97316' }}
+            >
               {formattedProviderPayments.value}
               {formattedProviderPayments.warning && <span className="text-xs text-red-400 ml-1">⚠️</span>}
             </span>
@@ -146,19 +158,19 @@ const ProfitChart = ({ sale }) => {
         <div className="text-sm text-dark-400 mb-2">Legend:</div>
         <div className="flex flex-wrap gap-4 text-xs text-dark-300">
           <div className="flex items-center">
-            <div className="w-3 h-3 bg-primary-500 rounded mr-2"></div>
+            <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
             <span>Sale Price</span>
           </div>
           <div className="flex items-center">
-            <div className="w-3 h-3 bg-error-500 rounded mr-2"></div>
+            <div className="w-3 h-3 bg-red-500 rounded mr-2"></div>
             <span>Cost</span>
           </div>
           <div className="flex items-center">
-            <div className="w-3 h-3 bg-success-500 rounded mr-2"></div>
+            <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
             <span>Passenger Payments</span>
           </div>
           <div className="flex items-center">
-            <div className="w-3 h-3 bg-warning-500 rounded mr-2"></div>
+            <div className="w-3 h-3 bg-orange-500 rounded mr-2"></div>
             <span>Provider Payments</span>
           </div>
         </div>

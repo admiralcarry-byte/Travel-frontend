@@ -26,6 +26,7 @@ const SaleWizard = () => {
   const [allForSelection, setAllForSelection] = useState([]);
   const [companionSearch, setCompanionSearch] = useState('');
   const [companionLoading, setCompanionLoading] = useState(false);
+  const [companionsFetched, setCompanionsFetched] = useState(false);
 
   // Step 3: Sale Price
   const [salePrice, setSalePrice] = useState('');
@@ -79,15 +80,27 @@ const SaleWizard = () => {
   ];
 
   useEffect(() => {
+    // Reset state when component mounts for a new sale
+    if (!isEditMode) {
+      setSelectedServices([]);
+      setAvailableServices([]);
+      setSelectedCompanions([]);
+      setCompanionsFetched(false);
+    }
+    
     fetchPassengers();
     fetchProviders();
     fetchServices();
     fetchServiceTemplates();
     
     // Set up periodic refresh for real-time synchronization
+    // Only refresh if user is not actively working on services
     const interval = setInterval(() => {
-      fetchServiceTemplates();
-      fetchProviders();
+      // Only refresh if no services are selected and not in edit mode
+      if (selectedServices.length === 0 && !isEditMode) {
+        fetchServiceTemplates();
+        fetchProviders();
+      }
     }, 30000); // Refresh every 30 seconds
     
     // If in edit mode, fetch the existing sale data
@@ -96,7 +109,7 @@ const SaleWizard = () => {
     }
     
     return () => clearInterval(interval);
-  }, []);
+  }, [isEditMode]);
 
   // Fetch passengers when search changes (skip in edit mode starting at step 3)
   useEffect(() => {
@@ -108,7 +121,12 @@ const SaleWizard = () => {
   // Fetch companions when a passenger is selected (skip in edit mode starting at step 3)
   useEffect(() => {
     if (selectedPassengers.length > 0 && !(isEditMode && currentStep >= 3) && !loading) {
-      fetchCompanions();
+      // Only fetch companions if we haven't already fetched them for this passenger
+      // This prevents overriding manual selections
+      if (!companionsFetched) {
+        fetchCompanions();
+        setCompanionsFetched(true);
+      }
       fetchAllForSelection();
     }
   }, [selectedPassengers, isEditMode, currentStep, loading]);
@@ -119,6 +137,29 @@ const SaleWizard = () => {
       fetchAllForSelection();
     }
   }, [companionSearch, isEditMode, currentStep, loading]);
+
+  // Ensure service templates are loaded when reaching step 3 (Set Sale Price)
+  useEffect(() => {
+    if (currentStep === 3 && !isEditMode) {
+      console.log('🔄 User reached step 3, refreshing service templates...');
+      // Add a small delay to ensure state is properly reset
+      const timeoutId = setTimeout(() => {
+        fetchServiceTemplates();
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [currentStep, isEditMode]);
+
+  // Reset companions fetched flag when passenger changes
+  useEffect(() => {
+    setCompanionsFetched(false);
+    // Only clear selected companions when NOT in edit mode to avoid clearing loaded data
+    if (!isEditMode) {
+      setSelectedCompanions([]); // Clear selected companions when passenger changes
+    }
+  }, [selectedPassengers, isEditMode]);
+
 
   // Fetch providers when search changes
   useEffect(() => {
@@ -162,8 +203,8 @@ const SaleWizard = () => {
       if (response.data.success) {
         let services = response.data.data.services;
         
-        // In edit mode, filter out services that are already selected
-        if (isEditMode && selectedServices.length > 0) {
+        // Always filter out services that are already selected
+        if (selectedServices.length > 0) {
           const selectedServiceIds = selectedServices.map(service => 
             service._id || service.serviceId?._id || service.serviceId
           );
@@ -200,13 +241,20 @@ const SaleWizard = () => {
     
     try {
       setCompanionLoading(true);
+      console.log('fetchCompanions called for client:', selectedPassengers[0]._id);
+      console.log('Current selectedCompanions before fetch:', selectedCompanions);
+      
       const response = await api.get(`/api/clients/${selectedPassengers[0]._id}/companions?search=${companionSearch}`);
       if (response.data.success) {
         const companions = response.data.data.companions;
+        console.log('Fetched companions from API:', companions);
         setAvailableCompanions(companions);
-        // Only auto-select companions if not in edit mode
-        if (!isEditMode) {
+        // Only auto-select companions if not in edit mode AND no companions have been manually selected yet
+        if (!isEditMode && selectedCompanions.length === 0) {
+          console.log('Auto-selecting companions:', companions);
           setSelectedCompanions(companions);
+        } else {
+          console.log('Not auto-selecting companions. Edit mode:', isEditMode, 'Selected companions count:', selectedCompanions.length);
         }
       }
     } catch (error) {
@@ -305,48 +353,44 @@ const SaleWizard = () => {
         console.log('Extracted client ID from sale:', extractedClientId);
         setClientId(extractedClientId);
         
-        // Pre-populate passengers (primary passenger)
+        // Pre-populate passengers - handle all passengers correctly
         if (sale.passengers && sale.passengers.length > 0) {
-          const primaryPassenger = sale.passengers[0];
-          console.log('Primary passenger from sale:', primaryPassenger);
+          // Separate main client from companions based on isMainClient flag
+          const mainClientPassenger = sale.passengers.find(p => p.isMainClient);
+          const companionPassengers = sale.passengers.filter(p => !p.isMainClient);
           
-          // Extract the actual passenger data from passengerId object
-          const passengerData = primaryPassenger.passengerId || primaryPassenger;
-          console.log('Extracted passenger data:', passengerData);
-          
-          // Ensure the passenger has the expected structure
-          const formattedPassenger = {
-            _id: passengerData._id || primaryPassenger._id || primaryPassenger.clientId,
-            name: passengerData.name || passengerData.firstName || '',
-            surname: passengerData.surname || passengerData.lastName || '',
-            phone: passengerData.phone || '',
-            passportNumber: passengerData.passportNumber || '',
-            email: passengerData.email || ''
-          };
-          
-          console.log('Formatted passenger:', formattedPassenger);
-          setSelectedPassengers([formattedPassenger]);
-          
-          // Debug: Also log what we're setting as selectedPassengers
-          console.log('Setting selectedPassengers to:', [formattedPassenger]);
-        }
-        
-        // Pre-populate companions
-        if (sale.passengers && sale.passengers.length > 1) {
-          const companions = sale.passengers.slice(1).map(companion => {
-            // Extract the actual companion data from passengerId object
-            const companionData = companion.passengerId || companion;
-            
-            return {
-              _id: companionData._id || companion._id || companion.clientId,
-              name: companionData.name || companionData.firstName || '',
-              surname: companionData.surname || companionData.lastName || '',
-              phone: companionData.phone || '',
-              passportNumber: companionData.passportNumber || '',
-              email: companionData.email || ''
+          // Set main client as selected passenger
+          if (mainClientPassenger) {
+            const passengerData = mainClientPassenger.passengerId || mainClientPassenger;
+            const formattedPassenger = {
+              _id: passengerData._id || mainClientPassenger._id || mainClientPassenger.clientId,
+              name: passengerData.name || passengerData.firstName || '',
+              surname: passengerData.surname || passengerData.lastName || '',
+              phone: passengerData.phone || '',
+              passportNumber: passengerData.passportNumber || '',
+              email: passengerData.email || ''
             };
-          });
-          setSelectedCompanions(companions);
+            
+            setSelectedPassengers([formattedPassenger]);
+          }
+          
+          // Set companions
+          if (companionPassengers.length > 0) {
+            const companions = companionPassengers.map(companion => {
+              const companionData = companion.passengerId || companion;
+              
+              return {
+                _id: companionData._id || companion._id || companion.clientId,
+                name: companionData.name || companionData.firstName || '',
+                surname: companionData.surname || companionData.lastName || '',
+                phone: companionData.phone || '',
+                passportNumber: companionData.passportNumber || '',
+                email: companionData.email || ''
+              };
+            });
+            
+            setSelectedCompanions(companions);
+          }
         }
         
         // Pre-populate sale price and currency
@@ -392,8 +436,9 @@ const SaleWizard = () => {
             return mappedService;
           });
           
-          // Set these services as selected since they're part of the existing sale
-          setSelectedServices(selectedServices);
+          // For edit mode, clear selected services to allow reconfiguration
+          // This gives users the ability to completely reconfigure services
+          setSelectedServices([]);
           
           // Pre-populate providers and their form data
           const allProviders = [];
@@ -438,8 +483,8 @@ const SaleWizard = () => {
           setSelectedProviders(allProviders);
           setProviderFormData(providerFormDataMap);
           
-          // After setting selected services, fetch available services (filtered)
-          fetchServices();
+          // Fetch all available service templates (no filtering in edit mode)
+          fetchServiceTemplates(null, true);
         }
       }
     } catch (error) {
@@ -467,11 +512,20 @@ const SaleWizard = () => {
   };
 
   const toggleCompanionSelection = (companion) => {
+    console.log('toggleCompanionSelection called with:', companion);
+    console.log('Current selectedCompanions before toggle:', selectedCompanions);
+    
     const isSelected = selectedCompanions.find(c => c._id === companion._id);
+    console.log('Is companion already selected?', isSelected);
+    
     if (isSelected) {
-      setSelectedCompanions(selectedCompanions.filter(c => c._id !== companion._id));
+      const newCompanions = selectedCompanions.filter(c => c._id !== companion._id);
+      console.log('Removing companion, new list:', newCompanions);
+      setSelectedCompanions(newCompanions);
     } else {
-      setSelectedCompanions([...selectedCompanions, companion]);
+      const newCompanions = [...selectedCompanions, companion];
+      console.log('Adding companion, new list:', newCompanions);
+      setSelectedCompanions(newCompanions);
     }
   };
 
@@ -641,14 +695,41 @@ const SaleWizard = () => {
   };
 
   // Service Management Functions
-  const fetchServiceTemplates = async () => {
+  const fetchServiceTemplates = async (selectedServicesToFilter = null, skipFiltering = false) => {
     try {
       setServiceLoading(true);
+      console.log('🔍 Fetching service templates...');
       const response = await api.get('/api/service-templates');
       if (response.data.success) {
+        console.log('📋 Raw service templates from API:', response.data.data.serviceTemplates);
+        console.log('📊 Total templates received:', response.data.data.serviceTemplates.length);
         setServices(response.data.data.serviceTemplates);
-        // Also update availableServices so they appear in the Available Services section
-        setAvailableServices(response.data.data.serviceTemplates);
+        
+        // In edit mode, show all templates without filtering
+        // In create mode, filter out already selected services
+        let availableTemplates = response.data.data.serviceTemplates;
+        
+        if (!skipFiltering) {
+          const servicesToFilter = selectedServicesToFilter || selectedServices;
+          console.log('🔍 Services to filter out:', servicesToFilter);
+          
+          if (servicesToFilter.length > 0) {
+            const selectedServiceIds = servicesToFilter.map(service => {
+              // For selected services, get the actual service template ID
+              return service.serviceId || service._id;
+            });
+            console.log('Selected service IDs to filter out:', selectedServiceIds);
+            availableTemplates = availableTemplates.filter(template => 
+              !selectedServiceIds.includes(template._id)
+            );
+            console.log('Available templates after filtering:', availableTemplates.map(t => t._id));
+          }
+        } else {
+          console.log('Edit mode: showing all service templates without filtering');
+        }
+        
+        console.log('✅ Final available templates:', availableTemplates.map(t => ({ id: t._id, name: t.name })));
+        setAvailableServices(availableTemplates);
       }
     } catch (error) {
       console.error('Failed to fetch service templates:', error);
@@ -658,11 +739,11 @@ const SaleWizard = () => {
   };
 
   const addService = async () => {
-    if (serviceName.trim()) {
+    if (serviceName?.trim()) {
       try {
         const response = await api.post('/api/service-templates', {
           name: serviceName.trim(),
-          description: serviceInformation.trim(),
+          description: serviceInformation?.trim() || '',
           category: 'General'
         });
         
@@ -682,16 +763,54 @@ const SaleWizard = () => {
   };
 
   const toggleServiceSelection = (service) => {
-    const isSelected = selectedServices.find(s => s._id === service._id);
+    // Check if service is already selected by comparing the service template ID
+    const isSelected = selectedServices.find(s => {
+      const selectedServiceId = s.serviceId || s._id;
+      return selectedServiceId === service._id;
+    });
+    
     if (isSelected) {
-      setSelectedServices(prev => prev.filter(s => s._id !== service._id));
-      } else {
-      setSelectedServices(prev => [...prev, service]);
+      // Remove from selected services
+      setSelectedServices(prev => prev.filter(s => {
+        const selectedServiceId = s.serviceId || s._id;
+        return selectedServiceId !== service._id;
+      }));
+      // Add back to available services
+      setAvailableServices(prev => [...prev, service]);
+    } else {
+      // Add to selected services (create a service sale object)
+      const serviceSale = {
+        ...service,
+        serviceId: service._id, // Store the service template ID
+        serviceName: service.name,
+        priceClient: 0,
+        costProvider: 0,
+        quantity: 1
+      };
+      setSelectedServices(prev => [...prev, serviceSale]);
+      // Remove from available services
+      setAvailableServices(prev => prev.filter(s => s._id !== service._id));
     }
   };
 
   const removeSelectedService = (serviceId) => {
+    // Find the service being removed
+    const serviceToRemove = selectedServices.find(s => s._id === serviceId);
+    
+    // Remove from selected services
     setSelectedServices(prev => prev.filter(s => s._id !== serviceId));
+    
+    // Add back to available services if it exists
+    if (serviceToRemove) {
+      // Convert back to service template format
+      const serviceTemplate = {
+        _id: serviceToRemove.serviceId || serviceToRemove._id,
+        name: serviceToRemove.serviceName || serviceToRemove.name,
+        description: serviceToRemove.description,
+        category: serviceToRemove.category || 'General'
+      };
+      setAvailableServices(prev => [...prev, serviceTemplate]);
+    }
   };
 
   const editService = (service) => {
@@ -702,11 +821,11 @@ const SaleWizard = () => {
   };
 
   const updateService = async () => {
-    if (serviceName.trim() && editingService) {
+    if (serviceName?.trim() && editingService) {
       try {
         const response = await api.put(`/api/service-templates/${editingService._id}`, {
           name: serviceName.trim(),
-          description: serviceInformation.trim()
+          description: serviceInformation?.trim() || ''
         });
         
         if (response.data.success) {
@@ -716,7 +835,7 @@ const SaleWizard = () => {
               ? {
                   ...service,
                   name: serviceName.trim(),
-                  description: serviceInformation.trim(),
+                  description: serviceInformation?.trim() || '',
                   serviceName: serviceName.trim(),
                   destino: serviceName.trim()
                 }
@@ -1541,6 +1660,16 @@ const SaleWizard = () => {
             <h3 className="text-lg font-medium text-dark-100">Select Acompañantes</h3>
             <p className="text-sm text-dark-400">Choose acompañantes for {selectedPassengers[0]?.name} {selectedPassengers[0]?.surname}</p>
             
+            {/* Debug info */}
+            <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-3 text-sm">
+              <div className="text-yellow-200 font-medium">Debug Info:</div>
+              <div className="text-yellow-300">Selected Passengers: {selectedPassengers.length}</div>
+              <div className="text-yellow-300">Selected Companions: {selectedCompanions.length}</div>
+              <div className="text-yellow-300">Total Count: {selectedPassengers.length + selectedCompanions.length}</div>
+              <div className="text-yellow-300">Companions Fetched: {companionsFetched ? 'Yes' : 'No'}</div>
+              <div className="text-yellow-300">Available Companions: {availableCompanions.length}</div>
+            </div>
+            
             {/* Selected Companions */}
             <div className="space-y-3">
               <h4 className="text-md font-medium text-dark-100">
@@ -1833,15 +1962,13 @@ const SaleWizard = () => {
               </div>
 
               {/* Available Services */}
-              {availableServices.filter(service => !selectedServices.find(selected => selected._id === service._id)).length > 0 && (
+              {availableServices.length > 0 && (
                 <div className="space-y-3 mb-6">
                   <h5 className="text-md font-medium text-dark-100">
                     Available Services {serviceLoading && <span className="text-sm text-dark-400">(Loading...)</span>}
                   </h5>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {availableServices
-                      .filter(service => !selectedServices.find(selected => selected._id === service._id))
-                      .map((service) => (
+                    {availableServices.map((service) => (
                         <div
                           key={service._id}
                           onClick={() => toggleServiceSelection(service)}
@@ -2821,7 +2948,7 @@ const SaleWizard = () => {
                   </button>
                   <button
                     onClick={addService}
-                    disabled={!serviceName.trim()}
+                    disabled={!serviceName?.trim()}
                     className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Add Service
@@ -2892,7 +3019,7 @@ const SaleWizard = () => {
                   </button>
                   <button
                     onClick={updateService}
-                    disabled={!serviceName.trim()}
+                    disabled={!serviceName?.trim()}
                     className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Update Service
