@@ -22,7 +22,7 @@ const MultiCurrencySummary = ({ currencyData, title = "Sales by Currency" }) => 
   // Function to format currency with proper symbol (USD and ARS only)
   const formatWithCurrency = (amount, currency) => {
     const symbols = {
-      USD: '$',
+      USD: 'U$',
       ARS: 'AR$'
     };
 
