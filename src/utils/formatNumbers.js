@@ -37,16 +37,30 @@ export const formatLargeNumber = (num, decimals = 1, currency = 'U$') => {
  */
 export const formatCurrency = (amount, currency = 'USD', locale = 'en-US') => {
   if (amount === null || amount === undefined || isNaN(amount)) {
-    return new Intl.NumberFormat(locale, {
+    const formatted = new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currency
     }).format(0);
+    
+    // Replace $ with U$ for USD currency
+    if (currency.toUpperCase() === 'USD') {
+      return formatted.replace('$', 'U$');
+    }
+    
+    return formatted;
   }
 
-  return new Intl.NumberFormat(locale, {
+  const formatted = new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: currency
   }).format(amount);
+  
+  // Replace $ with U$ for USD currency
+  if (currency.toUpperCase() === 'USD') {
+    return formatted.replace('$', 'U$');
+  }
+  
+  return formatted;
 };
 
 /**

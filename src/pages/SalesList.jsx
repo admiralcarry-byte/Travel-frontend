@@ -330,8 +330,9 @@ const SalesList = () => {
     }
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD'
-    }).format(amount);
+      currency: 'USD',
+      currencyDisplay: 'symbol'
+    }).format(amount).replace('$', 'U$');
   };
 
   const formatDate = (dateString) => {

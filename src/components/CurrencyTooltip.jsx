@@ -17,7 +17,14 @@ const CurrencyTooltip = ({ children, currency, data }) => {
       maximumFractionDigits: 2
     });
     
-    return formatter.format(amount);
+    const formatted = formatter.format(amount);
+    
+    // Replace $ with U$ for USD currency
+    if (currency?.toUpperCase() === 'USD') {
+      return formatted.replace('$', 'U$');
+    }
+    
+    return formatted;
   };
 
   const getCurrencySymbol = (currency) => {

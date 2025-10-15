@@ -204,10 +204,17 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
   };
 
   const formatCurrency = (amount, currency) => {
-    return new Intl.NumberFormat('en-US', {
+    const formatted = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency || 'USD'
     }).format(amount);
+    
+    // Replace $ with U$ for USD currency
+    if ((currency || 'USD').toUpperCase() === 'USD') {
+      return formatted.replace('$', 'U$');
+    }
+    
+    return formatted;
   };
 
   const getPaymentTypeColor = (type) => {

@@ -162,16 +162,30 @@ const VendorDashboard = () => {
   const formatCurrency = (amount, currency = 'USD') => {
     // Handle undefined, null, or NaN values
     if (amount === undefined || amount === null || isNaN(amount)) {
-      return new Intl.NumberFormat('en-US', {
+      const formatted = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: currency
       }).format(0);
+      
+      // Replace $ with U$ for USD currency
+      if (currency?.toUpperCase() === 'USD') {
+        return formatted.replace('$', 'U$');
+      }
+      
+      return formatted;
     }
     
-    return new Intl.NumberFormat('en-US', {
+    const formatted = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency
     }).format(amount);
+    
+    // Replace $ with U$ for USD currency
+    if (currency?.toUpperCase() === 'USD') {
+      return formatted.replace('$', 'U$');
+    }
+    
+    return formatted;
   };
 
   const formatDate = (date) => {
