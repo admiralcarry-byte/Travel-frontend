@@ -44,11 +44,11 @@ const KPICard = ({ title, value, subtitle, icon, color = 'blue', trend, trendVal
       
       if (valueType === 'currency') {
         if (absVal >= 1000000) {
-          return `${sign}$${(absVal / 1000000).toFixed(1)}M`;
+          return `${sign}U$${(absVal / 1000000).toFixed(1)}M`;
         } else if (absVal >= 1000) {
-          return `${sign}$${(absVal / 1000).toFixed(1)}K`;
+          return `${sign}U$${(absVal / 1000).toFixed(1)}K`;
         } else {
-          return `${sign}$${absVal.toFixed(2)}`;
+          return `${sign}U$${absVal.toFixed(2)}`;
         }
       } else if (valueType === 'number') {
         // Format as plain number with commas
