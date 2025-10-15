@@ -4,6 +4,8 @@ import api from '../utils/api';
 import NewSaleWizardSteps from '../components/NewSaleWizardSteps';
 import ProviderCreationModal from '../components/ProviderCreationModal';
 import AddServiceTemplateModal from '../components/AddServiceTemplateModal';
+import AddServiceTypeModal from '../components/AddServiceTypeModal';
+import ServiceTypeService from '../services/serviceTypeService';
 
 const SaleWizard = () => {
   const navigate = useNavigate();
@@ -23,6 +25,11 @@ const SaleWizard = () => {
   
   // Service Template Modal state
   const [showAddServiceTemplateModal, setShowAddServiceTemplateModal] = useState(false);
+  
+  // Service Type Modal state
+  const [showAddServiceTypeModal, setShowAddServiceTypeModal] = useState(false);
+  const [serviceTypes, setServiceTypes] = useState([]);
+  const [showServiceTypeDropdown, setShowServiceTypeDropdown] = useState(false);
   
   // Service Template Search state
   const [serviceTemplateSearch, setServiceTemplateSearch] = useState('');
@@ -82,6 +89,26 @@ const SaleWizard = () => {
   const [serviceTemplates, setServiceTemplates] = useState([]);
   const [availableServiceTemplates, setAvailableServiceTemplates] = useState([]);
   const [serviceTemplateInstances, setServiceTemplateInstances] = useState([]);
+  
+  // Debug service instances changes
+  useEffect(() => {
+    console.log('🔄 serviceTemplateInstances state changed:', serviceTemplateInstances.map(s => ({
+      name: s.serviceInfo || s.templateName,
+      providers: s.providers?.length || 0,
+      providerNames: s.providers?.map(p => p.name) || []
+    })));
+    
+    // Check if any service lost providers
+    serviceTemplateInstances.forEach(s => {
+      if (s.providers && s.providers.length === 0 && (s.serviceInfo || s.templateName) === 'Service2') {
+        console.error('🚨 Service2 providers disappeared!', {
+          service: s.serviceInfo || s.templateName,
+          providers: s.providers,
+          fullService: s
+        });
+      }
+    });
+  }, [serviceTemplateInstances]);
   const [currentServiceInstance, setCurrentServiceInstance] = useState(null);
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
   const [showEditServiceModal, setShowEditServiceModal] = useState(false);
@@ -112,10 +139,9 @@ const SaleWizard = () => {
     { number: 3, title: 'Price Per Passenger', description: 'Set passenger pricing' },
     { number: 4, title: 'Select Service Template', description: 'Choose service type' },
     { number: 5, title: 'Service Dates', description: 'Set dates' },
-    { number: 6, title: 'Service Cost', description: 'Set cost' },
-    { number: 7, title: 'Service Provider', description: 'Select provider' },
-    { number: 8, title: 'Add More Services', description: 'Add services' },
-    { number: 9, title: 'Review & Create', description: 'Review and finalize' }
+    { number: 6, title: 'Service Cost & Provider', description: 'Set cost and select provider' },
+    { number: 7, title: 'Add More Services', description: 'Add services' },
+    { number: 8, title: 'Review & Create', description: 'Review and finalize' }
   ];
 
   useEffect(() => {
@@ -279,6 +305,13 @@ const SaleWizard = () => {
     }
   }, [currentStep, isEditMode]);
 
+  // Fetch service types when editing a template
+  useEffect(() => {
+    if (editingTemplate) {
+      fetchServiceTypes();
+    }
+  }, [editingTemplate]);
+
   // Reset companions fetched flag when passenger changes
   useEffect(() => {
     setCompanionsFetched(false);
@@ -289,6 +322,10 @@ const SaleWizard = () => {
   }, [selectedPassengers, isEditMode]);
 
   // Update service instance with current form data when user progresses through steps
+  // NOTE: This useEffect is designed for single-service workflow and should NOT run
+  // when we're using the multi-service workflow (addProviderToService)
+  // Disabled to prevent overwriting providers managed by addProviderToService
+  /*
   useEffect(() => {
     if (serviceTemplateInstances.length > 0 && currentStep >= 5) {
       // Find the most recent service instance (the one being configured)
@@ -319,6 +356,7 @@ const SaleWizard = () => {
       );
     }
   }, [currentServiceInfo, currentServiceDates, currentServiceCost, currentServiceCurrency, destination.city, destination.country, currentServiceProviders, currentServiceProvider, currentStep]);
+  */
 
 
   // Fetch providers when search changes
@@ -1104,6 +1142,39 @@ const SaleWizard = () => {
     }
   };
 
+  // Fetch service types for the dropdown
+  const fetchServiceTypes = async () => {
+    try {
+      const response = await ServiceTypeService.getAllServiceTypes({ active: true });
+      if (response.success) {
+        setServiceTypes(response.data.serviceTypes);
+      }
+    } catch (error) {
+      console.error('Error fetching service types:', error);
+    }
+  };
+
+  // Handle when a new service type is added
+  const handleServiceTypeAdded = (newServiceType) => {
+    setServiceTypes(prev => {
+      const exists = prev.some(st => st._id === newServiceType._id);
+      if (!exists) {
+        return [...prev, newServiceType];
+      }
+      return prev;
+    });
+    setShowAddServiceTypeModal(false);
+    setShowServiceTypeDropdown(false);
+  };
+
+  // Helper function to get service type name (handles both string and object cases)
+  const getServiceTypeName = (serviceType) => {
+    if (!serviceType) return '';
+    if (typeof serviceType === 'string') return serviceType;
+    if (typeof serviceType === 'object' && serviceType.name) return serviceType.name;
+    return '';
+  };
+
   // Update service template with real-time sync
   const updateServiceTemplate = async (templateId, updates) => {
     try {
@@ -1288,6 +1359,67 @@ const SaleWizard = () => {
     }
   };
 
+  // Synchronize service instances when dates or destination change
+  useEffect(() => {
+    console.log('🔄 Synchronization useEffect triggered', {
+      serviceInstancesCount: serviceTemplateInstances.length,
+      checkIn: currentServiceDates.checkIn,
+      checkOut: currentServiceDates.checkOut,
+      city: destination.city,
+      country: destination.country
+    });
+    
+    if (serviceTemplateInstances.length > 0) {
+      setServiceTemplateInstances(prev => {
+        let hasChanges = false;
+        const updated = prev.map(instance => {
+          // Only update if dates or destination actually changed
+          const datesChanged = currentServiceDates.checkIn !== instance.checkIn || 
+                              currentServiceDates.checkOut !== instance.checkOut;
+          const destinationChanged = destination.city !== instance.destination?.city || 
+                                   destination.country !== instance.destination?.country;
+          
+          if (datesChanged || destinationChanged) {
+            hasChanges = true;
+            console.log('🔄 Synchronizing service instance:', instance.serviceInfo || instance.templateName, {
+              datesChanged,
+              destinationChanged,
+              currentProviders: instance.providers?.length || 0,
+              providers: instance.providers
+            });
+            
+            return {
+              ...instance,
+              checkIn: currentServiceDates.checkIn || instance.checkIn,
+              checkOut: currentServiceDates.checkOut || instance.checkOut,
+              destination: {
+                city: destination.city || instance.destination?.city || '',
+                country: destination.country || instance.destination?.country || ''
+              },
+              // Explicitly preserve providers - don't overwrite them
+              providers: instance.providers || []
+            };
+          }
+          
+          // No changes needed, return instance as-is (same reference to avoid re-renders)
+          return instance;
+        });
+        
+        if (hasChanges) {
+          console.log('🔄 Synchronization complete. Updated instances:', updated.map(s => ({
+            name: s.serviceInfo || s.templateName,
+            providers: s.providers?.length || 0
+          })));
+          return updated;
+        } else {
+          console.log('🔄 No changes needed, returning same array reference');
+          // Return the same array reference to avoid triggering re-renders
+          return prev;
+        }
+      });
+    }
+  }, [currentServiceDates.checkIn, currentServiceDates.checkOut, destination.city, destination.country, serviceTemplateInstances.length]);
+
   // Service Template Instance Management
   const selectServiceTemplate = (template) => {
     // Create a basic service instance from the template
@@ -1297,13 +1429,16 @@ const SaleWizard = () => {
       templateName: template.name,
       templateCategory: template.category,
       serviceInfo: template.name, // Use template name as default service info
-      checkIn: '',
-      checkOut: '',
+      checkIn: currentServiceDates.checkIn || '',
+      checkOut: currentServiceDates.checkOut || '',
       cost: 0,
       currency: 'USD',
       provider: null,
       providers: [],
-      destination: { city: '', country: '' },
+      destination: { 
+        city: destination.city || '', 
+        country: destination.country || '' 
+      },
       isTemplateOnly: true // Flag to indicate this is just a template selection
     };
     
@@ -1425,8 +1560,36 @@ const SaleWizard = () => {
       // Don't reset form data when editing - keep the updated values visible
       // This allows user to see what was just updated
     } else {
-      // Creating new service - add it
-      setServiceTemplateInstances(prev => [...prev, serviceInstance]);
+      // Creating new service - add it and update all other unconfigured services
+      setServiceTemplateInstances(prev => {
+        // First, add the new service instance
+        const updatedInstances = [...prev, serviceInstance];
+        
+        // Then update all other service instances that don't have cost/providers configured
+        return updatedInstances.map(instance => {
+          // If this instance doesn't have cost or providers configured, apply the same values
+          // Skip the newly added service instance to avoid duplicating it
+          if (instance.id !== serviceInstance.id && 
+              (instance.cost === 0 || !instance.cost || instance.isTemplateOnly) && 
+              (instance.providers.length === 0 || !instance.providers || instance.isTemplateOnly)) {
+            return {
+              ...instance,
+              cost: serviceInstance.cost,
+              currency: serviceInstance.currency,
+              originalCurrency: serviceInstance.originalCurrency,
+              originalAmount: serviceInstance.originalAmount,
+              exchangeRate: serviceInstance.exchangeRate,
+              provider: serviceInstance.provider,
+              providers: serviceInstance.providers,
+              checkIn: serviceInstance.checkIn,
+              checkOut: serviceInstance.checkOut,
+              destination: serviceInstance.destination,
+              isTemplateOnly: false // Mark as configured
+            };
+          }
+          return instance;
+        });
+      });
       
       // Reset current service data only when creating new service
       setCurrentServiceTemplate(null);
@@ -1441,7 +1604,7 @@ const SaleWizard = () => {
       setCurrentServiceInstance(null); // Clear the editing state only for new services
     }
     
-    setCurrentStep(7); // Move to add more services step
+    setCurrentStep(8); // Move to add more services step
   };
 
   const removeServiceInstance = (instanceId) => {
@@ -1451,10 +1614,78 @@ const SaleWizard = () => {
   const updateServiceInstance = (instanceId, updates) => {
     setServiceTemplateInstances(prev => 
       prev.map(instance => 
-        instance.id === instanceId 
+        instance.id === instanceId || instance._id === instanceId
           ? { ...instance, ...updates }
           : instance
       )
+    );
+  };
+
+  // Add provider to a specific service
+  const addProviderToService = (serviceId, provider) => {
+    console.log('🔄 addProviderToService called:', { serviceId, provider: provider.name });
+    
+    setServiceTemplateInstances(prev => {
+      console.log('🔄 Current service instances before update:', prev.map(s => ({ 
+        id: s.id || s._id, 
+        name: s.serviceInfo || s.templateName, 
+        providers: s.providers?.length || 0 
+      })));
+      
+      const updated = prev.map(service => {
+        const serviceIdMatch = service.id === serviceId || service._id === serviceId;
+        console.log(`🔄 Checking service: ${service.serviceInfo || service.templateName}, ID: ${service.id || service._id}, Target ID: ${serviceId}, Match: ${serviceIdMatch}`);
+        
+        if (serviceIdMatch) {
+          console.log(`🔄 Adding provider to service: ${service.serviceInfo || service.templateName}`);
+          const currentProviders = service.providers || (service.provider ? [service.provider] : []);
+          const providerExists = currentProviders.some(p => p._id === provider._id);
+          
+          console.log(`🔄 Current providers: ${currentProviders.length}, Provider exists: ${providerExists}`);
+          
+          if (!providerExists) {
+            const newProviders = [...currentProviders, provider];
+            console.log(`🔄 New providers count: ${newProviders.length}`);
+            const updatedService = {
+              ...service,
+              providers: newProviders,
+              provider: newProviders.length > 0 ? newProviders[0] : null // Keep single provider for backward compatibility
+            };
+            console.log(`🔄 Updated service providers:`, updatedService.providers?.length || 0);
+            return updatedService;
+          } else {
+            console.log('🔄 Provider already exists, skipping');
+          }
+        }
+        return service;
+      });
+      
+      console.log('🔄 Updated service instances:', updated.map(s => ({ 
+        id: s.id || s._id, 
+        name: s.serviceInfo || s.templateName, 
+        providers: s.providers?.length || 0 
+      })));
+      
+      return updated;
+    });
+  };
+
+  // Remove provider from a specific service
+  const removeProviderFromService = (serviceId, providerId) => {
+    setServiceTemplateInstances(prev => 
+      prev.map(service => {
+        if (service.id === serviceId || service._id === serviceId) {
+          const currentProviders = service.providers || (service.provider ? [service.provider] : []);
+          const updatedProviders = currentProviders.filter(p => p._id !== providerId);
+          
+          return {
+            ...service,
+            providers: updatedProviders,
+            provider: updatedProviders.length > 0 ? updatedProviders[0] : null // Keep single provider for backward compatibility
+          };
+        }
+        return service;
+      })
     );
   };
 
@@ -1923,14 +2154,23 @@ const SaleWizard = () => {
         return;
       }
       
-      if (currentStep === 6 && (!currentServiceCost || parseFloat(currentServiceCost) <= 0)) {
-        setError('Please enter a valid service cost to continue');
-        return;
-      }
-      
-      if (currentStep === 7 && (!currentServiceProvider && currentServiceProviders.length === 0)) {
-        setError('Please select a provider to continue');
-        return;
+      if (currentStep === 6) {
+        // Validate that all service instances have valid costs and providers
+        console.log('🔍 Step 6 validation - Service instances:', serviceTemplateInstances);
+        
+        const invalidServices = serviceTemplateInstances.filter(service => {
+          const hasValidCost = service.cost && parseFloat(service.cost) > 0;
+          const hasProviders = service.providers && service.providers.length > 0;
+          console.log(`🔍 Service ${service.serviceInfo || service.templateName}: cost=${service.cost}, providers=${service.providers?.length || 0}, hasValidCost=${hasValidCost}, hasProviders=${hasProviders}`);
+          return !hasValidCost || !hasProviders;
+        });
+        
+        console.log('🔍 Invalid services:', invalidServices);
+        
+        if (invalidServices.length > 0) {
+          setError('Please enter a valid service cost and select providers for all services to continue');
+          return;
+        }
       }
       
       setCurrentStep(currentStep + 1);
@@ -2501,10 +2741,10 @@ const SaleWizard = () => {
               <div className="flex-1 max-w-xs bg-dark-700 rounded-full h-2">
                 <div 
                   className="bg-primary-600 h-2 rounded-full transition-all duration-500 ease-out"
-                  style={{ width: `${(currentStep / 9) * 100}%` }}
+                  style={{ width: `${(currentStep / 8) * 100}%` }}
                 ></div>
               </div>
-              <div className="text-sm text-dark-300">{Math.round((currentStep / 9) * 100)}%</div>
+              <div className="text-sm text-dark-300">{Math.round((currentStep / 8) * 100)}%</div>
             </div>
           </div>
         </div>
@@ -2577,6 +2817,8 @@ const SaleWizard = () => {
           removeServiceInstance={removeServiceInstance}
           updateServiceInstance={updateServiceInstance}
           editServiceInstance={editServiceInstance}
+          addProviderToService={addProviderToService}
+          removeProviderFromService={removeProviderFromService}
           currentServiceInstance={currentServiceInstance}
           setCurrentServiceInstance={setCurrentServiceInstance}
           setCurrentServiceTemplate={setCurrentServiceTemplate}
@@ -2623,8 +2865,6 @@ const SaleWizard = () => {
           passengerExchangeRate={passengerExchangeRate}
           setPassengerExchangeRate={setPassengerExchangeRate}
           passengerConvertedAmount={passengerConvertedAmount}
-          // Provider Search
-          setProviderSearch={setProviderSearch}
         />
       </div>
 
@@ -2639,16 +2879,16 @@ const SaleWizard = () => {
         </button>
 
         <div className="flex space-x-4">
-          {currentStep === 8 && (
+          {currentStep === 7 && (
             <button
-              onClick={() => setCurrentStep(9)}
+              onClick={() => setCurrentStep(8)}
               className="px-6 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md"
             >
               Continue to Review
             </button>
           )}
           
-          {currentStep === 9 ? (
+          {currentStep === 8 ? (
             <button
               onClick={createSale}
               disabled={loading}
@@ -2705,17 +2945,73 @@ const SaleWizard = () => {
                 />
               </div>
 
+              {/* Service Type */}
               <div>
-                <label className="block text-sm font-medium text-dark-200 mb-2">
-                  Description
-                </label>
-                <textarea
-                  defaultValue={editingTemplate.description}
-                  id="edit-template-description"
-                  className="input-field"
-                  placeholder="Enter template description"
-                  rows={3}
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <label htmlFor="edit-template-serviceType" className="block text-sm font-medium text-dark-200">
+                    Service Type
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddServiceTypeModal(true)}
+                    className="text-primary-400 hover:text-primary-300 transition-colors"
+                    title="Add new service type"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="relative">
+                  <div
+                    className="input-field cursor-pointer flex items-center justify-between"
+                    onClick={() => setShowServiceTypeDropdown(!showServiceTypeDropdown)}
+                  >
+                    <span className={getServiceTypeName(editingTemplate.serviceType) ? 'text-dark-100' : 'text-dark-400'}>
+                      {getServiceTypeName(editingTemplate.serviceType) || 'Select or enter service type'}
+                    </span>
+                    <svg 
+                      className={`w-4 h-4 text-dark-400 transition-transform ${showServiceTypeDropdown ? 'rotate-180' : ''}`}
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                  
+                  {showServiceTypeDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-dark-800 border border-white/10 rounded-md shadow-lg max-h-60 overflow-auto">
+                      {serviceTypes.length > 0 ? (
+                        serviceTypes.map((serviceTypeItem) => (
+                          <div
+                            key={serviceTypeItem._id}
+                            className="px-3 py-2 text-sm text-dark-200 hover:bg-dark-700 cursor-pointer border-b border-white/5 last:border-b-0"
+                            onClick={() => {
+                              // Update the editing template with the selected service type
+                              setEditingTemplate(prev => ({ ...prev, serviceType: serviceTypeItem.name }));
+                              setShowServiceTypeDropdown(false);
+                            }}
+                          >
+                            {serviceTypeItem.name}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-dark-400">
+                          No service types added yet
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {getServiceTypeName(editingTemplate.serviceType) && (
+                    <div className="absolute inset-y-0 right-8 flex items-center pr-3">
+                      <div className="bg-primary-500 text-white text-xs px-2 py-1 rounded">
+                        {getServiceTypeName(editingTemplate.serviceType)}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex justify-end space-x-3 pt-4">
@@ -2728,11 +3024,10 @@ const SaleWizard = () => {
                 <button
                   onClick={async () => {
                     const nameInput = document.getElementById('edit-template-name');
-                    const descriptionInput = document.getElementById('edit-template-description');
                     
                     const updates = {
                       name: nameInput.value.trim(),
-                      description: descriptionInput.value.trim()
+                      description: getServiceTypeName(editingTemplate.serviceType)
                     };
                     
                     if (updates.name) {
@@ -2814,6 +3109,13 @@ const SaleWizard = () => {
           </div>
         </div>
       )}
+
+      {/* Add Service Type Modal */}
+      <AddServiceTypeModal
+        isOpen={showAddServiceTypeModal}
+        onClose={() => setShowAddServiceTypeModal(false)}
+        onServiceTypeAdded={handleServiceTypeAdded}
+      />
     </div>
   );
 };

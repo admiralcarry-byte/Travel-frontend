@@ -5,6 +5,8 @@ import ComprehensiveSalesOverview from '../components/ComprehensiveSalesOverview
 import MonthlyProfitabilityChart from '../components/MonthlyProfitabilityChart';
 import FinancialSummary from '../components/FinancialSummary';
 import MultiCurrencySummary from '../components/MultiCurrencySummary';
+import { t, getDropdownOptions } from '../utils/i18n';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 // TruncatedText component with double-click to show scrollbar
 const TruncatedText = ({ text, className = '', title = '' }) => {
@@ -77,7 +79,7 @@ const SalesList = () => {
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
   const [totalSales, setTotalSales] = useState(0);
   const [totalClients, setTotalClients] = useState(0);
   const [currencySummary, setCurrencySummary] = useState([]);
@@ -125,12 +127,8 @@ const SalesList = () => {
     debouncedFiltersRef.current = debouncedFilters;
   }, [debouncedFilters]);
 
-  const statusOptions = [
-    { value: '', label: 'All Statuses' },
-    { value: 'open', label: 'Open' },
-    { value: 'closed', label: 'Closed' },
-    { value: 'cancelled', label: 'Cancelled' }
-  ];
+  // Get status options from i18n
+  const statusOptions = getDropdownOptions.status();
 
   // Debounce filters
   useEffect(() => {
@@ -407,17 +405,19 @@ const SalesList = () => {
           
           {/* Sales Filters */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold text-dark-200 mb-4">Sales Filters</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
-              <div>
+            {/* <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-dark-200">{t('salesFilters')}</h3>
+              <LanguageSwitcher />
+            </div> */}
+            <div className="sales-filter-grid">
+              <div className="filter-dropdown-container">
                 <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  Status
+                  {t('status')}
                 </label>
                 <select
                   value={filters.status}
                   onChange={(e) => handleFilterChange('status', e.target.value)}
                   className="input-field"
-                  style={{ wordWrap: 'break-word' }}
                 >
                   {statusOptions.map(option => (
                     <option key={option.value} value={option.value}>
@@ -427,25 +427,24 @@ const SalesList = () => {
                 </select>
               </div>
 
-              <div>
+              <div className="filter-dropdown-container">
                 <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  Currency
+                  {t('currency')}
                 </label>
                 <select
                   value={filters.currency}
                   onChange={(e) => handleFilterChange('currency', e.target.value)}
                   className="input-field"
-                  style={{ wordWrap: 'break-word' }}
                 >
-                  <option value="">All Currencies</option>
-                  <option value="USD">USD - US Dollar</option>
-                  <option value="ARS">ARS - Argentine Peso</option>
+                  <option value="">{t('allCurrencies')}</option>
+                  <option value="USD">{t('usd')}</option>
+                  <option value="ARS">{t('ars')}</option>
                 </select>
               </div>
 
-              <div>
+              <div className="filter-dropdown-container">
                 <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  Min Profit
+                  {t('minProfit')}
                 </label>
                 <input
                   type="number"
@@ -456,9 +455,9 @@ const SalesList = () => {
                 />
               </div>
 
-              <div>
+              <div className="filter-dropdown-container">
                 <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  Max Profit
+                  {t('maxProfit')}
                 </label>
                 <input
                   type="number"
@@ -469,9 +468,9 @@ const SalesList = () => {
                 />
               </div>
 
-              <div>
+              <div className="filter-dropdown-container">
                 <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  Start Date
+                  {t('startDate')}
                 </label>
                 <input
                   type="date"
@@ -481,9 +480,9 @@ const SalesList = () => {
                 />
               </div>
 
-              <div>
+              <div className="filter-dropdown-container">
                 <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  End Date
+                  {t('endDate')}
                 </label>
                 <input
                   type="date"
@@ -493,17 +492,16 @@ const SalesList = () => {
                 />
               </div>
 
-              <div>
+              <div className="filter-dropdown-container">
                 <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  Provider
+                  {t('provider')}
                 </label>
                 <select
                   value={filters.providerId}
                   onChange={(e) => handleFilterChange('providerId', e.target.value)}
                   className="input-field"
-                  style={{ wordWrap: 'break-word' }}
                 >
-                  <option value="">All Providers</option>
+                  <option value="">{t('allProviders')}</option>
                   {providers.map(provider => (
                     <option key={provider._id} value={provider._id}>
                       {provider.name}
@@ -512,17 +510,16 @@ const SalesList = () => {
                 </select>
               </div>
 
-              <div>
+              <div className="filter-dropdown-container">
                 <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  Salesperson
+                  {t('salesperson')}
                 </label>
                 <select
                   value={filters.createdBy}
                   onChange={(e) => handleFilterChange('createdBy', e.target.value)}
                   className="input-field"
-                  style={{ wordWrap: 'break-word' }}
                 >
-                  <option value="">All Salespeople</option>
+                  <option value="">{t('allSalespeople')}</option>
                   {users.map(user => (
                     <option key={user._id} value={user._id}>
                       {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username} ({user.role})
@@ -535,45 +532,48 @@ const SalesList = () => {
 
           {/* Passenger Filters */}
           <div>
-            <h3 className="text-lg font-semibold text-dark-200 mb-4">Passenger Filters</h3>
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
+            <h3 className="text-lg font-semibold text-dark-200 mb-4">{t('passengerFilters')}</h3>
+            <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+              <div className="flex-1 md:flex-[2] filter-dropdown-container">
                 <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  Search Passengers
+                  {t('searchPassengers')}
                 </label>
                 <input
                   type="text"
                   value={filters.search}
                   onChange={(e) => handleFilterChange('search', e.target.value)}
-                  placeholder="Search by name, DNI/CUIT, email, or passport..."
+                  placeholder={t('searchPlaceholder')}
                   className="input-field w-full"
                 />
               </div>
 
-              <div className="flex-1">
+              <div className="flex-1 filter-dropdown-container">
                 <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  Show Passengers
+                  {t('showPassengers')}
                 </label>
                 <select
                   value={filters.includeNoSales}
                   onChange={(e) => handleFilterChange('includeNoSales', e.target.value)}
                   className="input-field w-full"
-                  style={{ wordWrap: 'break-word' }}
                 >
-                  <option value="true">All Passengers (with and without sales)</option>
-                  <option value="false">Only Passengers with Sales</option>
+                  <option value="true">{t('allPassengers')}</option>
+                  <option value="false">{t('onlyPassengersWithSales')}</option>
                 </select>
               </div>
-            </div>
-          </div>
 
-          <div className="mt-4 flex justify-end">
-            <button
-              onClick={clearFilters}
-              className="px-4 py-2 text-sm font-medium text-dark-300 bg-dark-700/50 hover:bg-dark-700 border border-white/10 rounded-md"
-            >
-              Clear Filters
-            </button>
+              <div className="flex-1 filter-dropdown-container"
+              >
+                <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
+                  &nbsp;
+                </label>
+                <button
+                  onClick={clearFilters}
+                  className="w-full px-4 py-3 text-sm font-medium text-white bg-dark-600 hover:bg-dark-500 border border-white/20 rounded-md h-12"
+                >
+                  {t('clearFilters')}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -841,6 +841,8 @@ const SalesList = () => {
                         <option value={5}>5</option>
                         <option value={10}>10</option>
                         <option value={20}>20</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
                       </select>
                     </div>
 
@@ -1068,6 +1070,8 @@ const SalesList = () => {
                         <option value={5}>5</option>
                         <option value={10}>10</option>
                         <option value={20}>20</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
                       </select>
                     </div>
 

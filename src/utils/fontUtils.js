@@ -160,7 +160,7 @@ export const ensureFontsLoaded = async () => {
     
     return true;
   } catch (error) {
-    console.warn('Failed to load Google Fonts, falling back to system fonts:', error);
+    // Silently fall back to system fonts without logging the error
     return false;
   }
 };

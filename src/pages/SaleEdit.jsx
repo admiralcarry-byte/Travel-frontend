@@ -44,25 +44,37 @@ const SaleEdit = () => {
         setSale(saleData);
         
         // Convert services to service template instances format
-        const instances = saleData.services.map((service, index) => ({
-          id: service._id || service.serviceId?._id || `instance_${index}`, // Use actual database ID
-          templateId: service.serviceTemplateId || service.serviceId,
-          templateName: service.serviceName || 'Unknown Service',
-          templateCategory: service.serviceId?.type || 'General',
-          serviceInfo: service.serviceName || 'Unknown Service',
-          serviceDescription: service.notes || service.serviceId?.description || '',
-          checkIn: service.serviceDates?.startDate ? new Date(service.serviceDates.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          checkOut: service.serviceDates?.endDate ? new Date(service.serviceDates.endDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          cost: service.priceClient || 0,
-          currency: service.currency || 'USD',
-          provider: service.providerId || null, // Backend populates this with full provider object
-          providers: service.providers || [], // Include the providers array from backend
-          providersData: service.providers || [], // Store original provider data structure from backend
-          destination: {
-            city: saleData.destination?.city || '',
-            country: saleData.destination?.country || ''
+        const instances = saleData.services.map((service, index) => {
+          // Extract provider objects from the backend structure
+          let providers = [];
+          if (service.providers && service.providers.length > 0) {
+            // Backend structure: providers array with providerId objects
+            providers = service.providers.map(p => p.providerId).filter(Boolean);
+          } else if (service.providerId) {
+            // Fallback to single provider
+            providers = [service.providerId];
           }
-        }));
+
+          return {
+            id: service._id || service.serviceId?._id || `instance_${index}`, // Use actual database ID
+            templateId: service.serviceTemplateId || service.serviceId,
+            templateName: service.serviceName || 'Unknown Service',
+            templateCategory: service.serviceId?.type || 'General',
+            serviceInfo: service.serviceName || 'Unknown Service',
+            serviceDescription: service.notes || service.serviceId?.description || '',
+            checkIn: service.serviceDates?.startDate ? new Date(service.serviceDates.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            checkOut: service.serviceDates?.endDate ? new Date(service.serviceDates.endDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            cost: service.priceClient || 0,
+            currency: service.currency || 'USD',
+            provider: service.providerId || null, // Backend populates this with full provider object
+            providers: providers, // Extract only the provider objects
+            providersData: service.providers || [], // Store original provider data structure from backend
+            destination: {
+              city: saleData.destination?.city || '',
+              country: saleData.destination?.country || ''
+            }
+          };
+        });
         
         setServiceTemplateInstances(instances);
         setPassengers(saleData.passengers || []);

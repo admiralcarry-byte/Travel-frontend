@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import ProviderCreationModal from '../components/ProviderCreationModal';
+import AddServiceTypeModal from '../components/AddServiceTypeModal';
+import ServiceTypeService from '../services/serviceTypeService';
 
 const CupoForm = () => {
   const navigate = useNavigate();
@@ -36,6 +38,10 @@ const CupoForm = () => {
   const [serviceName, setServiceName] = useState('');
   const [serviceInformation, setServiceInformation] = useState('');
   const [editingService, setEditingService] = useState(null);
+  const [isServiceTypeModalOpen, setIsServiceTypeModalOpen] = useState(false);
+  const [serviceTypes, setServiceTypes] = useState([]);
+  const [showServiceTypeDropdown, setShowServiceTypeDropdown] = useState(false);
+  const dropdownRef = useRef(null);
   
   // Provider management state
   const [providers, setProviders] = useState([]);
@@ -56,14 +62,30 @@ const CupoForm = () => {
   useEffect(() => {
     fetchServiceTemplates();
     fetchProviders();
+    fetchServiceTypes();
     
     // Set up periodic refresh for real-time synchronization
     const interval = setInterval(() => {
       fetchServiceTemplates();
       fetchProviders();
+      fetchServiceTypes();
     }, 30000); // Refresh every 30 seconds
-    
+
     return () => clearInterval(interval);
+  }, []);
+
+  // Handle clicks outside dropdown to close it
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowServiceTypeDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const fetchServiceTemplates = async () => {
@@ -84,11 +106,15 @@ const CupoForm = () => {
   const addService = async () => {
     if (serviceName?.trim()) {
       try {
-        const response = await api.post('/api/service-templates', {
+        const requestData = {
           name: serviceName.trim(),
           description: serviceInformation?.trim() || '',
           category: 'Other'
-        });
+        };
+        
+        console.log('Creating service template with data:', requestData);
+        
+        const response = await api.post('/api/service-templates', requestData);
         
         if (response.data.success) {
           // Refresh service templates to ensure real-time sync
@@ -99,6 +125,8 @@ const CupoForm = () => {
         }
       } catch (error) {
         console.error('Failed to create service:', error);
+        console.error('Error response:', error.response?.data);
+        console.error('Error status:', error.response?.status);
         setError(error.response?.data?.message || 'Failed to create service');
       }
     }
@@ -145,6 +173,44 @@ const CupoForm = () => {
     setServiceName('');
     setServiceInformation('');
     setShowAddServiceModal(true);
+  };
+
+  const fetchServiceTypes = async () => {
+    try {
+      const response = await ServiceTypeService.getAllServiceTypes({ active: true });
+      if (response.success) {
+        setServiceTypes(response.data.serviceTypes);
+      }
+    } catch (error) {
+      console.error('Error fetching service types:', error);
+    }
+  };
+
+  const handleServiceTypeAdded = (newServiceType) => {
+    // Add to service types list if not already present
+    setServiceTypes(prev => {
+      const exists = prev.some(st => st._id === newServiceType._id);
+      if (!exists) {
+        return [...prev, newServiceType];
+      }
+      return prev;
+    });
+    setServiceInformation(newServiceType.name);
+    setIsServiceTypeModalOpen(false);
+    setShowServiceTypeDropdown(false);
+  };
+
+  const openServiceTypeModal = () => {
+    setIsServiceTypeModalOpen(true);
+  };
+
+  const handleServiceTypeSelect = (serviceType) => {
+    setServiceInformation(serviceType.name);
+    setShowServiceTypeDropdown(false);
+  };
+
+  const toggleServiceTypeDropdown = () => {
+    setShowServiceTypeDropdown(!showServiceTypeDropdown);
   };
 
   const fetchProviders = async () => {
@@ -628,16 +694,67 @@ const CupoForm = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-dark-200 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={serviceInformation}
-                  onChange={(e) => setServiceInformation(e.target.value)}
-                  placeholder="Enter service description"
-                  rows={3}
-                  className="input-field"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-dark-200">
+                    Service Type
+                  </label>
+                  <button
+                    type="button"
+                    onClick={openServiceTypeModal}
+                    className="text-primary-400 hover:text-primary-300 transition-colors"
+                    title="Add new service type"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="relative" ref={dropdownRef}>
+                  <div
+                    className="input-field cursor-pointer flex items-center justify-between"
+                    onClick={toggleServiceTypeDropdown}
+                  >
+                    <span className={serviceInformation ? 'text-dark-100' : 'text-dark-400'}>
+                      {serviceInformation || 'Select or enter service type'}
+                    </span>
+                    <svg 
+                      className={`w-4 h-4 text-dark-400 transition-transform ${showServiceTypeDropdown ? 'rotate-180' : ''}`}
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                  
+                  {showServiceTypeDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-dark-800 border border-white/10 rounded-md shadow-lg max-h-60 overflow-auto">
+                      {serviceTypes.length > 0 ? (
+                        serviceTypes.map((serviceType) => (
+                          <div
+                            key={serviceType._id}
+                            className="px-3 py-2 text-sm text-dark-200 hover:bg-dark-700 cursor-pointer border-b border-white/5 last:border-b-0"
+                            onClick={() => handleServiceTypeSelect(serviceType)}
+                          >
+                            {serviceType.name}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-dark-400">
+                          No service types added yet
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {serviceInformation && (
+                    <div className="absolute inset-y-0 right-8 flex items-center pr-3">
+                      <div className="bg-primary-500 text-white text-xs px-2 py-1 rounded">
+                        {serviceInformation}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex justify-end space-x-3 mt-6">
@@ -680,16 +797,67 @@ const CupoForm = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-dark-200 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={serviceInformation}
-                  onChange={(e) => setServiceInformation(e.target.value)}
-                  placeholder="Enter service description"
-                  rows={3}
-                  className="input-field"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-dark-200">
+                    Service Type
+                  </label>
+                  <button
+                    type="button"
+                    onClick={openServiceTypeModal}
+                    className="text-primary-400 hover:text-primary-300 transition-colors"
+                    title="Add new service type"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="relative" ref={dropdownRef}>
+                  <div
+                    className="input-field cursor-pointer flex items-center justify-between"
+                    onClick={toggleServiceTypeDropdown}
+                  >
+                    <span className={serviceInformation ? 'text-dark-100' : 'text-dark-400'}>
+                      {serviceInformation || 'Select or enter service type'}
+                    </span>
+                    <svg 
+                      className={`w-4 h-4 text-dark-400 transition-transform ${showServiceTypeDropdown ? 'rotate-180' : ''}`}
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                  
+                  {showServiceTypeDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-dark-800 border border-white/10 rounded-md shadow-lg max-h-60 overflow-auto">
+                      {serviceTypes.length > 0 ? (
+                        serviceTypes.map((serviceType) => (
+                          <div
+                            key={serviceType._id}
+                            className="px-3 py-2 text-sm text-dark-200 hover:bg-dark-700 cursor-pointer border-b border-white/5 last:border-b-0"
+                            onClick={() => handleServiceTypeSelect(serviceType)}
+                          >
+                            {serviceType.name}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-dark-400">
+                          No service types added yet
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {serviceInformation && (
+                    <div className="absolute inset-y-0 right-8 flex items-center pr-3">
+                      <div className="bg-primary-500 text-white text-xs px-2 py-1 rounded">
+                        {serviceInformation}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex justify-end space-x-3 mt-6">
@@ -717,6 +885,13 @@ const CupoForm = () => {
         isOpen={showProviderModal}
         onClose={() => setShowProviderModal(false)}
         onProviderCreated={handleProviderCreated}
+      />
+      
+      {/* Add Service Type Modal */}
+      <AddServiceTypeModal
+        isOpen={isServiceTypeModalOpen}
+        onClose={() => setIsServiceTypeModalOpen(false)}
+        onServiceTypeAdded={handleServiceTypeAdded}
       />
     </div>
   );

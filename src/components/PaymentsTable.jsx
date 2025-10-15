@@ -15,6 +15,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [selectedPaymentId, setSelectedPaymentId] = useState(null);
   const [completedReceipts, setCompletedReceipts] = useState(new Set());
+  const [respondedReceipts, setRespondedReceipts] = useState(new Set());
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingPayment, setEditingPayment] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -46,6 +47,16 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
 
       if (response.data.success) {
         setPayments(response.data.data.payments);
+        
+        // Check for responded receipts for each payment
+        const respondedSet = new Set();
+        for (const payment of response.data.data.payments) {
+          const isResponded = await checkReceiptStatus(payment._id);
+          if (isResponded) {
+            respondedSet.add(payment._id);
+          }
+        }
+        setRespondedReceipts(respondedSet);
       }
     } catch (error) {
       setError(error.response?.data?.message || 'Failed to fetch payments');
@@ -131,6 +142,47 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
     }
   };
 
+  const viewReceipt = async (paymentId) => {
+    try {
+      setError(''); // Clear any previous errors
+      
+      // First, try to find an existing receipt for this payment
+      const existingReceiptsResponse = await api.get(`/api/receipts?paymentId=${paymentId}`);
+      
+      if (existingReceiptsResponse.data.success && existingReceiptsResponse.data.data.length > 0) {
+        // Load the existing receipt
+        setSelectedPaymentId(paymentId);
+        setShowReceipt(true);
+      } else {
+        // No existing receipt found, generate a new one
+        await generateReceipt(paymentId);
+      }
+    } catch (error) {
+      console.error('View receipt error:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to load receipt';
+      setError(errorMessage);
+      
+      // Show error for 5 seconds then clear
+      setTimeout(() => {
+        setError('');
+      }, 5000);
+    }
+  };
+
+  const checkReceiptStatus = async (paymentId) => {
+    try {
+      const response = await api.get(`/api/receipts?paymentId=${paymentId}`);
+      if (response.data.success && response.data.data.length > 0) {
+        const receipt = response.data.data[0];
+        return receipt.whatsappStatus?.status === 'responded';
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking receipt status:', error);
+      return false;
+    }
+  };
+
   const handleReceiptClose = () => {
     setShowReceipt(false);
     setSelectedPaymentId(null);
@@ -144,6 +196,11 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
     if (onPaymentAdded) {
       onPaymentAdded();
     }
+  };
+
+  const handleReceiptResponded = (paymentId) => {
+    // Mark this payment as having a responded receipt
+    setRespondedReceipts(prev => new Set([...prev, paymentId]));
   };
 
   const formatCurrency = (amount, currency) => {
@@ -360,14 +417,11 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
                   </td>
                   <td className="px-3 py-4">
                     <div className="truncate text-sm text-dark-300">
-                      {payment.receiptImage || completedReceipts.has(payment._id) ? (
+                      {payment.receiptImage || completedReceipts.has(payment._id) || respondedReceipts.has(payment._id) ? (
                         <div className="flex items-center justify-center space-x-2">
                           <span className="text-lg">{getReceiptIcon(payment.receiptImage)}</span>
                           <button
-                            onClick={() => {
-                              setSelectedPaymentId(payment._id);
-                              setShowReceipt(true);
-                            }}
+                            onClick={() => viewReceipt(payment._id)}
                             className="text-primary-400 hover:text-primary-300 text-xs bg-primary-500/20 hover:bg-primary-500/30 px-3 py-1.5 rounded-md border border-primary-500/30 transition-colors whitespace-nowrap"
                           >
                             View
@@ -405,6 +459,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
           saleId={saleId}
           onClose={handleReceiptClose}
           onReceiptCompleted={handleReceiptCompleted}
+          onReceiptResponded={handleReceiptResponded}
         />
       )}
     </div>

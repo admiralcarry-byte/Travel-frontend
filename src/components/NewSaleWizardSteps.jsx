@@ -86,6 +86,8 @@ const NewSaleWizardSteps = ({
   setServiceTemplateSearch,
   // Service Instance Management
   updateServiceInstance,
+  addProviderToService,
+  removeProviderFromService,
   // Template Editing
   editingTemplate,
   setEditingTemplate,
@@ -683,485 +685,312 @@ const NewSaleWizardSteps = ({
                 required
               />
             </div>
-            </div>
           </div>
-      )}
-
-
-
-      {/* Step 7: Service Provider */}
-      {currentStep === 7 && (
-        <div className="space-y-6">
-          <h3 className="text-lg font-medium text-dark-100">Service Provider</h3>
-          <p className="text-sm text-dark-400">Select a provider for this service</p>
-          
-          {/* Information about saved data */}
-          {serviceTemplateInstances.length > 0 && (
-            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-6">
-              <div className="flex items-center mb-2">
-                <svg className="w-5 h-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h4 className="font-medium text-green-300">Service Information Saved Successfully</h4>
-              </div>
-              <p className="text-sm text-green-200">
-                All the information you entered in steps 1-6 has been saved and is shown below. 
-                You can edit any service by clicking the edit icon, or add more services to create a comprehensive travel package.
-              </p>
-            </div>
-          )}
-          
-          {/* Current Service Summary - Show if service is configured */}
-          {currentServiceTemplate && currentServiceInfo && currentServiceDates.checkIn && currentServiceDates.checkOut && currentServiceCost && currentServiceProvider && (
-            <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-4 mb-6">
-              <h4 className="font-medium text-dark-100 mb-2">
-                {currentServiceInstance ? 'Service Comparison (Old vs New)' : 'Current Service (Ready to Add)'}
-              </h4>
-              
-              {currentServiceInstance ? (
-                <div className="space-y-3">
-                  {/* Comparison Table */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Old Values */}
-                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                      <h5 className="text-sm font-medium text-red-300 mb-2">Previous Values</h5>
-                      <div className="text-xs text-dark-300 space-y-1">
-                        <div><span className="text-red-400">Details:</span> {currentServiceInstance.serviceInfo}</div>
-                        <div><span className="text-red-400">Dates:</span> {currentServiceInstance.checkIn} to {currentServiceInstance.checkOut}</div>
-                        <div><span className="text-red-400">Destination:</span> {currentServiceInstance.destination.city}</div>
-                        <div><span className="text-red-400">Cost:</span> {currentServiceInstance.originalCurrency || currentServiceInstance.currency} {parseFloat(currentServiceInstance.originalAmount || currentServiceInstance.cost).toFixed(2)}</div>
-                        <div><span className="text-red-400">Provider(s):</span> {currentServiceInstance.providers && currentServiceInstance.providers.length > 0 ? currentServiceInstance.providers.map(p => p.name || p.providerId?.name).join(', ') : currentServiceInstance.provider?.name || 'None'}</div>
-                      </div>
-                    </div>
-                    
-                    {/* New Values */}
-                    <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
-                      <h5 className="text-sm font-medium text-green-300 mb-2">New Values</h5>
-                      <div className="text-xs text-dark-300 space-y-1">
-                        <div><span className="text-green-400">Details:</span> {currentServiceInfo}</div>
-                        <div><span className="text-green-400">Dates:</span> {currentServiceDates.checkIn} to {currentServiceDates.checkOut}</div>
-                        <div><span className="text-green-400">Destination:</span> {destination.city}</div>
-                        <div><span className="text-green-400">Cost:</span> {currentServiceCurrency} {parseFloat(currentServiceCost).toFixed(2)}</div>
-                        <div><span className="text-green-400">Provider(s):</span> {currentServiceProviders.length > 0 ? currentServiceProviders.map(p => p.name).join(', ') : currentServiceProvider?.name || 'None'}</div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="text-xs text-primary-300">
-                    Review the changes above and click "Update This Service" to save the new values.
-                  </div>
-                </div>
-              ) : (
-                <div className="text-sm text-dark-300 space-y-1">
-                  <div><span className="text-primary-400">Template:</span> {currentServiceTemplate.name}</div>
-                  <div><span className="text-primary-400">Details:</span> {currentServiceInfo}</div>
-                  <div><span className="text-primary-400">Dates:</span> {currentServiceDates.checkIn} to {currentServiceDates.checkOut}</div>
-                  <div><span className="text-primary-400">Destination:</span> {destination.city}</div>
-                  <div><span className="text-primary-400">Cost:</span> {currentServiceCurrency} {parseFloat(currentServiceCost).toFixed(2)}</div>
-                  <div><span className="text-primary-400">Provider:</span> {currentServiceProvider?.name}</div>
-                </div>
-              )}
-              
-              <div className="mt-3 text-xs text-primary-300">
-                {currentServiceInstance 
-                  ? 'Review the comparison above and click "Update This Service" to save your changes.'
-                  : 'This service is configured and ready to be added to your sale.'
-                }
-              </div>
-            </div>
-          )}
-
-          {/* Editing Notice */}
-          {currentServiceInstance && (
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
-              <div className="flex items-center mb-2">
-                <svg className="w-5 h-5 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                <h4 className="font-medium text-blue-300">Editing Service: {currentServiceInstance.templateName}</h4>
-              </div>
-              <p className="text-sm text-blue-200">
-                You are currently editing an existing service. Use the "Update This Service" button below to save your changes, 
-                or navigate back to the form to modify the values.
-              </p>
-            </div>
-          )}
-
-          {/* Add Service Button */}
-          <div className="flex space-x-4">
-            {currentServiceTemplate && currentServiceInfo && currentServiceDates.checkIn && currentServiceDates.checkOut && currentServiceCost && currentServiceProvider ? (
-              <>
-                <button
-                  onClick={addServiceInstance}
-                  className="btn-primary"
-                >
-                  {currentServiceInstance ? 'Update This Service' : 'Add This Service'}
-                </button>
-                <button
-                  onClick={() => setCurrentStep(1)}
-                  className="btn-secondary"
-                >
-                  Add Another Service
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={() => setCurrentStep(1)}
-                className="btn-primary"
-              >
-                {serviceTemplateInstances.length > 0 ? 'Add Another Service' : 'Configure Your First Service'}
-              </button>
-            )}
-          </div>
-
-          {/* Service Instances List */}
-          {serviceTemplateInstances.length > 0 && (
-            <div className="space-y-4">
-              <h4 className="text-md font-medium text-dark-100">Added Services ({serviceTemplateInstances.length})</h4>
-              <div className="space-y-3">
-                {serviceTemplateInstances.map((instance) => (
-                  <div key={instance.id} className="bg-dark-700/50 border border-white/10 rounded-lg p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h5 className="font-medium text-dark-100 mb-2">{instance.templateName}</h5>
-                        <div className="text-sm text-dark-300 space-y-1">
-                          <div><span className="text-primary-400">Details:</span> {instance.serviceInfo || 'Not specified'}</div>
-                          <div><span className="text-primary-400">Dates:</span> {instance.checkIn && instance.checkOut ? `${instance.checkIn} to ${instance.checkOut}` : 'Not specified'}</div>
-                          <div><span className="text-primary-400">Destination:</span> {instance.destination?.city || 'Not specified'}</div>
-                          <div><span className="text-primary-400">Cost:</span> {instance.originalCurrency || instance.currency} {parseFloat(instance.originalAmount || instance.cost || 0).toFixed(2)}</div>
-                          <div><span className="text-primary-400">Provider(s):</span> {instance.providers && instance.providers.length > 0 ? instance.providers.map(p => p.name || p.providerId?.name).join(', ') : instance.provider?.name || 'None'}</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2 ml-4">
-                        <button
-                          onClick={() => editServiceInstance(instance)}
-                          className="text-blue-400 hover:text-blue-300 p-1"
-                          title="Edit service"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => removeServiceInstance(instance.id)}
-                          className="text-red-400 hover:text-red-300 p-1"
-                          title="Remove service"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Step 6: Service Cost */}
+      {/* Step 6: Service Cost & Provider */}
       {currentStep === 6 && (
         <div className="space-y-6">
-          <h3 className="text-lg font-medium text-dark-100">Service Cost</h3>
-          <p className="text-sm text-dark-400">Set the cost for this service</p>
+          <h3 className="text-lg font-medium text-dark-100">Service Cost & Provider</h3>
+          <p className="text-sm text-dark-400">Set the cost and select providers for each service</p>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-dark-200 mb-2">
-                Cost *
-              </label>
-            <input
-                type="number"
-                value={currentServiceCost}
-                onChange={(e) => setCurrentServiceCost(e.target.value)}
-                className="input-field"
-                placeholder="0.00"
-                step="0.01"
-                min="0"
-                required
-              />
-          </div>
-
-            <div>
-              <label className="block text-sm font-medium text-dark-200 mb-2">
-                Currency
-              </label>
-              <select
-                value={currentServiceCurrency}
-                onChange={(e) => {
-                  setCurrentServiceCurrency(e.target.value);
-                  // Reset exchange rate when switching away from ARS
-                  if (e.target.value !== 'ARS') {
-                    setCurrentServiceExchangeRate('');
-                  }
-                }}
-                className="input-field"
-              >
-                <option value="USD">USD - US Dollar</option>
-                <option value="ARS">ARS - Argentine Peso</option>
-              </select>
-                        </div>
-                        </div>
-
-          {/* Exchange Rate Input for ARS */}
-          {currentServiceCurrency === 'ARS' && (
-            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-              <div className="flex items-center mb-3">
-                <svg className="w-5 h-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-                <h4 className="text-lg font-semibold text-green-300">Currency Conversion</h4>
-            </div>
-              <p className="text-sm text-green-200 mb-4">
-                Since you selected ARS, please provide the exchange rate to convert to USD. 
-                The amount will be stored in USD in the database for consistency.
-              </p>
+          {/* Multiple Services Configuration */}
+          {serviceTemplateInstances.map((service, index) => (
+            <div key={service._id || service.id || index} className="bg-dark-800/50 border border-white/10 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-medium text-dark-100">
+                  {index + 1}. {service.serviceInfo || service.name || 'Service'}
+                </h4>
+                <button
+                  onClick={() => editServiceInstance(service)}
+                  className="text-primary-400 hover:text-primary-300 transition-colors"
+                  title="Edit service details"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+              </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Cost and Currency for this service */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
-                  <label className="block text-sm font-medium text-green-200 mb-2">
-                    Exchange Rate (1 USD = ? ARS) *
+                  <label className="block text-sm font-medium text-dark-200 mb-2">
+                    Cost *
                   </label>
                   <input
                     type="number"
-                    value={currentServiceExchangeRate}
-                    onChange={(e) => setCurrentServiceExchangeRate(e.target.value)}
+                    value={service.cost || ''}
+                    onChange={(e) => updateServiceInstance(service._id || service.id, { cost: parseFloat(e.target.value) || 0 })}
                     className="input-field"
-                    placeholder="e.g., 1000"
+                    placeholder="0.00"
                     step="0.01"
                     min="0"
                     required
                   />
-          </div>
+                </div>
 
-                {currentServiceCost && currentServiceExchangeRate && (
-                  <div>
-                    <label className="block text-sm font-medium text-green-200 mb-2">
-                      Converted Amount (USD)
-                    </label>
-                    <div className="input-field bg-dark-700 text-dark-100 cursor-not-allowed">
-                      U${(parseFloat(currentServiceCost) / parseFloat(currentServiceExchangeRate)).toFixed(2)} USD
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-2">
+                    Currency
+                  </label>
+                  <select
+                    value={service.currency || 'USD'}
+                    onChange={(e) => updateServiceInstance(service._id || service.id, { currency: e.target.value })}
+                    className="input-field"
+                  >
+                    <option value="USD">USD - US Dollar</option>
+                    <option value="ARS">ARS - Argentine Peso</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Exchange Rate Input for ARS (per service) */}
+              {service.currency === 'ARS' && (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-6">
+                  <div className="flex items-center mb-3">
+                    <svg className="w-5 h-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h4 className="text-lg font-semibold text-green-300">Currency Conversion</h4>
                   </div>
-              </div>
-                )}
-              </div>
-            </div>
-          )}
-            </div>
-          )}
-
-      {/* Step 7: Service Provider */}
-      {currentStep === 7 && (
-        <div className="space-y-6">
-          <h3 className="text-lg font-medium text-dark-100">Service Provider</h3>
-          <p className="text-sm text-dark-400">Select a provider for this service</p>
-          
-          {/* Selected Providers - Display at top */}
-          {currentServiceProviders.length > 0 && (
-            <div id="selected-providers" className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-4 mb-6">
-              <h4 className="font-medium text-dark-100 mb-3">
-                Selected Providers ({currentServiceProviders.length})
-              </h4>
-            <div className="space-y-3">
-                {currentServiceProviders.map((provider) => (
-                  <div key={provider._id} className="bg-dark-700/50 rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h5 className="font-medium text-dark-100 mb-1">{provider.name}</h5>
-                        <div className="text-sm text-dark-300 space-y-1">
-                          {provider.type && (
-                        <div className="flex items-center space-x-2">
-                              <span className="text-primary-400">Type:</span>
-                              <span>{provider.type}</span>
-                        </div>
-                      )}
-                          {provider.phone && (
-                        <div className="flex items-center space-x-2">
-                              <span className="text-primary-400">Phone:</span>
-                              <span>{provider.phone}</span>
-                        </div>
-                      )}
-                          {provider.email && (
-                        <div className="flex items-center space-x-2">
-                              <span className="text-primary-400">Email:</span>
-                              <span>{provider.email}</span>
-                        </div>
-                      )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => removeProviderFromCurrentService(provider._id)}
-                        className="text-red-400 hover:text-red-300 ml-2"
-                        title="Remove provider"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                  <p className="text-sm text-green-200 mb-4">
+                    Since you selected ARS, please provide the exchange rate to convert to USD. 
+                    The amount will be stored in USD in the database for consistency.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-green-200 mb-2">
+                        Exchange Rate (1 USD = ? ARS) *
+                      </label>
+                      <input
+                        type="number"
+                        value={service.exchangeRate || ''}
+                        onChange={(e) => updateServiceInstance(service._id || service.id, { exchangeRate: parseFloat(e.target.value) || 0 })}
+                        className="input-field"
+                        placeholder="e.g., 1000"
+                        step="0.01"
+                        min="0"
+                        required
+                      />
                     </div>
-                    
-                    {/* File Upload Section for Selected Provider */}
-                    <div className="border-t border-white/10 pt-3">
-                      <div className="flex items-center justify-between mb-3">
-                        <h6 className="text-sm font-medium text-dark-200">Files for {provider.name}</h6>
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handleProviderFileUpload(provider._id)}
-                            className="text-green-400 hover:text-green-300 text-sm flex items-center space-x-1 px-3 py-1 border border-green-400/30 rounded hover:bg-green-400/10 transition-colors"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                            </svg>
-                            <span>Upload</span>
-                          </button>
-                          <button
-                            onClick={() => openFileModal(provider._id)}
-                            className="text-blue-400 hover:text-blue-300 text-sm flex items-center space-x-1 px-3 py-1 border border-blue-400/30 rounded hover:bg-blue-400/10 transition-colors"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                            <span>View</span>
-                          </button>
+
+                    {service.cost && service.exchangeRate && (
+                      <div>
+                        <label className="block text-sm font-medium text-green-200 mb-2">
+                          Converted Amount (USD)
+                        </label>
+                        <div className="input-field bg-dark-700 text-dark-100 cursor-not-allowed">
+                          U${(parseFloat(service.cost) / parseFloat(service.exchangeRate)).toFixed(2)} USD
                         </div>
                       </div>
-                      
-                      {/* File Upload Area */}
-                      <div
-                        onClick={() => handleProviderFileUpload(provider._id)}
-                        className="border-2 border-dashed border-primary-500/30 rounded-lg p-4 text-center cursor-pointer hover:border-primary-500/50 transition-colors"
-                      >
-                        <svg className="w-8 h-8 text-primary-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                        <p className="text-sm text-dark-300">Click to upload files for {provider.name}</p>
-                        <p className="text-xs text-dark-400 mt-1">PDF, DOC, DOCX, JPG, PNG (Max 10MB each)</p>
-                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Service Provider Selection for this service */}
+              <div className="border-t border-white/10 pt-6">
+                <h4 className="text-lg font-medium text-dark-100 mb-2">Service Provider</h4>
+                <p className="text-sm text-dark-400 mb-4">Select providers for this service</p>
+                
+                {/* Selected Providers - Display at top */}
+                {(() => {
+                  const selectedProviders = service.providers || (service.provider ? [service.provider] : []);
+                  return selectedProviders.length > 0 && (
+                    <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-4 mb-6">
+                      <h4 className="font-medium text-dark-100 mb-3">
+                        Selected Providers ({selectedProviders.length})
+                      </h4>
+                      <div className="space-y-3">
+                        {selectedProviders.map((provider) => (
+                        <div key={provider._id} className="bg-dark-700/50 rounded-lg p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <h5 className="font-medium text-dark-100 mb-1">{provider.name}</h5>
+                              <div className="text-sm text-dark-300 space-y-1">
+                                {provider.type && (
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-primary-400">Type:</span>
+                                    <span>{provider.type}</span>
+                                  </div>
+                                )}
+                                {provider.phone && (
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-primary-400">Phone:</span>
+                                    <span>{provider.phone}</span>
+                                  </div>
+                                )}
+                                {provider.email && (
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-primary-400">Email:</span>
+                                    <span>{provider.email}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => removeProviderFromService(service._id || service.id, provider._id)}
+                              className="text-red-400 hover:text-red-300 ml-2"
+                              title="Remove provider"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                          
+                          {/* File Upload Section for Selected Provider */}
+                          <div className="border-t border-white/10 pt-3">
+                            <div className="flex items-center justify-between mb-3">
+                              <h6 className="text-sm font-medium text-dark-200">Files for {provider.name}</h6>
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={() => handleProviderFileUpload(provider._id)}
+                                  className="text-green-400 hover:text-green-300 text-sm flex items-center space-x-1 px-3 py-1 border border-green-400/30 rounded hover:bg-green-400/10 transition-colors"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                  </svg>
+                                  <span>Upload</span>
+                                </button>
+                                <button
+                                  onClick={() => openFileModal(provider._id)}
+                                  className="text-blue-400 hover:text-blue-300 text-sm flex items-center space-x-1 px-3 py-1 border border-blue-400/30 rounded hover:bg-blue-400/10 transition-colors"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                  <span>View</span>
+                                </button>
+                              </div>
+                            </div>
+                            
+                            {/* File Upload Area */}
+                            <div
+                              onClick={() => handleProviderFileUpload(provider._id)}
+                              className="border-2 border-dashed border-primary-500/30 rounded-lg p-4 text-center cursor-pointer hover:border-primary-500/50 transition-colors"
+                            >
+                              <svg className="w-8 h-8 text-primary-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                              </svg>
+                              <p className="text-sm text-dark-300">Click to upload files for {provider.name}</p>
+                              <p className="text-xs text-dark-400 mt-1">PDF, DOC, DOCX, JPG, PNG (Max 10MB each)</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                );
+                })()}
 
-          {/* Provider Search */}
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search providers..."
-              value={providerSearch}
-              onChange={(e) => setProviderSearch(e.target.value)}
-              className="input-field w-full pl-10"
-            />
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-5 w-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-          </div>
+                {/* Provider Search */}
+                <div className="relative mb-6">
+                  <input
+                    type="text"
+                    placeholder="Search providers..."
+                    value={providerSearch}
+                    onChange={(e) => setProviderSearch(e.target.value)}
+                    className="input-field w-full pl-10"
+                  />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                </div>
 
-          {/* Available Providers */}
-          <div className="space-y-3">
-            <h4 className="text-md font-medium text-dark-100">
-              Available Providers {providerLoading && <span className="text-sm text-dark-400">(Loading...)</span>}
-            </h4>
-            
-            {availableProviders.length === 0 && !providerLoading ? (
-              <div className="text-center py-8 text-dark-400">
-                <p>No providers found. Try adjusting your search.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
-                {availableProviders
-                  .filter(provider => {
-                    // Apply search filter if search term exists
-                    if (providerSearch && providerSearch.trim()) {
-                      const searchTerm = providerSearch.toLowerCase().trim();
-                      const matchesName = provider.name?.toLowerCase().includes(searchTerm);
-                      const matchesEmail = provider.email?.toLowerCase().includes(searchTerm);
-                      const matchesType = provider.type?.toLowerCase().includes(searchTerm);
-                      
-                      return matchesName || matchesEmail || matchesType;
-                    }
-                    
-                    return true;
-                  })
-                  .map((provider) => {
-                    const isSelected = currentServiceProviders.some(p => p._id === provider._id);
-                    
-                    return (
-                      <div
-                        key={provider._id}
-                        onClick={() => {
-                          addProviderToCurrentService(provider);
-                          // Scroll to top of selected providers section
-                          setTimeout(() => {
-                            const selectedProvidersElement = document.getElementById('selected-providers');
-                            if (selectedProvidersElement) {
-                              selectedProvidersElement.scrollIntoView({ 
-                                behavior: 'smooth', 
-                                block: 'start' 
-                              });
-                            }
-                          }, 100);
-                        }}
-                        className={`rounded-lg p-4 transition-colors cursor-pointer ${
-                          isSelected
-                            ? 'bg-primary-500/20 border-primary-500/50 border-2'
-                            : 'bg-dark-700/50 border border-white/10 hover:bg-dark-600/50 hover:border-primary-500/30'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h5 className="font-medium mb-2 text-dark-100">{provider.name}</h5>
-                            <div className="text-sm space-y-1 text-dark-300">
-                              {provider.type && (
-                          <div className="flex items-center space-x-2">
-                                  <span className="text-primary-400">Type:</span>
-                                  <span>{provider.type}</span>
-                          </div>
-                        )}
-                              {provider.phone && (
-                          <div className="flex items-center space-x-2">
-                                  <span className="text-primary-400">Phone:</span>
-                                  <span>{provider.phone}</span>
-                          </div>
-                        )}
-                              {provider.email && (
-                          <div className="flex items-center space-x-2">
-                                  <span className="text-primary-400">Email:</span>
-                                  <span>{provider.email}</span>
-                          </div>
-                        )}
-                      </div>
+                {/* Available Providers */}
+                <div className="space-y-3">
+                  <h4 className="text-md font-medium text-dark-100">
+                    Available Providers {providerLoading && <span className="text-sm text-dark-400">(Loading...)</span>}
+                  </h4>
+                  
+                  {availableProviders.length === 0 && !providerLoading ? (
+                    <div className="text-center py-8 text-dark-400">
+                      <p>No providers found. Try adjusting your search.</p>
                     </div>
-                          <div className="ml-2">
-                            {isSelected ? (
-                              <svg className="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            ) : (
-                              <svg className="w-5 h-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                              </svg>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
+                      {availableProviders
+                        .filter(provider => {
+                          // Apply search filter if search term exists
+                          if (providerSearch && providerSearch.trim()) {
+                            const searchTerm = providerSearch.toLowerCase().trim();
+                            const matchesName = provider.name?.toLowerCase().includes(searchTerm);
+                            const matchesEmail = provider.email?.toLowerCase().includes(searchTerm);
+                            const matchesType = provider.type?.toLowerCase().includes(searchTerm);
+                            
+                            return matchesName || matchesEmail || matchesType;
+                          }
+                          
+                          return true;
+                        })
+                        .filter((provider) => {
+                          // Filter out providers that are already selected in ANY service
+                          const isProviderSelected = serviceTemplateInstances.some(serviceInstance => {
+                            const serviceProviders = serviceInstance.providers || (serviceInstance.provider ? [serviceInstance.provider] : []);
+                            return serviceProviders.some(p => p._id === provider._id);
+                          });
+                          return !isProviderSelected;
+                        })
+                        .map((provider) => {
+                          return (
+                            <div
+                              key={provider._id}
+                              onClick={() => addProviderToService(service._id || service.id, provider)}
+                              className="rounded-lg p-4 transition-colors cursor-pointer bg-dark-700/50 border border-white/10 hover:bg-dark-600/50 hover:border-primary-500/30"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h5 className="font-medium mb-2 text-dark-100">{provider.name}</h5>
+                                  <div className="text-sm space-y-1 text-dark-300">
+                                    {provider.type && (
+                                      <div className="flex items-center space-x-2">
+                                        <span className="text-primary-400">Type:</span>
+                                        <span>{provider.type}</span>
+                                      </div>
+                                    )}
+                                    {provider.phone && (
+                                      <div className="flex items-center space-x-2">
+                                        <span className="text-primary-400">Phone:</span>
+                                        <span>{provider.phone}</span>
+                                      </div>
+                                    )}
+                                    {provider.email && (
+                                      <div className="flex items-center space-x-2">
+                                        <span className="text-primary-400">Email:</span>
+                                        <span>{provider.email}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="ml-2">
+                                  <svg className="w-5 h-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                  </svg>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          ))}
         </div>
       )}
 
 
-      {/* Step 8: Add More Services */}
-      {currentStep === 8 && (
+
+      {/* Step 7: Add More Services */}
+      {currentStep === 7 && (
         <div className="space-y-6">
           <h3 className="text-lg font-medium text-dark-100">Add More Services</h3>
           <p className="text-sm text-dark-400">Add additional services to your sale</p>
@@ -1180,7 +1009,7 @@ const NewSaleWizardSteps = ({
                   <div key={instance.id} className="text-sm text-dark-300 bg-dark-700/30 rounded p-2">
                     <span className="text-green-400 font-medium">•</span> {index + 1}. {instance.templateName}
                     <span className="text-dark-400 ml-2">({instance.serviceInfo})</span>
-                    <span className="text-dark-400 ml-2">- {instance.originalCurrency || instance.currency} {parseFloat(instance.originalAmount || instance.cost || 0).toFixed(2)}</span>
+                    <span className="text-dark-400 ml-2">- {instance.currency || 'USD'} {parseFloat(instance.cost || 0).toFixed(2)}</span>
                 </div>
               ))}
             </div>
@@ -1188,7 +1017,7 @@ const NewSaleWizardSteps = ({
           )}
 
           {/* Add Another Service */}
-          <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-6">
+          {/* <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-6">
             <h4 className="font-medium text-dark-100 mb-4 flex items-center">
               <svg className="w-5 h-5 text-primary-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -1222,7 +1051,7 @@ const NewSaleWizardSteps = ({
               </svg>
               Add New Service
                     </button>
-                  </div>
+                  </div> */}
 
           {/* Service Management */}
           {serviceTemplateInstances.length > 0 && (
@@ -1262,9 +1091,19 @@ const NewSaleWizardSteps = ({
                     
                     <div className="text-xs text-dark-400 space-y-1">
                       <div><span className="text-primary-400">Dates:</span> {instance.checkIn && instance.checkOut ? `${instance.checkIn} to ${instance.checkOut}` : 'Not specified'}</div>
-                      <div><span className="text-primary-400">Destination:</span> {instance.destination?.city || 'Not specified'}</div>
-                      <div><span className="text-primary-400">Cost:</span> {instance.originalCurrency || instance.currency} {parseFloat(instance.originalAmount || instance.cost || 0).toFixed(2)}</div>
-                      <div><span className="text-primary-400">Providers:</span> {instance.providers && instance.providers.length > 0 ? instance.providers.map(p => p.name).join(', ') : 'None'}</div>
+                      <div><span className="text-primary-400">Destination:</span> {instance.destination?.city || instance.destination?.name || 'Not specified'}</div>
+                      <div><span className="text-primary-400">Cost:</span> {instance.currency || 'USD'} {parseFloat(instance.cost || 0).toFixed(2)}</div>
+                      <div><span className="text-primary-400">Providers:</span> {(() => {
+                        console.log(`🔍 Service ${instance.templateName} providers:`, instance.providers);
+                        console.log(`🔍 Service ${instance.templateName} provider:`, instance.provider);
+                        if (instance.providers && instance.providers.length > 0) {
+                          return instance.providers.map(p => p.name || p.providerId?.name || 'Unknown Provider').join(', ');
+                        } else if (instance.provider?.name) {
+                          return instance.provider.name;
+                        } else {
+                          return 'None';
+                        }
+                      })()}</div>
                         </div>
                       </div>
                     ))}
@@ -1274,8 +1113,8 @@ const NewSaleWizardSteps = ({
         </div>
       )}
 
-      {/* Step 9: Review & Create */}
-      {currentStep === 9 && (
+      {/* Step 8: Review & Create */}
+      {currentStep === 8 && (
         <div className="space-y-8">
           <div className="text-center">
             <h3 className="text-2xl font-bold text-dark-100 mb-2">Review & Create Sale</h3>
@@ -1306,7 +1145,7 @@ const NewSaleWizardSteps = ({
                       <div className="text-sm text-dark-300 space-y-1">
                         <div><span className="text-primary-400">Dates:</span> {instance.checkIn} to {instance.checkOut}</div>
                         <div><span className="text-primary-400">Destination:</span> {instance.destination.city}</div>
-                        <div><span className="text-primary-400">Cost:</span> {instance.originalCurrency || instance.currency} {parseFloat(instance.originalAmount || instance.cost).toFixed(2)}</div>
+                        <div><span className="text-primary-400">Cost:</span> {instance.currency || 'USD'} {parseFloat(instance.cost || 0).toFixed(2)}</div>
                         <div><span className="text-primary-400">Provider(s):</span> {instance.providers && instance.providers.length > 0 ? instance.providers.map(p => p.name || p.providerId?.name).join(', ') : instance.provider?.name || 'None'}</div>
                       </div>
                     </div>

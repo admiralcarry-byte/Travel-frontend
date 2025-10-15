@@ -376,6 +376,7 @@
   /* Input Components */
   .input-field {
     width: 100%;
+    min-width: 120px; /* Minimum width to prevent truncation */
     padding: 0.75rem 1rem;
     background: #666d79;
     border: 2px solid rgba(255, 255, 255, 0.1);
@@ -384,6 +385,8 @@
     font-size: 1rem;
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;
+    white-space: nowrap; /* Prevent text wrapping inside input */
+    overflow: visible; /* Allow content to be visible */
   }
   
   .input-field:focus {
@@ -635,6 +638,9 @@
   select option {
     background-color: var(--color-dark-800) !important;
     color: var(--color-dark-100) !important;
+    white-space: nowrap; /* Prevent text wrapping */
+    overflow: visible; /* Allow full text to be visible */
+    text-overflow: clip; /* Don't truncate with ellipsis */
   }
   
   select option:hover {
@@ -644,5 +650,65 @@
   select option:checked {
     background-color: var(--color-primary-500) !important;
     color: white !important;
+  }
+
+  /* Enhanced select styling for internationalization */
+  select.input-field {
+    min-width: 140px; /* Increased minimum width for longer text */
+    max-width: none; /* Remove width constraints */
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+    padding-right: 2.5rem; /* Make room for dropdown arrow */
+    appearance: none; /* Remove default browser styling */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+  }
+
+  /* Responsive dropdown containers */
+  .filter-dropdown-container {
+    min-width: 160px; /* Ensure containers have enough width */
+    width: 100%;
+    max-width: 250px; /* But don't make them too wide */
+  }
+
+  /* Grid adjustments for filter layouts */
+  .filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    align-items: start;
+  }
+
+  /* Specific styling for SalesList filter grid */
+  .sales-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    align-items: start;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  @media (min-width: 768px) {
+    .sales-filter-grid {
+      grid-template-columns: repeat(4, 1fr);
+      max-width: 1200px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .sales-filter-grid {
+      grid-template-columns: repeat(4, 1fr);
+      max-width: 1200px;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .sales-filter-grid {
+      grid-template-columns: repeat(4, 1fr);
+      max-width: 1200px;
+    }
   }
 }
