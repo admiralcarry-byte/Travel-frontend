@@ -181,11 +181,11 @@ const ServiceTemplateInstanceEditor = ({
       // Count how many times this provider is currently selected in this modal
       const currentModalCount = prev.filter(p => p._id === provider._id).length;
       
-      // Count how many times this provider is selected globally across all services
-      const globalCount = getGlobalProviderCount ? getGlobalProviderCount(provider._id) : 0;
+      // Count how many times this provider is selected in other services (excluding current modal)
+      const otherServicesCount = getGlobalProviderCount ? getGlobalProviderCount(provider._id) : 0;
       
-      // Subtract the current modal selections from global count to get other services' selections
-      const otherServicesCount = globalCount - currentModalCount;
+      // Calculate what the real-time global count would be after adding one more
+      const wouldBeGlobalCount = otherServicesCount + currentModalCount + 1;
       
       const maxSelections = 7;
       
@@ -193,15 +193,15 @@ const ServiceTemplateInstanceEditor = ({
         providerName: provider.name,
         providerId: provider._id,
         currentModalCount,
-        globalCount,
         otherServicesCount,
-        wouldExceedLimit: otherServicesCount + currentModalCount + 1 > maxSelections,
+        wouldBeGlobalCount,
+        wouldExceedLimit: wouldBeGlobalCount > maxSelections,
         maxSelections
       });
       
       // Check if adding one more would exceed the global limit
-      if (otherServicesCount + currentModalCount + 1 > maxSelections) {
-        toast.error(`Cannot select more instances of ${provider.name}. Global limit is ${maxSelections} selections across all services. Current global count: ${globalCount}`);
+      if (wouldBeGlobalCount > maxSelections) {
+        toast.error(`Cannot select more instances of ${provider.name}. Global limit is ${maxSelections} selections across all services. Current count would be: ${wouldBeGlobalCount}`);
         return prev;
       }
       
@@ -622,10 +622,15 @@ const ServiceTemplateInstanceEditor = ({
               <h4 className="text-sm font-medium text-dark-200 mb-2">Available Providers</h4>
               {availableProviders.map((provider) => {
                 const selectedCount = selectedProviders.filter(p => p._id === provider._id).length;
-                const globalCount = getGlobalProviderCount ? getGlobalProviderCount(provider._id) : 0;
-                const otherServicesCount = globalCount - selectedCount;
+                
+                // Get the global count from other services (excluding current modal selections)
+                const otherServicesCount = getGlobalProviderCount ? getGlobalProviderCount(provider._id) : 0;
+                
+                // Calculate real-time global count including current modal selections
+                const realTimeGlobalCount = otherServicesCount + selectedCount;
+                
                 const maxSelections = 7; // Global limit across all services
-                const canSelectMore = otherServicesCount + selectedCount < maxSelections;
+                const canSelectMore = realTimeGlobalCount < maxSelections;
                 
                 return (
                   <div
@@ -664,9 +669,9 @@ const ServiceTemplateInstanceEditor = ({
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <h4 className="font-medium text-dark-100">{provider.name}</h4>
-                          {globalCount > 0 && (
+                          {realTimeGlobalCount > 0 && (
                             <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded">
-                              Global: {globalCount}/{maxSelections}
+                              Global: {realTimeGlobalCount}/{maxSelections}
                             </span>
                           )}
                         </div>
