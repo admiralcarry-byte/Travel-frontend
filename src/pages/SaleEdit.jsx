@@ -235,11 +235,15 @@ const SaleEdit = () => {
       
       if (updatedInstance.providers && updatedInstance.providers.length > 0) {
         // Check if providers have the correct structure (from backend) or are Provider objects (newly selected)
-        formattedProviders = updatedInstance.providers.map(provider => {
+        formattedProviders = updatedInstance.providers.map((provider, providerIndex) => {
           // If provider already has the correct structure (has providerId property), use it
           if (provider.providerId && provider.costProvider !== undefined) {
             return provider;
           }
+          
+          // Try to find original provider data from backend to preserve documents and dates
+          const originalProviderData = updatedInstance.providersData?.[providerIndex];
+          
           // Otherwise, it's a Provider object that needs to be formatted
           const formattedProvider = {
             providerId: provider._id,
@@ -251,6 +255,21 @@ const SaleEdit = () => {
           // Only include serviceProviderId if it exists
           if (provider.serviceProviderId) {
             formattedProvider.serviceProviderId = provider.serviceProviderId;
+          }
+          
+          // Preserve documents from original provider data or provider object
+          if (originalProviderData?.documents && originalProviderData.documents.length > 0) {
+            formattedProvider.documents = originalProviderData.documents;
+          } else if (provider.documents && provider.documents.length > 0) {
+            formattedProvider.documents = provider.documents;
+          }
+          
+          // Preserve dates from original provider data
+          if (originalProviderData?.startDate) {
+            formattedProvider.startDate = originalProviderData.startDate;
+          }
+          if (originalProviderData?.endDate) {
+            formattedProvider.endDate = originalProviderData.endDate;
           }
           
           return formattedProvider;
@@ -392,11 +411,15 @@ const SaleEdit = () => {
         
         if (instance.providers && instance.providers.length > 0) {
           // Check if providers have the correct structure (from backend) or are Provider objects (newly selected)
-          formattedProviders = instance.providers.map(provider => {
+          formattedProviders = instance.providers.map((provider, providerIndex) => {
             // If provider already has the correct structure (has providerId property), use it
             if (provider.providerId && provider.costProvider !== undefined) {
               return provider;
             }
+            
+            // Try to find original provider data from backend to preserve documents and dates
+            const originalProviderData = instance.providersData?.[providerIndex];
+            
             // Otherwise, it's a Provider object that needs to be formatted
             const formattedProvider = {
               providerId: provider._id,
@@ -408,6 +431,21 @@ const SaleEdit = () => {
             // Only include serviceProviderId if it exists
             if (provider.serviceProviderId) {
               formattedProvider.serviceProviderId = provider.serviceProviderId;
+            }
+            
+            // Preserve documents from original provider data or provider object
+            if (originalProviderData?.documents && originalProviderData.documents.length > 0) {
+              formattedProvider.documents = originalProviderData.documents;
+            } else if (provider.documents && provider.documents.length > 0) {
+              formattedProvider.documents = provider.documents;
+            }
+            
+            // Preserve dates from original provider data
+            if (originalProviderData?.startDate) {
+              formattedProvider.startDate = originalProviderData.startDate;
+            }
+            if (originalProviderData?.endDate) {
+              formattedProvider.endDate = originalProviderData.endDate;
             }
             
             return formattedProvider;
