@@ -66,7 +66,7 @@ const ServiceTemplateInstanceEditor = ({
         globalCounts: currentProviders.map(p => ({
           providerId: p._id,
           providerName: p.name,
-          globalCount: getGlobalProviderCount ? getGlobalProviderCount(p._id) : 0
+          globalCount: getGlobalProviderCount ? getGlobalProviderCount(p._id, instance.id) : 0
         }))
       });
       
@@ -182,7 +182,7 @@ const ServiceTemplateInstanceEditor = ({
       const currentModalCount = prev.filter(p => p._id === provider._id).length;
       
       // Count how many times this provider is selected in other services (excluding current modal)
-      const otherServicesCount = getGlobalProviderCount ? getGlobalProviderCount(provider._id) : 0;
+      const otherServicesCount = getGlobalProviderCount ? getGlobalProviderCount(provider._id, instance.id) : 0;
       
       // Calculate what the real-time global count would be after adding one more
       const wouldBeGlobalCount = otherServicesCount + currentModalCount + 1;
@@ -624,7 +624,7 @@ const ServiceTemplateInstanceEditor = ({
                 const selectedCount = selectedProviders.filter(p => p._id === provider._id).length;
                 
                 // Get the global count from other services (excluding current modal selections)
-                const otherServicesCount = getGlobalProviderCount ? getGlobalProviderCount(provider._id) : 0;
+                const otherServicesCount = getGlobalProviderCount ? getGlobalProviderCount(provider._id, instance.id) : 0;
                 
                 // Calculate real-time global count including current modal selections
                 const realTimeGlobalCount = otherServicesCount + selectedCount;

@@ -26,8 +26,13 @@ const SaleEdit = () => {
   const [searchTimeout, setSearchTimeout] = useState(null);
   
   // Global provider tracking
-  const getGlobalProviderCount = (providerId) => {
+  const getGlobalProviderCount = (providerId, excludeInstanceId = null) => {
     const count = serviceTemplateInstances.reduce((total, instance) => {
+      // Skip the excluded instance (used when editing a specific service)
+      if (excludeInstanceId && (instance.id === excludeInstanceId || instance._id === excludeInstanceId)) {
+        return total;
+      }
+      
       if (instance.providers && instance.providers.length > 0) {
         // Count providers by checking both possible formats, but avoid double counting
         let providerCount = 0;
@@ -51,9 +56,11 @@ const SaleEdit = () => {
     
     console.log('🔍 Global Provider Count - Debug:', {
       providerId,
+      excludeInstanceId,
       totalCount: count,
       serviceInstances: serviceTemplateInstances.map(instance => ({
         id: instance.id,
+        excluded: excludeInstanceId && (instance.id === excludeInstanceId || instance._id === excludeInstanceId),
         providers: instance.providers?.length || 0,
         providerDetails: instance.providers?.map(p => ({
           actualId: p.providerId?._id || p._id,
