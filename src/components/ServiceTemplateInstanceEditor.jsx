@@ -58,11 +58,22 @@ const ServiceTemplateInstanceEditor = ({
         currentProviders = [instance.provider];
       }
       
+      console.log('🔍 Provider Modal - Initializing providers:', {
+        instanceId: instance.id,
+        instanceProviders: instance.providers,
+        currentProviders: currentProviders,
+        globalCounts: currentProviders.map(p => ({
+          providerId: p._id,
+          providerName: p.name,
+          globalCount: getGlobalProviderCount ? getGlobalProviderCount(p._id) : 0
+        }))
+      });
+      
       setSelectedProviders(currentProviders);
       // Reset search when modal opens
       setLocalProviderSearch('');
     }
-  }, [showProviderModal, instance.provider, instance.providers]);
+  }, [showProviderModal, instance.provider, instance.providers, getGlobalProviderCount]);
 
   // Currency conversion effect
   useEffect(() => {
@@ -177,9 +188,19 @@ const ServiceTemplateInstanceEditor = ({
       
       const maxSelections = 7;
       
+      console.log('🔍 Provider Toggle - Debug:', {
+        providerName: provider.name,
+        providerId: provider._id,
+        currentModalCount,
+        globalCount,
+        otherServicesCount,
+        wouldExceedLimit: otherServicesCount + currentModalCount + 1 > maxSelections,
+        maxSelections
+      });
+      
       // Check if adding one more would exceed the global limit
       if (otherServicesCount + currentModalCount + 1 > maxSelections) {
-        toast.error(`Cannot select more instances of ${provider.name}. Global limit is ${maxSelections} selections across all services.`);
+        toast.error(`Cannot select more instances of ${provider.name}. Global limit is ${maxSelections} selections across all services. Current global count: ${globalCount}`);
         return prev;
       }
       
@@ -244,7 +265,19 @@ const ServiceTemplateInstanceEditor = ({
             <div className="text-dark-100 font-medium">
               {field === 'provider' ? (
                 instance.providers && instance.providers.length > 0 ? 
-                  `${instance.providers.map(p => p.providerId?.name || p.name).join(', ')} (${instance.providers.length})` :
+                  (() => {
+                    // Group providers by name and count occurrences
+                    const providerCounts = {};
+                    instance.providers.forEach(p => {
+                      const providerName = p.providerId?.name || p.name || 'Unknown Provider';
+                      providerCounts[providerName] = (providerCounts[providerName] || 0) + 1;
+                    });
+                    
+                    // Format providers with counts
+                    return Object.entries(providerCounts)
+                      .map(([name, count]) => `${name} × ${count}`)
+                      .join(', ');
+                  })() :
                   (currentValue?.name || 'No provider')
               ) : 
                field === 'destination' ? currentValue?.city || 'Not set' :

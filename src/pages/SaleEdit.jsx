@@ -27,7 +27,7 @@ const SaleEdit = () => {
   
   // Global provider tracking
   const getGlobalProviderCount = (providerId) => {
-    return serviceTemplateInstances.reduce((total, instance) => {
+    const count = serviceTemplateInstances.reduce((total, instance) => {
       if (instance.providers && instance.providers.length > 0) {
         // Check if providers are in backend format (with providerId property)
         if (instance.providers[0].providerId) {
@@ -43,6 +43,18 @@ const SaleEdit = () => {
       }
       return total;
     }, 0);
+    
+    console.log('🔍 Global Provider Count - Debug:', {
+      providerId,
+      totalCount: count,
+      serviceInstances: serviceTemplateInstances.map(instance => ({
+        id: instance.id,
+        providers: instance.providers?.length || 0,
+        providerNames: instance.providers?.map(p => p.providerId?.name || p.name) || []
+      }))
+    });
+    
+    return count;
   };
   
   // Editing states
