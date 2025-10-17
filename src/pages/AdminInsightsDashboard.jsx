@@ -225,6 +225,7 @@ const AdminInsightsDashboard = () => {
         const enumValue = paymentMethodMapping[filters.paymentMethod] || filters.paymentMethod;
         params.append('paymentMethod', enumValue);
       }
+      if (filters.currency) params.append('currency', filters.currency);
 
       const response = await api.get(`/api/reports/payment-methods?${params}`);
       if (response.data.success) {
@@ -233,7 +234,7 @@ const AdminInsightsDashboard = () => {
     } catch (error) {
       console.error('Error fetching payment methods:', error);
     }
-  }, [filters.period, filters.startDate, filters.endDate, filters.paymentType, filters.paymentMethod]);
+  }, [filters.period, filters.startDate, filters.endDate, filters.paymentType, filters.paymentMethod, filters.currency]);
 
   // Fetch sales and profit data for charts
   const fetchChartData = useCallback(async () => {
@@ -318,7 +319,7 @@ const AdminInsightsDashboard = () => {
     if (user && user.role === 'admin') {
       fetchPaymentMethods();
     }
-  }, [filters.paymentMethod, filters.paymentType, user]);
+  }, [filters.paymentMethod, filters.paymentType, filters.currency, user]);
 
 
   // Handle filter changes
