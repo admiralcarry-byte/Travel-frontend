@@ -2743,11 +2743,11 @@ const SaleWizard = () => {
 
       {/* Progress Steps */}
       <div className="card-glass p-6 mb-6">
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* First Row - Steps 1-4 */}
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start justify-center gap-8">
             {steps.slice(0, 4).map((step, index) => (
-              <div key={step.number} className="flex items-start flex-1 min-w-0">
+              <div key={step.number} className="flex items-start">
                 <div className="flex flex-col items-center">
                   <div className={`flex items-center justify-center w-12 h-12 rounded-full text-sm font-bold transition-all duration-300 ${
                     currentStep >= step.number
@@ -2766,8 +2766,8 @@ const SaleWizard = () => {
                   </div>
                 </div>
                 {/* Directional Arrow */}
-                {index < 4 && (
-                  <div className="flex justify-center mx-1 mt-6">
+                {index < 3 && (
+                  <div className="flex justify-center mx-4 mt-6">
                     <div className={`text-lg transition-colors duration-300 ${
                       currentStep > step.number ? 'text-primary-500' : 'text-dark-500'
                     }`}>
@@ -2779,10 +2779,10 @@ const SaleWizard = () => {
             ))}
           </div>
 
-          {/* Second Row - Steps 5-9 */}
-          <div className="flex items-start justify-between gap-2">
-            {steps.slice(4, 9).map((step, index) => (
-              <div key={step.number} className="flex items-start flex-1 min-w-0">
+          {/* Second Row - Steps 5-7 */}
+          <div className="flex items-start justify-center gap-8">
+            {steps.slice(4, 7).map((step, index) => (
+              <div key={step.number} className="flex items-start">
                 <div className="flex flex-col items-center">
                   <div className={`flex items-center justify-center w-12 h-12 rounded-full text-sm font-bold transition-all duration-300 ${
                     currentStep >= step.number
@@ -2801,8 +2801,8 @@ const SaleWizard = () => {
                   </div>
                 </div>
                 {/* Directional Arrow */}
-                {index < 4 && (
-                  <div className="flex justify-center mx-1 mt-6">
+                {index < 2 && (
+                  <div className="flex justify-center mx-4 mt-6">
                     <div className={`text-lg transition-colors duration-300 ${
                       currentStep > step.number ? 'text-primary-500' : 'text-dark-500'
                     }`}>
@@ -2815,10 +2815,10 @@ const SaleWizard = () => {
           </div>
 
           {/* Progress Indicator */}
-          <div className="mt-6">
-            <div className="flex items-center justify-center space-x-2">
+          <div className="mt-8">
+            <div className="flex items-center justify-center space-x-4">
               <div className="text-sm text-dark-300">Progress:</div>
-              <div className="flex-1 max-w-xs bg-dark-700 rounded-full h-2">
+              <div className="w-64 bg-dark-700 rounded-full h-2">
                 <div 
                   className="bg-primary-600 h-2 rounded-full transition-all duration-500 ease-out"
                   style={{ width: `${(currentStep / 7) * 100}%` }}
