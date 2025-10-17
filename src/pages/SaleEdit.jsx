@@ -29,15 +29,21 @@ const SaleEdit = () => {
   const getGlobalProviderCount = (providerId) => {
     const count = serviceTemplateInstances.reduce((total, instance) => {
       if (instance.providers && instance.providers.length > 0) {
-        // Check if providers are in backend format (with providerId property)
-        if (instance.providers[0].providerId) {
-          const providerCount = instance.providers.filter(p => p.providerId._id === providerId).length;
-          return total + providerCount;
-        } else {
-          // Providers are in frontend format
-          const providerCount = instance.providers.filter(p => p._id === providerId).length;
-          return total + providerCount;
-        }
+        // Count providers by checking both possible formats
+        let providerCount = 0;
+        
+        instance.providers.forEach(p => {
+          // Check if provider is in backend format (has providerId property)
+          if (p.providerId && p.providerId._id === providerId) {
+            providerCount++;
+          }
+          // Check if provider is in frontend format (direct _id)
+          else if (p._id === providerId) {
+            providerCount++;
+          }
+        });
+        
+        return total + providerCount;
       } else if (instance.provider && instance.provider._id === providerId) {
         return total + 1;
       }
@@ -50,7 +56,12 @@ const SaleEdit = () => {
       serviceInstances: serviceTemplateInstances.map(instance => ({
         id: instance.id,
         providers: instance.providers?.length || 0,
-        providerNames: instance.providers?.map(p => p.providerId?.name || p.name) || []
+        providerDetails: instance.providers?.map(p => ({
+          id: p._id || p.providerId?._id,
+          name: p.name || p.providerId?.name,
+          hasProviderId: !!p.providerId,
+          hasDirectId: !!p._id
+        })) || []
       }))
     });
     

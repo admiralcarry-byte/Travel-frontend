@@ -45,14 +45,15 @@ const ServiceTemplateInstanceEditor = ({
       let currentProviders = [];
       
       if (instance.providers && instance.providers.length > 0) {
-        // Check if providers are in backend format (with providerId property)
-        if (instance.providers[0].providerId) {
-          // Extract the actual provider objects from the backend structure
-          currentProviders = instance.providers.map(p => p.providerId).filter(Boolean);
-        } else {
-          // Providers are already in frontend format
-          currentProviders = instance.providers;
-        }
+        // Handle mixed formats - some providers might be in backend format, others in frontend format
+        currentProviders = instance.providers.map(p => {
+          // If provider has providerId property, extract the actual provider object
+          if (p.providerId) {
+            return p.providerId;
+          }
+          // Otherwise, use the provider object directly
+          return p;
+        }).filter(Boolean);
       } else if (instance.provider) {
         // Fall back to single provider
         currentProviders = [instance.provider];
@@ -269,6 +270,7 @@ const ServiceTemplateInstanceEditor = ({
                     // Group providers by name and count occurrences
                     const providerCounts = {};
                     instance.providers.forEach(p => {
+                      // Handle both backend format (providerId.name) and frontend format (p.name)
                       const providerName = p.providerId?.name || p.name || 'Unknown Provider';
                       providerCounts[providerName] = (providerCounts[providerName] || 0) + 1;
                     });
