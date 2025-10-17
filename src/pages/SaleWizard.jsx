@@ -2676,10 +2676,24 @@ const SaleWizard = () => {
             notes: service.description || '',
             providers: selectedProviders.map(provider => {
               const formData = providerFormData[provider._id] || {};
+              
+              // Get existing documents from the service instance providers
+              const serviceProvider = service.providers?.find(p => p._id === provider._id);
+              const existingServiceDocuments = serviceProvider?.documents || [];
+              
               // Combine existing documents with newly uploaded ones
-              const existingDocuments = formData.documents || [];
+              const existingFormDocuments = formData.documents || [];
               const newDocuments = providerDocuments[provider._id] || [];
-              const allDocuments = [...existingDocuments, ...newDocuments];
+              const allDocuments = [...existingServiceDocuments, ...existingFormDocuments, ...newDocuments];
+              
+              console.log('🔍 UpdateSale - Provider documents:', {
+                providerId: provider._id,
+                providerName: provider.name,
+                existingServiceDocuments: existingServiceDocuments.length,
+                existingFormDocuments: existingFormDocuments.length,
+                newDocuments: newDocuments.length,
+                totalDocuments: allDocuments.length
+              });
               
               return {
                 providerId: provider._id,
