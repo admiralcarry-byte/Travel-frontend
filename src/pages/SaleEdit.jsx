@@ -59,8 +59,16 @@ const SaleEdit = () => {
           // Extract provider objects from the backend structure
           let providers = [];
           if (service.providers && service.providers.length > 0) {
-            // Backend structure: providers array with providerId objects
-            providers = service.providers.map(p => p.providerId).filter(Boolean);
+            // Backend structure: providers array with providerId objects and documents
+            providers = service.providers.map(p => {
+              // Preserve the full provider object with documents
+              const providerObj = p.providerId || p;
+              return {
+                ...providerObj,
+                // Preserve documents from the provider data
+                documents: p.documents || []
+              };
+            }).filter(Boolean);
           } else if (service.providerId) {
             // Fallback to single provider
             providers = [service.providerId];
@@ -78,7 +86,7 @@ const SaleEdit = () => {
             cost: service.priceClient || 0,
             currency: service.currency || 'USD',
             provider: service.providerId || null, // Backend populates this with full provider object
-            providers: providers, // Extract only the provider objects
+            providers: providers, // Extract provider objects with documents preserved
             providersData: service.providers || [], // Store original provider data structure from backend
             destination: {
               city: saleData.destination?.city || '',

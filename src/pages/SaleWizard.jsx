@@ -735,8 +735,16 @@ const SaleWizard = () => {
         
         // Pre-populate services and providers
         if (sale.services && sale.services.length > 0) {
+          console.log('🔍 Sale services for edit mode:', sale.services);
           const selectedServiceTemplates = sale.services.map(serviceSale => {
             console.log('Mapping service for edit mode:', serviceSale);
+            console.log('Service providers:', serviceSale.providers);
+            if (serviceSale.providers) {
+              serviceSale.providers.forEach((provider, index) => {
+                console.log(`Provider ${index}:`, provider);
+                console.log(`Provider ${index} documents:`, provider.documents);
+              });
+            }
             const mappedService = {
               ...serviceSale,
               _id: serviceSale.serviceId?._id || serviceSale.serviceId || serviceSale._id,
@@ -765,11 +773,16 @@ const SaleWizard = () => {
             if (serviceSale.providers && serviceSale.providers.length > 0) {
               serviceSale.providers.forEach(provider => {
                 const providerId = provider.providerId?._id || provider.providerId;
+                console.log('🔍 Processing provider for form data:', {
+                  providerId,
+                  provider,
+                  documents: provider.documents
+                });
                 if (providerId && !allProviders.find(p => p._id === providerId)) {
                   allProviders.push(provider.providerId || provider);
                   
                   // Set up form data for this provider
-                  providerFormDataMap[providerId] = {
+                  const formData = {
                     cost: provider.costProvider || 0,
                     currency: provider.currency || 'USD',
                     startDate: provider.startDate ? new Date(provider.startDate).toISOString().split('T')[0] : null,
@@ -777,6 +790,8 @@ const SaleWizard = () => {
                     receipts: provider.documents || [], // Populate receipts from existing documents
                     documents: provider.documents || []
                   };
+                  console.log('📋 Setting up form data for provider:', providerId, formData);
+                  providerFormDataMap[providerId] = formData;
                 }
               });
             } else if (serviceSale.providerId) {
