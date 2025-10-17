@@ -29,16 +29,15 @@ const SaleEdit = () => {
   const getGlobalProviderCount = (providerId) => {
     const count = serviceTemplateInstances.reduce((total, instance) => {
       if (instance.providers && instance.providers.length > 0) {
-        // Count providers by checking both possible formats
+        // Count providers by checking both possible formats, but avoid double counting
         let providerCount = 0;
         
         instance.providers.forEach(p => {
-          // Check if provider is in backend format (has providerId property)
-          if (p.providerId && p.providerId._id === providerId) {
-            providerCount++;
-          }
-          // Check if provider is in frontend format (direct _id)
-          else if (p._id === providerId) {
+          // Get the actual provider ID from either format
+          const actualProviderId = p.providerId?._id || p._id;
+          
+          // Only count if the ID matches and we haven't counted this specific provider object yet
+          if (actualProviderId === providerId) {
             providerCount++;
           }
         });
@@ -57,7 +56,7 @@ const SaleEdit = () => {
         id: instance.id,
         providers: instance.providers?.length || 0,
         providerDetails: instance.providers?.map(p => ({
-          id: p._id || p.providerId?._id,
+          actualId: p.providerId?._id || p._id,
           name: p.name || p.providerId?.name,
           hasProviderId: !!p.providerId,
           hasDirectId: !!p._id

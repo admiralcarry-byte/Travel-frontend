@@ -629,6 +629,15 @@ const ServiceTemplateInstanceEditor = ({
                 // Calculate real-time global count including current modal selections
                 const realTimeGlobalCount = otherServicesCount + selectedCount;
                 
+                console.log('🔍 Real-time Global Count - Debug:', {
+                  providerName: provider.name,
+                  providerId: provider._id,
+                  otherServicesCount,
+                  selectedCount,
+                  realTimeGlobalCount,
+                  maxSelections: 7
+                });
+                
                 const maxSelections = 7; // Global limit across all services
                 const canSelectMore = realTimeGlobalCount < maxSelections;
                 
@@ -670,8 +679,13 @@ const ServiceTemplateInstanceEditor = ({
                         <div className="flex items-center justify-between">
                           <h4 className="font-medium text-dark-100">{provider.name}</h4>
                           {realTimeGlobalCount > 0 && (
-                            <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded">
-                              Global: {realTimeGlobalCount}/{maxSelections}
+                            <span className={`text-xs px-2 py-1 rounded ${
+                              realTimeGlobalCount > maxSelections 
+                                ? 'text-red-400 bg-red-500/20' 
+                                : 'text-primary-400 bg-primary-500/20'
+                            }`}>
+                              Global: {Math.min(realTimeGlobalCount, maxSelections)}/{maxSelections}
+                              {realTimeGlobalCount > maxSelections && ' (EXCEEDED!)'}
                             </span>
                           )}
                         </div>
