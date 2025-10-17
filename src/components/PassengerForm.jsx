@@ -184,7 +184,7 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
             headers: {
               'Content-Type': 'multipart/form-data',
             },
-            timeout: 30000, // 30 second timeout for file upload
+            timeout: 120000, // 2 minutes timeout for file upload
           });
           
           console.log('📁 Upload response:', uploadResponse.data);
