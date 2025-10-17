@@ -774,7 +774,7 @@ const SaleWizard = () => {
                     currency: provider.currency || 'USD',
                     startDate: provider.startDate ? new Date(provider.startDate).toISOString().split('T')[0] : null,
                     endDate: provider.endDate ? new Date(provider.endDate).toISOString().split('T')[0] : null,
-                    receipts: [], // Will be populated from documents
+                    receipts: provider.documents || [], // Populate receipts from existing documents
                     documents: provider.documents || []
                   };
                 }
@@ -790,7 +790,7 @@ const SaleWizard = () => {
                   currency: serviceSale.currency || 'USD',
                   startDate: serviceSale.serviceDates?.startDate ? new Date(serviceSale.serviceDates.startDate).toISOString().split('T')[0] : null,
                   endDate: serviceSale.serviceDates?.endDate ? new Date(serviceSale.serviceDates.endDate).toISOString().split('T')[0] : null,
-                  receipts: [], // Will be populated from documents
+                  receipts: serviceSale.documents || [], // Populate receipts from existing documents
                   documents: serviceSale.documents || []
                 };
               }
@@ -1070,10 +1070,18 @@ const SaleWizard = () => {
     console.log('🔍 Opening file modal for provider:', providerId);
     console.log('📁 Form data:', formData);
     console.log('📄 Files (receipts):', formData.receipts);
+    console.log('📄 Files (documents):', formData.documents);
+    
+    // Combine existing documents with new receipts
+    const existingDocuments = formData.documents || [];
+    const newReceipts = formData.receipts || [];
+    const allFiles = [...existingDocuments, ...newReceipts];
+    
+    console.log('📄 All files combined:', allFiles);
     
     setSelectedProviderFiles({
       providerId,
-      files: formData.receipts || []
+      files: allFiles
     });
     setShowFileModal(true);
   };
@@ -1989,7 +1997,9 @@ const SaleWizard = () => {
       const totalFiles = allProviders.reduce((count, provider) => {
         const providerId = provider._id || provider.providerId;
         const formData = providerFormData[providerId] || {};
-        return count + (formData.receipts?.length || 0);
+        const existingDocs = formData.documents?.length || 0;
+        const newReceipts = formData.receipts?.length || 0;
+        return count + existingDocs + newReceipts;
       }, 0);
       
       if (totalFiles > 0) {
@@ -2073,21 +2083,29 @@ const SaleWizard = () => {
           console.log(`📋 Mapping provider ${provider.name}:`, {
             providerId,
             formData,
-            hasDocuments: formData.receipts?.length > 0
+            hasNewDocuments: formData.receipts?.length > 0,
+            hasExistingDocuments: formData.documents?.length > 0
           });
           
-          // Upload documents if any
+          // Combine existing documents with newly uploaded ones
+          const existingDocuments = formData.documents || [];
           let uploadedDocuments = [];
+          
+          // Upload new documents if any
           if (formData.receipts && formData.receipts.length > 0) {
-            console.log(`📤 Uploading ${formData.receipts.length} documents for provider ${provider.name}`);
+            console.log(`📤 Uploading ${formData.receipts.length} new documents for provider ${provider.name}`);
             try {
               uploadedDocuments = await uploadProviderDocuments(providerId, formData.receipts);
-              console.log(`✅ Uploaded documents:`, uploadedDocuments);
+              console.log(`✅ Uploaded new documents:`, uploadedDocuments);
             } catch (uploadError) {
               console.error(`❌ Failed to upload documents for provider ${provider.name}:`, uploadError);
               throw new Error(`Failed to upload documents for provider ${provider.name}: ${uploadError.message}`);
             }
           }
+          
+          // Combine existing and new documents
+          const allDocuments = [...existingDocuments, ...uploadedDocuments];
+          console.log(`📄 Total documents for ${provider.name}:`, allDocuments.length);
           
           return {
             providerId: providerId,
@@ -2099,7 +2117,7 @@ const SaleWizard = () => {
             usdAmount: parseFloat(usdAmount),
             startDate: formData.startDate || null,
             endDate: formData.endDate || null,
-            documents: uploadedDocuments
+            documents: allDocuments
           };
         })),
         
@@ -2442,6 +2460,11 @@ const SaleWizard = () => {
           const formData = providerFormData[provider._id] || {};
           const usdAmount = formData.cost ? convertProviderAmountToUSD(provider._id, formData.cost, formData.currency || 'USD') : 0;
           
+          // Combine existing documents with new receipts
+          const existingDocuments = formData.documents || [];
+          const newReceipts = formData.receipts || [];
+          const allDocuments = [...existingDocuments, ...newReceipts];
+          
           return {
             providerId: provider._id,
             name: provider.name,
@@ -2452,7 +2475,7 @@ const SaleWizard = () => {
             usdAmount: parseFloat(usdAmount),
             startDate: formData.startDate || null,
             endDate: formData.endDate || null,
-            documents: formData.receipts || []
+            documents: allDocuments
           };
         }),
         // Calculate total provider costs in USD
@@ -2638,6 +2661,11 @@ const SaleWizard = () => {
             notes: service.description || '',
             providers: selectedProviders.map(provider => {
               const formData = providerFormData[provider._id] || {};
+              // Combine existing documents with newly uploaded ones
+              const existingDocuments = formData.documents || [];
+              const newDocuments = providerDocuments[provider._id] || [];
+              const allDocuments = [...existingDocuments, ...newDocuments];
+              
               return {
                 providerId: provider._id,
                 serviceProviderId: provider._id,
@@ -2645,7 +2673,7 @@ const SaleWizard = () => {
                 currency: formData.currency || 'USD',
                 startDate: formData.startDate || null,
                 endDate: formData.endDate || null,
-                documents: providerDocuments[provider._id] || []
+                documents: allDocuments
               };
             }),
             providerId: selectedProviders.length > 0 ? selectedProviders[0]._id : null
