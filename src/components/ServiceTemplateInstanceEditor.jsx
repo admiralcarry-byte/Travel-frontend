@@ -10,7 +10,8 @@ const ServiceTemplateInstanceEditor = ({
   onProviderSearch,
   isEditing = false,
   onEditStart,
-  onEditCancel
+  onEditCancel,
+  getGlobalProviderCount
 }) => {
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState('');
@@ -28,6 +29,9 @@ const ServiceTemplateInstanceEditor = ({
   
   // Multiple provider selection
   const [selectedProviders, setSelectedProviders] = useState([]);
+  
+  // Local search state for the modal
+  const [localProviderSearch, setLocalProviderSearch] = useState('');
 
   // Currency conversion states
   const [exchangeRate, setExchangeRate] = useState('');
@@ -55,6 +59,8 @@ const ServiceTemplateInstanceEditor = ({
       }
       
       setSelectedProviders(currentProviders);
+      // Reset search when modal opens
+      setLocalProviderSearch('');
     }
   }, [showProviderModal, instance.provider, instance.providers]);
 
@@ -160,14 +166,41 @@ const ServiceTemplateInstanceEditor = ({
 
   const handleProviderToggle = (provider) => {
     setSelectedProviders(prev => {
-      const isSelected = prev.some(p => p._id === provider._id);
-      if (isSelected) {
-        // Remove provider
-        return prev.filter(p => p._id !== provider._id);
-      } else {
-        // Add provider
-        return [...prev, provider];
+      // Count how many times this provider is currently selected in this modal
+      const currentModalCount = prev.filter(p => p._id === provider._id).length;
+      
+      // Count how many times this provider is selected globally across all services
+      const globalCount = getGlobalProviderCount ? getGlobalProviderCount(provider._id) : 0;
+      
+      // Subtract the current modal selections from global count to get other services' selections
+      const otherServicesCount = globalCount - currentModalCount;
+      
+      const maxSelections = 7;
+      
+      // Check if adding one more would exceed the global limit
+      if (otherServicesCount + currentModalCount + 1 > maxSelections) {
+        toast.error(`Cannot select more instances of ${provider.name}. Global limit is ${maxSelections} selections across all services.`);
+        return prev;
       }
+      
+      // Add provider instance
+      return [...prev, provider];
+    });
+  };
+
+  const removeProviderInstance = (providerId, instanceIndex) => {
+    setSelectedProviders(prev => {
+      let count = 0;
+      return prev.filter(p => {
+        if (p._id === providerId) {
+          if (count === instanceIndex) {
+            count++;
+            return false; // Remove this instance
+          }
+          count++;
+        }
+        return true; // Keep this provider
+      });
     });
   };
   
@@ -492,38 +525,116 @@ const ServiceTemplateInstanceEditor = ({
               <input
                 type="text"
                 placeholder="Search providers..."
-                onChange={(e) => onProviderSearch(e.target.value)}
+                value={localProviderSearch}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setLocalProviderSearch(value);
+                  onProviderSearch(value);
+                }}
                 className="input-field w-full"
               />
             </div>
             
+            {/* Selected Providers Section */}
+            {selectedProviders.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-dark-200 mb-2">Selected Providers</h4>
+                <div className="space-y-2">
+                  {(() => {
+                    // Group providers by ID and count instances
+                    const providerGroups = {};
+                    selectedProviders.forEach((provider, index) => {
+                      if (!providerGroups[provider._id]) {
+                        providerGroups[provider._id] = {
+                          provider,
+                          indices: []
+                        };
+                      }
+                      providerGroups[provider._id].indices.push(index);
+                    });
+
+                    return Object.values(providerGroups).map(({ provider, indices }) => (
+                      <div key={provider._id} className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h5 className="font-medium text-dark-100">{provider.name}</h5>
+                            <div className="text-sm text-dark-300">
+                              {provider.phone && <span>Phone: {provider.phone}</span>}
+                              {provider.email && <span className="ml-4">Email: {provider.email}</span>}
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded">
+                              {indices.length} selected
+                            </span>
+                            <button
+                              onClick={() => removeProviderInstance(provider._id, indices.length - 1)}
+                              className="text-red-400 hover:text-red-300 text-sm"
+                              title="Remove one instance"
+                            >
+                              Remove 1
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+            )}
+
             <div className="max-h-60 overflow-y-auto space-y-2">
+              <h4 className="text-sm font-medium text-dark-200 mb-2">Available Providers</h4>
               {availableProviders.map((provider) => {
-                const isSelected = selectedProviders.some(p => p._id === provider._id);
+                const selectedCount = selectedProviders.filter(p => p._id === provider._id).length;
+                const globalCount = getGlobalProviderCount ? getGlobalProviderCount(provider._id) : 0;
+                const otherServicesCount = globalCount - selectedCount;
+                const maxSelections = 7; // Global limit across all services
+                const canSelectMore = otherServicesCount + selectedCount < maxSelections;
+                
                 return (
                   <div
                     key={provider._id}
-                    onClick={() => handleProviderToggle(provider)}
-                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                      isSelected 
-                        ? 'border-primary-500 bg-primary-500/20' 
-                        : 'border-white/10 hover:bg-dark-700/50'
+                    onClick={() => canSelectMore && handleProviderToggle(provider)}
+                    className={`p-3 border rounded-lg transition-colors ${
+                      !canSelectMore
+                        ? 'opacity-50 cursor-not-allowed bg-dark-700/30 border-white/5'
+                        : 'cursor-pointer border-white/10 hover:bg-dark-700/50'
                     }`}
                   >
                     <div className="flex items-center space-x-3">
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                        isSelected 
-                          ? 'border-primary-500 bg-primary-500' 
-                          : 'border-dark-400'
-                      }`}>
-                        {isSelected && (
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                          selectedCount > 0 
+                            ? 'border-primary-500 bg-primary-500' 
+                            : 'border-dark-400'
+                        }`}>
+                          {selectedCount > 0 && (
+                            <span className="text-xs text-white font-medium">{selectedCount}</span>
+                          )}
+                        </div>
+                        {selectedCount > 0 && canSelectMore && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleProviderToggle(provider);
+                            }}
+                            className="text-primary-400 hover:text-primary-300 text-sm"
+                            title="Add another instance"
+                          >
+                            +
+                          </button>
                         )}
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-medium text-dark-100">{provider.name}</h4>
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-dark-100">{provider.name}</h4>
+                          {globalCount > 0 && (
+                            <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded">
+                              Global: {globalCount}/{maxSelections}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-sm text-dark-300">
                           {provider.phone && <span>Phone: {provider.phone}</span>}
                           {provider.email && <span className="ml-4">Email: {provider.email}</span>}

@@ -23,6 +23,27 @@ const SaleEdit = () => {
   // Available data for editing
   const [availableProviders, setAvailableProviders] = useState([]);
   const [providerSearch, setProviderSearch] = useState('');
+  const [searchTimeout, setSearchTimeout] = useState(null);
+  
+  // Global provider tracking
+  const getGlobalProviderCount = (providerId) => {
+    return serviceTemplateInstances.reduce((total, instance) => {
+      if (instance.providers && instance.providers.length > 0) {
+        // Check if providers are in backend format (with providerId property)
+        if (instance.providers[0].providerId) {
+          const providerCount = instance.providers.filter(p => p.providerId._id === providerId).length;
+          return total + providerCount;
+        } else {
+          // Providers are in frontend format
+          const providerCount = instance.providers.filter(p => p._id === providerId).length;
+          return total + providerCount;
+        }
+      } else if (instance.provider && instance.provider._id === providerId) {
+        return total + 1;
+      }
+      return total;
+    }, 0);
+  };
   
   // Editing states
   const [editingInstance, setEditingInstance] = useState(null);
@@ -39,6 +60,15 @@ const SaleEdit = () => {
       fetchProviders();
     }
   }, [id]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+    };
+  }, [searchTimeout]);
 
   const fetchSale = async () => {
     try {
@@ -163,10 +193,24 @@ const SaleEdit = () => {
 
   const handleProviderSearch = (query) => {
     setProviderSearch(query);
-    // Debounce the search
-    setTimeout(() => {
+    
+    // Clear existing timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    
+    // If query is empty, fetch immediately
+    if (query.trim() === '') {
+      fetchProviders();
+      return;
+    }
+    
+    // Debounce the search for non-empty queries
+    const newTimeout = setTimeout(() => {
       fetchProviders();
     }, 300);
+    
+    setSearchTimeout(newTimeout);
   };
 
   const handleInstanceUpdate = async (updatedInstance) => {
@@ -688,6 +732,7 @@ const SaleEdit = () => {
                 isEditing={editingInstance === instance.id}
                 onEditStart={() => setEditingInstance(instance.id)}
                 onEditCancel={() => setEditingInstance(null)}
+                getGlobalProviderCount={getGlobalProviderCount}
               />
             ))}
           </div>
