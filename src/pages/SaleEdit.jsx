@@ -55,19 +55,28 @@ const SaleEdit = () => {
         setSale(saleData);
         
         // Convert services to service template instances format
+        console.log('🔍 SaleEdit - Processing sale services:', saleData.services);
         const instances = saleData.services.map((service, index) => {
+          console.log(`🔍 SaleEdit - Processing service ${index}:`, service);
+          console.log(`🔍 SaleEdit - Service providers:`, service.providers);
+          
           // Extract provider objects from the backend structure
           let providers = [];
           if (service.providers && service.providers.length > 0) {
             // Backend structure: providers array with providerId objects and documents
-            providers = service.providers.map(p => {
+            providers = service.providers.map((p, pIndex) => {
+              console.log(`🔍 SaleEdit - Processing provider ${pIndex}:`, p);
+              console.log(`🔍 SaleEdit - Provider documents:`, p.documents);
+              
               // Preserve the full provider object with documents
               const providerObj = p.providerId || p;
-              return {
+              const result = {
                 ...providerObj,
                 // Preserve documents from the provider data
                 documents: p.documents || []
               };
+              console.log(`🔍 SaleEdit - Provider result:`, result);
+              return result;
             }).filter(Boolean);
           } else if (service.providerId) {
             // Fallback to single provider
@@ -94,6 +103,15 @@ const SaleEdit = () => {
             }
           };
         });
+        
+        console.log('🔍 SaleEdit - Final instances:', instances);
+        console.log('🔍 SaleEdit - Instance providers with documents:', instances.map(i => ({
+          serviceName: i.templateName,
+          providers: i.providers?.map(p => ({
+            name: p.name,
+            documents: p.documents
+          }))
+        })));
         
         setServiceTemplateInstances(instances);
         setPassengers(saleData.passengers || []);
