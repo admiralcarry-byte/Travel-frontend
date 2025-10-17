@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../utils/api';
-import { getUploadUrl } from '../utils/updateAllApiCalls';
+import { getUploadUrl } from '../utils/uploadUtils';
 
 const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -172,7 +173,10 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
             <>
               {passenger.passportImage && (
                 <button
-                  onClick={toggleCardExpansion}
+                  onClick={() => {
+                    const imageUrl = getUploadUrl(`passports/${passenger.passportImage}`);
+                    openImageModal(imageUrl);
+                  }}
                   className="text-blue-400 hover:text-blue-300 p-2 rounded-md hover:bg-blue-400/10 transition-colors duration-200"
                   title="View Passport Image"
                 >
@@ -182,6 +186,15 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
                   </svg>
                 </button>
               )}
+              <button
+                onClick={toggleCardExpansion}
+                className="text-blue-400 hover:text-blue-300 p-2 rounded-md hover:bg-blue-400/10 transition-colors duration-200"
+                title={isCardExpanded ? "Collapse" : "Expand"}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-5 h-5 transition-transform duration-200 ${isCardExpanded ? 'rotate-180' : ''}`}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
               <button
                 onClick={() => setIsEditing(true)}
                 className="text-primary-400 hover:text-primary-300 text-sm font-medium"
@@ -380,49 +393,103 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
             )}
           </div>
         </div>
-      ) : null}
+      ) : (
+        /* Read-only display section */
+        <div className="mt-4 space-y-4">
+          {isCardExpanded ? (
+            /* Expanded view - show all details */
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <span className="text-sm font-medium text-dark-400">Full Name</span>
+                <p className="text-dark-100">{passenger.fullName || `${passenger.name || ''} ${passenger.surname || ''}`.trim() || 'N/A'}</p>
+              </div>
 
-      {/* Expanded Card Image Display */}
-      {isCardExpanded && passenger.passportImage && (
-        <div className="mt-4 p-4 bg-dark-700 rounded-lg">
-          <div className="flex justify-between items-center mb-4">
-            <h4 className="text-lg font-medium text-dark-100">Passport Image</h4>
-            <button
-              onClick={toggleCardExpansion}
-              className="text-gray-400 hover:text-white p-2 rounded-md hover:bg-gray-600 transition-colors duration-200"
-              title="Close Image"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div className="flex justify-center">
-            <img
-              src={getUploadUrl(`passports/${passenger.passportImage}`)}
-              alt="Passport"
-              className="max-w-full h-auto object-contain border border-white/10 rounded"
-              style={{ maxHeight: '600px' }}
-            />
-          </div>
+              <div>
+                <span className="text-sm font-medium text-dark-400">Email</span>
+                <p className="text-dark-100">{passenger.email || 'N/A'}</p>
+              </div>
+
+              <div>
+                <span className="text-sm font-medium text-dark-400">Phone</span>
+                <p className="text-dark-100">{passenger.phone || 'N/A'}</p>
+              </div>
+
+              <div>
+                <span className="text-sm font-medium text-dark-400">Date of Birth</span>
+                <p className="text-dark-100">{passenger.dob ? new Date(passenger.dob).toLocaleDateString() : 'N/A'}</p>
+              </div>
+
+              <div>
+                <span className="text-sm font-medium text-dark-400">Passport Number</span>
+                <p className="text-dark-100">{passenger.passportNumber || 'N/A'}</p>
+              </div>
+
+              <div>
+                <span className="text-sm font-medium text-dark-400">Nationality</span>
+                <p className="text-dark-100">{passenger.nationality || 'N/A'}</p>
+              </div>
+
+              <div>
+                <span className="text-sm font-medium text-dark-400">Passport Expiration</span>
+                <p className="text-dark-100">{passenger.expirationDate ? new Date(passenger.expirationDate).toLocaleDateString() : 'N/A'}</p>
+              </div>
+
+              <div>
+                <span className="text-sm font-medium text-dark-400">Passport Status</span>
+                <span className={`ml-2 badge ${passenger.isPassportValid
+                    ? 'badge-success'
+                    : 'badge-error'
+                  }`}>
+                  {passenger.isPassportValid ? 'Valid' : 'Expired'}
+                </span>
+              </div>
+
+              <div className="md:col-span-2">
+                <span className="text-sm font-medium text-dark-400">Special Requests / Notes</span>
+                <p className="text-dark-100">{passenger.specialRequests || 'No special requests'}</p>
+              </div>
+
+              <div>
+                <span className="text-sm font-medium text-dark-400">Created</span>
+                <p className="text-dark-100">{new Date(passenger.createdAt).toLocaleDateString()}</p>
+              </div>
+            </div>
+          ) : (
+            /* Collapsed view - show only essential info */
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <span className="text-sm font-medium text-dark-400">Email</span>
+                <p className="text-dark-100">{passenger.email || 'N/A'}</p>
+              </div>
+
+              <div>
+                <span className="text-sm font-medium text-dark-400">Phone</span>
+                <p className="text-dark-100">{passenger.phone || 'N/A'}</p>
+              </div>
+
+              <div>
+                <span className="text-sm font-medium text-dark-400">Passport Status</span>
+                <span className={`ml-2 badge ${passenger.isPassportValid
+                    ? 'badge-success'
+                    : 'badge-error'
+                  }`}>
+                  {passenger.isPassportValid ? 'Valid' : 'Expired'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
+
       {/* Full Screen Image Modal */}
-      {showImageModal && (
+      {showImageModal && createPortal(
         <div 
-          className="fixed inset-0 z-50"
+          className="fixed inset-0 z-50 flex items-center justify-center"
           style={{ 
             zIndex: 99999,
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
             backgroundColor: 'rgba(0, 0, 0, 0.95)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
+            backdropFilter: 'blur(4px)'
           }}
           onClick={closeImageModal}
         >
@@ -432,29 +499,32 @@ const PassengerCard = ({ passenger, onUpdate, onDelete, clientId }) => {
               e.stopPropagation();
               closeImageModal();
             }}
-            className="absolute top-4 right-4 z-10 text-white hover:text-gray-300 bg-black bg-opacity-50 rounded-full p-2"
+            className="absolute top-6 right-6 z-10 text-white hover:text-gray-300 bg-black bg-opacity-70 rounded-full p-3 transition-colors duration-200"
             style={{ zIndex: 100000 }}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
           
           {/* Full Screen Image */}
           {modalImageUrl && (
-            <img 
-              src={modalImageUrl} 
-              alt="Passport Full Screen" 
-              style={{ 
-                width: '100vw',
-                height: '100vh',
-                objectFit: 'contain',
-                objectPosition: 'center'
-              }}
-              onClick={(e) => e.stopPropagation()}
-            />
+            <div className="relative max-w-[95vw] max-h-[95vh] flex items-center justify-center">
+              <img 
+                src={modalImageUrl} 
+                alt="Passport Full Screen" 
+                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                style={{ 
+                  maxWidth: '95vw',
+                  maxHeight: '95vh',
+                  objectFit: 'contain'
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
     </>

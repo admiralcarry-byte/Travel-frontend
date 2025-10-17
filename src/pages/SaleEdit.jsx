@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import ServiceTemplateInstanceEditor from '../components/ServiceTemplateInstanceEditor';
 import AddServiceModal from '../components/AddServiceModal';
+import PassengerPriceModal from '../components/PassengerPriceModal';
 import { toast } from 'react-toastify';
 
 const SaleEdit = () => {
@@ -26,6 +27,11 @@ const SaleEdit = () => {
   // Editing states
   const [editingInstance, setEditingInstance] = useState(null);
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
+  
+  // Passenger price editing states
+  const [showPriceModal, setShowPriceModal] = useState(false);
+  const [pricePerPassenger, setPricePerPassenger] = useState(0);
+  const [passengerCurrency, setPassengerCurrency] = useState('USD');
 
   useEffect(() => {
     if (id) {
@@ -37,10 +43,15 @@ const SaleEdit = () => {
   const fetchSale = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('token');
+      console.log('🔥 Frontend - Auth token exists:', !!token);
+      console.log('🔥 Frontend - Fetching sale with ID:', id);
+      
       const response = await api.get(`/api/sales/${id}`);
       
       if (response.data.success) {
         const saleData = response.data.data.sale;
+        console.log('🔥 Frontend - Sale loaded successfully:', saleData._id);
         setSale(saleData);
         
         // Convert services to service template instances format
@@ -78,11 +89,36 @@ const SaleEdit = () => {
         
         setServiceTemplateInstances(instances);
         setPassengers(saleData.passengers || []);
+        
+        // Initialize price per passenger from first passenger's price
+        if (saleData.passengers && saleData.passengers.length > 0) {
+          setPricePerPassenger(saleData.passengers[0].price || 0);
+        }
       }
     } catch (error) {
       console.error('Error fetching sale:', error);
-      setError('Failed to load sale data');
-      toast.error('Failed to load sale data');
+      console.error('Fetch error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        url: error.config?.url,
+        method: error.config?.method
+      });
+      
+      let errorMessage = 'Failed to load sale data';
+      if (error.response?.status === 404) {
+        errorMessage = 'Sale not found. The sale may have been deleted or you may not have access to it.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Authentication failed. Please log in again.';
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Access denied. You do not have permission to view this sale.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -369,11 +405,20 @@ const SaleEdit = () => {
         };
       });
       
+      // Update passenger prices with the single price per passenger
+      const updatedPassengers = passengers.map(passenger => ({
+        ...passenger,
+        price: pricePerPassenger
+      }));
+
       const saleData = {
         services,
-        passengers,
+        passengers: updatedPassengers,
         destination: serviceTemplateInstances[0]?.destination || sale.destination
       };
+      
+      console.log('🔥 Frontend - Sending PUT request to:', `/api/sales/${id}`);
+      console.log('🔥 Frontend - Request data:', JSON.stringify(saleData, null, 2));
       
       const response = await api.put(`/api/sales/${id}`, saleData);
       
@@ -388,11 +433,40 @@ const SaleEdit = () => {
       }
     } catch (error) {
       console.error('Error saving changes:', error);
-      setError('Failed to save changes');
-      toast.error('Failed to save changes');
+      console.error('Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        url: error.config?.url,
+        method: error.config?.method
+      });
+      
+      let errorMessage = 'Failed to save changes';
+      if (error.response?.status === 404) {
+        errorMessage = 'Sale not found. Please refresh the page and try again.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Authentication failed. Please log in again.';
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Access denied. You do not have permission to edit this sale.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSaving(false);
     }
+  };
+
+  const handlePriceModalComplete = (price, currency) => {
+    setPricePerPassenger(price);
+    setPassengerCurrency(currency);
+  };
+
+  const openPriceModal = () => {
+    setShowPriceModal(true);
   };
 
   const handleServiceAdded = (newService) => {
@@ -559,7 +633,21 @@ const SaleEdit = () => {
       {/* Passengers Section */}
       {passengers.length > 0 && (
         <div className="mt-8">
-          <h2 className="text-lg font-semibold text-dark-100 mb-4">Passengers</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-4">
+              <h2 className="text-lg font-semibold text-dark-100">Passengers</h2>
+              <div className="text-sm text-green-400 font-medium">
+                Total: {passengerCurrency} {(pricePerPassenger * passengers.length).toFixed(2)}
+              </div>
+            </div>
+            <button
+              onClick={openPriceModal}
+              className="px-4 py-2 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 rounded-lg text-sm font-medium transition-colors"
+            >
+              Edit Prices
+            </button>
+          </div>
+          
           <div className="bg-dark-800 rounded-lg p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {passengers.map((passenger, index) => {
@@ -603,6 +691,15 @@ const SaleEdit = () => {
         existingServiceTemplateIds={sale?.services?.map(service => 
           service.serviceName || service.serviceId?.destino
         ).filter(Boolean) || []}
+      />
+
+      {/* Passenger Price Modal */}
+      <PassengerPriceModal
+        isOpen={showPriceModal}
+        onClose={() => setShowPriceModal(false)}
+        onComplete={handlePriceModalComplete}
+        currentPrice={pricePerPassenger}
+        passengerCount={passengers.length}
       />
     </div>
   );

@@ -60,70 +60,100 @@ const ProviderCard = ({ provider, serviceIndex, providerIndex }) => {
       return;
     }
 
-    const fileList = providerDetails.documents.map((doc, docIndex) => {
-      // Handle different document scenarios
-      let fileUrl = '';
-      let canView = false;
+    // Group documents by service for better organization
+    const documentsByService = {};
+    let docIndex = 0;
 
-      if (doc.url && doc.url.startsWith('http')) {
-        // Full URL provided
-        fileUrl = doc.url;
-        canView = true;
-      } else if (doc.url && doc.url.trim() !== '') {
-        // Relative URL - construct full URL
-        fileUrl = `${api.getUri()}${doc.url}`;
-        canView = true;
-      } else if (doc.fileObject) {
-        // File object available - create object URL for viewing
-        try {
-          fileUrl = URL.createObjectURL(doc.fileObject);
+    providerDetails.documents.forEach((doc) => {
+      // Find which service this document belongs to
+      const serviceInfo = provider.services?.find(service => 
+        service.documents && service.documents.some(serviceDoc => 
+          serviceDoc.filename === doc.filename && serviceDoc.url === doc.url
+        )
+      ) || { serviceName: 'Unknown Service' };
+
+      const serviceName = serviceInfo.serviceName || 'Unknown Service';
+      
+      if (!documentsByService[serviceName]) {
+        documentsByService[serviceName] = [];
+      }
+      
+      documentsByService[serviceName].push({ ...doc, docIndex: docIndex++ });
+    });
+
+    const fileList = Object.entries(documentsByService).map(([serviceName, docs]) => {
+      const serviceDocs = docs.map((doc) => {
+        // Handle different document scenarios
+        let fileUrl = '';
+        let canView = false;
+
+        if (doc.url && doc.url.startsWith('http')) {
+          // Full URL provided
+          fileUrl = doc.url;
           canView = true;
-        } catch (error) {
-          console.error('Error creating object URL:', error);
+        } else if (doc.url && doc.url.trim() !== '') {
+          // Relative URL - construct full URL
+          fileUrl = `${api.getUri()}${doc.url}`;
+          canView = true;
+        } else if (doc.fileObject) {
+          // File object available - create object URL for viewing
+          try {
+            fileUrl = URL.createObjectURL(doc.fileObject);
+            canView = true;
+          } catch (error) {
+            console.error('Error creating object URL:', error);
+            fileUrl = '#';
+            canView = false;
+          }
+        } else {
+          // No URL or file object available - file was uploaded but not accessible
           fileUrl = '#';
           canView = false;
         }
-      } else {
-        // No URL or file object available - file was uploaded but not accessible
-        fileUrl = '#';
-        canView = false;
-      }
 
-      const filename = doc.filename || doc.name || `Document ${docIndex + 1}`;
-      const isPdf = filename.toLowerCase().endsWith('.pdf');
-      
+        const filename = doc.filename || doc.name || `Document ${doc.docIndex + 1}`;
+        const isPdf = filename.toLowerCase().endsWith('.pdf');
+        
+        return `
+          <div class="document-item">
+            <div class="document-header">
+              <div class="file-icon">
+                ${isPdf ?
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14,2 14,8 20,8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10,9 9,9 8,9"></polyline></svg>' :
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21,15 16,10 5,21"></polyline></svg>'
+          }
+              </div>
+              <div class="file-info">
+                <div class="filename">${filename}</div>
+                <div class="file-type">${doc.type || 'document'}</div>
+              </div>
+            </div>
+            <div class="document-actions">
+              ${canView ?
+            `<button onclick="window.open('${fileUrl}', '_blank')" class="view-btn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                View
+              </button>` :
+            `<button onclick="alert('File was uploaded but URL is not available. This may be due to upload failure or server configuration.\\n\\nCurrent file: ${doc.filename}')" class="view-btn-disabled" title="File uploaded but URL not available - click for details">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                View
+              </button>`
+          }
+            </div>
+          </div>
+        `;
+      }).join('');
+
       return `
-        <div class="document-item">
-          <div class="document-header">
-            <div class="file-icon">
-              ${isPdf ?
-          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14,2 14,8 20,8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10,9 9,9 8,9"></polyline></svg>' :
-          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21,15 16,10 5,21"></polyline></svg>'
-        }
-            </div>
-            <div class="file-info">
-              <div class="filename">${filename}</div>
-              <div class="file-type">${doc.type || 'document'}</div>
-            </div>
-          </div>
-          <div class="document-actions">
-            ${canView ?
-          `<button onclick="window.open('${fileUrl}', '_blank')" class="view-btn">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                <circle cx="12" cy="12" r="3"></circle>
-              </svg>
-              View
-            </button>` :
-          `<button onclick="alert('File was uploaded but URL is not available. This may be due to upload failure or server configuration.\\n\\nCurrent file: ${doc.filename}')" class="view-btn-disabled" title="File uploaded but URL not available - click for details">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                <circle cx="12" cy="12" r="3"></circle>
-              </svg>
-              View
-            </button>`
-        }
-          </div>
+        <div class="service-section">
+          <h3 class="service-title">${serviceName}</h3>
+          ${serviceDocs}
         </div>
       `;
     }).join('');
@@ -258,11 +288,27 @@ const ProviderCard = ({ provider, serviceIndex, providerIndex }) => {
               background: linear-gradient(135deg, #7c7c7c 0%, #5a5a5a 100%);
               transform: translateY(-1px);
             }
+            .service-section {
+              margin-bottom: 32px;
+              padding: 20px;
+              background: #1a1a3a;
+              border-radius: 12px;
+              border: 1px solid #3a3a5a;
+            }
+            .service-title {
+              color: #f97316;
+              font-size: 18px;
+              font-weight: 600;
+              margin-bottom: 16px;
+              padding-bottom: 8px;
+              border-bottom: 2px solid #3a3a5a;
+            }
           </style>
         </head>
         <body>
           <div class="modal-container">
             <h2>Provider Documents for ${providerDetails.name}</h2>
+            <p style="text-align: center; color: #a1a1aa; margin-bottom: 24px;">Total: ${providerDetails.documents.length} document(s) across ${Object.keys(documentsByService).length} service(s)</p>
             ${providerDetails.documents.length > 0 ?
         `<div class="documents-list">${fileList}</div>` :
         `<div class="empty-state">No documents available for this provider.</div>`
@@ -942,9 +988,10 @@ const SaleSummary = () => {
               {showProviders && (
                 <div className="space-y-4">
                   {(() => {
-                    // Collect all unique providers across all services
+                    // Collect all unique providers across all services with aggregated documents
                     const allProviders = [];
                     const seenProviders = new Set();
+                    const providerDataMap = new Map(); // Map to store aggregated provider data
 
                     sale.services.forEach((serviceSale, serviceIndex) => {
                       // Handle multiple providers per service (prioritize this over single provider)
@@ -953,32 +1000,64 @@ const SaleSummary = () => {
                           // Create a unique identifier for the provider
                           const providerKey = provider.providerId?._id || provider.providerId || provider._id || `${serviceIndex}-${providerIndex}`;
 
-                          if (!seenProviders.has(providerKey)) {
-                            seenProviders.add(providerKey);
-                            allProviders.push({
+                          if (!providerDataMap.has(providerKey)) {
+                            // First time seeing this provider - initialize with base data
+                            providerDataMap.set(providerKey, {
                               ...provider,
                               uniqueKey: providerKey,
                               serviceIndex,
-                              providerIndex
+                              providerIndex,
+                              allDocuments: [], // Array to collect all documents
+                              services: [] // Array to track which services this provider appears in
                             });
                           }
+
+                          // Add documents from this service to the provider's document collection
+                          const providerData = providerDataMap.get(providerKey);
+                          if (provider.documents && provider.documents.length > 0) {
+                            providerData.allDocuments.push(...provider.documents);
+                          }
+                          providerData.services.push({
+                            serviceIndex,
+                            serviceName: serviceSale.serviceName || 'Unknown Service',
+                            documents: provider.documents || []
+                          });
                         });
                       }
                       // Handle single provider per service (only if no providers array exists)
                       else if (serviceSale.providerId && (!serviceSale.providers || serviceSale.providers.length === 0)) {
                         const providerKey = serviceSale.providerId?._id || serviceSale.providerId;
 
-                        if (!seenProviders.has(providerKey)) {
-                          seenProviders.add(providerKey);
-                          allProviders.push({
+                        if (!providerDataMap.has(providerKey)) {
+                          // First time seeing this provider - initialize with base data
+                          providerDataMap.set(providerKey, {
                             ...serviceSale,
                             uniqueKey: providerKey,
                             serviceIndex,
-                            providerIndex: 0
+                            providerIndex: 0,
+                            allDocuments: [], // Array to collect all documents
+                            services: [] // Array to track which services this provider appears in
                           });
                         }
+
+                        // Add documents from this service to the provider's document collection
+                        const providerData = providerDataMap.get(providerKey);
+                        if (serviceSale.documents && serviceSale.documents.length > 0) {
+                          providerData.allDocuments.push(...serviceSale.documents);
+                        }
+                        providerData.services.push({
+                          serviceIndex,
+                          serviceName: serviceSale.serviceName || 'Unknown Service',
+                          documents: serviceSale.documents || []
+                        });
                       }
                     });
+
+                    // Convert map to array and update documents property
+                    allProviders.push(...Array.from(providerDataMap.values()).map(provider => ({
+                      ...provider,
+                      documents: provider.allDocuments // Use aggregated documents
+                    })));
 
                     // Render each unique provider only once
                     return allProviders.map((provider) => (

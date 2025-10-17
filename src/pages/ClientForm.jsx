@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 
 // Companion Form Component
-const CompanionForm = ({ onAddCompanion, onCancel }) => {
-  const [formData, setFormData] = useState({
+const CompanionForm = ({ onAddCompanion, onCancel, initialData = null, isEditing = false, onUpdateCompanion = null }) => {
+  const [formData, setFormData] = useState(initialData || {
     name: '',
     surname: '',
     dni: '',
@@ -13,9 +13,22 @@ const CompanionForm = ({ onAddCompanion, onCancel }) => {
     phone: '',
     passportNumber: '',
     nationality: '',
-    expirationDate: ''
+    expirationDate: '',
+    gender: '',
+    specialRequests: ''
   });
+  const [passportImage, setPassportImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [passportImageFilename, setPassportImageFilename] = useState(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // Update form data when initialData changes (for editing)
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+    }
+  }, [initialData]);
 
   const validateName = (name, fieldName) => {
     const nameRegex = /^[a-zA-Z\s\-']+$/;
@@ -138,35 +151,235 @@ const CompanionForm = ({ onAddCompanion, onCancel }) => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    console.log('📁 File selected:', file);
+    if (file) {
+      setPassportImage(file);
+      console.log('✅ Passport image state set:', file.name, file.size, file.type);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleOpenAIExtraction = async () => {
+    if (!passportImage) {
+      setErrors({ general: 'Please upload a passport image first' });
+      return;
+    }
+
+    setOcrLoading(true);
+    setErrors({});
+
+    try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('passportImage', passportImage);
+
+      // Call the backend OpenAI Vision API
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/passengers/ocr`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const responseText = await response.text();
+      console.log('Raw response:', responseText);
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        console.error('Response text:', responseText);
+        throw new Error('Invalid JSON response from server');
+      }
+
+      if (result.success) {
+        const extractedData = result.data.extractedData;
+        
+        // Auto-fill form with OpenAI extracted data
+        setFormData(prev => ({
+          ...prev,
+          name: extractedData.name || prev.name,
+          surname: extractedData.surname || prev.surname,
+          passportNumber: extractedData.passportNumber || prev.passportNumber,
+          dni: extractedData.dni || prev.dni,
+          nationality: extractedData.nationality || prev.nationality,
+          dob: extractedData.dob || prev.dob,
+          expirationDate: extractedData.expirationDate || prev.expirationDate,
+          email: extractedData.email || prev.email,
+          phone: extractedData.phone || prev.phone,
+          gender: extractedData.gender || prev.gender
+        }));
+
+        // Show success message
+        setErrors({ success: `Passport data extracted successfully using OpenAI Vision (confidence: ${result.data.confidence}%)` });
+      } else {
+        setErrors({ general: result.message || 'Failed to extract passport data' });
+      }
+    } catch (error) {
+      console.error('OpenAI extraction error:', error);
+      setErrors({ general: 'Failed to extract passport data. Please try again.' });
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
+
+  const handleSubmit = async () => {
     const newErrors = validateForm();
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-    
-    // Call the parent callback with the companion data
-    onAddCompanion(formData);
-    
-    // Reset the companion form data
-    setFormData({
-      name: '',
-      surname: '',
-      dni: '',
-      dob: '',
-      email: '',
-      phone: '',
-      passportNumber: '',
-      nationality: '',
-      expirationDate: ''
-    });
-    setErrors({});
+
+    try {
+      // Upload passport image first if one is selected
+      let uploadedImageFilename = null;
+      
+      if (passportImage) {
+        console.log('📁 Uploading passport image:', passportImage.name);
+        
+        const uploadFormData = new FormData();
+        uploadFormData.append('passportImage', passportImage);
+        
+        try {
+          const uploadResponse = await api.post('/api/upload/passport', uploadFormData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+            timeout: 30000, // 30 second timeout for file upload
+          });
+          
+          console.log('📁 Upload response:', uploadResponse.data);
+          
+          if (uploadResponse.data.success) {
+            uploadedImageFilename = uploadResponse.data.filename;
+            console.log('✅ Upload successful, filename:', uploadedImageFilename);
+          } else {
+            console.error('❌ Upload failed:', uploadResponse.data.message);
+          }
+        } catch (uploadError) {
+          console.error('❌ Upload error:', uploadError);
+          setErrors({ general: 'Failed to upload passport image: ' + uploadError.message });
+          return;
+        }
+      }
+
+      // Prepare companion data with passport image
+      const companionData = {
+        ...formData,
+        passportImage: uploadedImageFilename
+      };
+      
+      // Call the appropriate callback based on whether we're editing or adding
+      if (isEditing && onUpdateCompanion) {
+        onUpdateCompanion(companionData);
+      } else {
+        onAddCompanion(companionData);
+      }
+      
+      // Reset the companion form data only if we're adding (not editing)
+      if (!isEditing) {
+        setFormData({
+          name: '',
+          surname: '',
+          dni: '',
+          dob: '',
+          email: '',
+          phone: '',
+          passportNumber: '',
+          nationality: '',
+          expirationDate: '',
+          gender: '',
+          specialRequests: ''
+        });
+        setPassportImage(null);
+        setImagePreview(null);
+        setPassportImageFilename(null);
+      }
+      setErrors({});
+    } catch (error) {
+      console.error('Error adding companion:', error);
+      setErrors({ general: 'Failed to add companion. Please try again.' });
+    }
   };
 
   return (
     <div className="space-y-4">
-      <h4 className="text-md font-medium text-dark-100 mb-4">Add Acompañante</h4>
+      <h4 className="text-md font-medium text-dark-100 mb-4">
+        {isEditing ? 'Edit Acompañante' : 'Add Acompañante'}
+      </h4>
+      
+      {/* Error and Success Messages */}
+      {errors.general && (
+        <div className="bg-error-500/10 border border-error-500/20 text-error-400 px-4 py-3 rounded-md">
+          {errors.general}
+        </div>
+      )}
+
+      {errors.success && (
+        <div className="bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-md">
+          {errors.success}
+        </div>
+      )}
+
+      {/* Passport Image Upload */}
+      <div className="card p-4">
+        <h4 className="text-sm font-medium text-dark-400 mb-3">Passport Data Extraction</h4>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            {/* File Upload */}
+            <div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="block w-full text-sm text-dark-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-500 file:text-white hover:file:bg-primary-600"
+              />
+              
+              {passportImage && (
+                <button
+                  type="button"
+                  onClick={handleOpenAIExtraction}
+                  disabled={ocrLoading}
+                  className="mt-2 w-full btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {ocrLoading ? 'Processing with OpenAI...' : 'Extract Data with OpenAI'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {imagePreview && (
+            <div>
+              <h5 className="text-sm font-medium text-dark-400 mb-2">Uploaded Image</h5>
+              <img
+                src={imagePreview}
+                alt="Passport preview"
+                className="max-w-full h-32 object-contain border border-white/10 rounded"
+              />
+            </div>
+          )}
+        </div>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -298,6 +511,40 @@ const CompanionForm = ({ onAddCompanion, onCancel }) => {
           />
           {errors.expirationDate && <p className="mt-1 text-sm text-red-400">{errors.expirationDate}</p>}
         </div>
+
+        <div>
+          <label className="block text-sm font-medium text-dark-200 mb-1">
+            Gender
+          </label>
+          <select
+            name="gender"
+            value={formData.gender}
+            onChange={handleChange}
+            className={`input-field text-sm ${errors.gender ? 'border-red-500' : ''}`}
+          >
+            <option value="">Select Gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+          {errors.gender && <p className="mt-1 text-sm text-red-400">{errors.gender}</p>}
+        </div>
+      </div>
+
+      {/* Special Requests / Notes */}
+      <div>
+        <label className="block text-sm font-medium text-dark-200 mb-1">
+          Special Requests / Notes
+        </label>
+        <textarea
+          name="specialRequests"
+          value={formData.specialRequests}
+          onChange={handleChange}
+          rows={3}
+          placeholder="Dietary restrictions, medical conditions, travel preferences, or any other notes..."
+          className={`input-field text-sm ${errors.specialRequests ? 'border-red-500' : ''}`}
+        />
+        {errors.specialRequests && <p className="mt-1 text-sm text-red-400">{errors.specialRequests}</p>}
       </div>
 
       <div className="flex justify-end space-x-3 pt-4">
@@ -313,7 +560,7 @@ const CompanionForm = ({ onAddCompanion, onCancel }) => {
           onClick={handleSubmit}
           className="btn-primary text-sm"
         >
-          Add Acompañante
+          {isEditing ? 'Update Acompañante' : 'Add Acompañante'}
         </button>
       </div>
     </div>
@@ -330,10 +577,13 @@ const ClientForm = () => {
     phone: '',
     passportNumber: '',
     nationality: '',
-    expirationDate: ''
+    expirationDate: '',
+    gender: '',
+    specialRequests: ''
   });
   const [companions, setCompanions] = useState([]);
   const [showCompanionForm, setShowCompanionForm] = useState(false);
+  const [editingCompanionIndex, setEditingCompanionIndex] = useState(null);
   const [passportImage, setPassportImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [passportImageFilename, setPassportImageFilename] = useState(null);
@@ -345,6 +595,23 @@ const ClientForm = () => {
   const [createSaleAfterClient, setCreateSaleAfterClient] = useState(false);
 
   const navigate = useNavigate();
+
+  // Handle editing companions
+  const handleEditCompanion = (index) => {
+    setEditingCompanionIndex(index);
+    setShowCompanionForm(false); // Hide the add form if it's open
+  };
+
+  const handleUpdateCompanion = (updatedCompanion) => {
+    setCompanions(prev => prev.map((companion, index) => 
+      index === editingCompanionIndex ? updatedCompanion : companion
+    ));
+    setEditingCompanionIndex(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCompanionIndex(null);
+  };
 
 
   // Validation functions
@@ -554,7 +821,8 @@ const ClientForm = () => {
           dob: extractedData.dob || prev.dob,
           expirationDate: extractedData.expirationDate || prev.expirationDate,
           email: extractedData.email || prev.email,
-          phone: extractedData.phone || prev.phone
+          phone: extractedData.phone || prev.phone,
+          gender: extractedData.gender || prev.gender
         }));
 
         setSuccess(`Passport data extracted successfully using OpenAI Vision (confidence: ${result.data.confidence}%)`);
@@ -627,11 +895,17 @@ const ClientForm = () => {
 
       let response;
       
-      // Include passport image filename in form data
+      // Include passport image filename in form data and structure preferences
       const clientData = {
         ...formData,
-        passportImage: uploadedImageFilename || passportImageFilename
+        passportImage: uploadedImageFilename || passportImageFilename,
+        preferences: {
+          specialRequests: formData.specialRequests || ''
+        }
       };
+      
+      // Remove specialRequests from top level since it's now in preferences
+      delete clientData.specialRequests;
       
       if (companions.length > 0) {
         // Create client with companions
@@ -885,6 +1159,29 @@ const ClientForm = () => {
               </div>
 
               <div>
+                <label htmlFor="gender" className="block text-sm font-medium text-dark-200">
+                  Gender
+                </label>
+                <select
+                  id="gender"
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleChange}
+                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50 ${
+                    validationErrors.gender ? 'border-red-500' : 'border-white/20'
+                  }`}
+                >
+                  <option value="">Select Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+                {validationErrors.gender && (
+                  <p className="mt-1 text-sm text-red-400">{validationErrors.gender}</p>
+                )}
+              </div>
+
+              <div>
                 <label htmlFor="passportNumber" className="block text-sm font-medium text-dark-200">
                   Passport Number
                 </label>
@@ -942,8 +1239,29 @@ const ClientForm = () => {
               </div>
             </div>
 
+            {/* Special Requests / Notes */}
+            <div className="mt-6">
+              <label htmlFor="specialRequests" className="block text-sm font-medium text-dark-200">
+                Special Requests / Notes
+              </label>
+              <textarea
+                id="specialRequests"
+                name="specialRequests"
+                value={formData.specialRequests}
+                onChange={handleChange}
+                rows={3}
+                placeholder="Dietary restrictions, medical conditions, travel preferences, or any other notes..."
+                className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50 ${
+                  validationErrors.specialRequests ? 'border-red-500' : 'border-white/20'
+                }`}
+              />
+              {validationErrors.specialRequests && (
+                <p className="mt-1 text-sm text-red-400">{validationErrors.specialRequests}</p>
+              )}
+            </div>
+
             {/* Companions Section */}
-            {/* <div className="pt-6 border-t border-white/10">
+            <div className="pt-6 border-t border-white/10">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium text-dark-100">Acompañantes</h3>
                 <button
@@ -953,10 +1271,10 @@ const ClientForm = () => {
                 >
                   {showCompanionForm ? 'Cancel' : 'Add Acompañante'}
                 </button>
-              </div> */}
+              </div>
 
               {/* Companion Form */}
-              {/* {showCompanionForm && (
+              {showCompanionForm && (
                 <div className="mb-6 p-4 bg-dark-700/50 rounded-lg border border-white/10">
                   <CompanionForm
                     onAddCompanion={(companion) => {
@@ -966,10 +1284,22 @@ const ClientForm = () => {
                     onCancel={() => setShowCompanionForm(false)}
                   />
                 </div>
-              )} */}
+              )}
+
+              {/* Edit Companion Form */}
+              {editingCompanionIndex !== null && (
+                <div className="mb-6 p-4 bg-dark-700/50 rounded-lg border border-white/10">
+                  <CompanionForm
+                    initialData={companions[editingCompanionIndex]}
+                    isEditing={true}
+                    onUpdateCompanion={handleUpdateCompanion}
+                    onCancel={handleCancelEdit}
+                  />
+                </div>
+              )}
 
               {/* Companions List */}
-              {/* {companions.length > 0 && (
+              {companions.length > 0 && (
                 <div className="space-y-3">
                   <h4 className="text-sm font-medium text-dark-200">Added Acompañantes ({companions.length})</h4>
                   {companions.map((companion, index) => (
@@ -980,18 +1310,27 @@ const ClientForm = () => {
                         </span>
                         <span className="text-dark-400 text-sm ml-2">DNI: {companion.dni}</span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setCompanions(prev => prev.filter((_, i) => i !== index))}
-                        className="text-red-400 hover:text-red-300 text-sm"
-                      >
-                        Remove
-                      </button>
+                      <div className="flex space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => handleEditCompanion(index)}
+                          className="text-blue-400 hover:text-blue-300 text-sm"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCompanions(prev => prev.filter((_, i) => i !== index))}
+                          className="text-red-400 hover:text-red-300 text-sm"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
-            </div> */}
+            </div>
 
             {/* Additional Options */}
             {/* <div className="pt-6 border-t border-white/10">

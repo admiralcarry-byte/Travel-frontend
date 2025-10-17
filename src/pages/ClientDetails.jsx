@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
-import { getUploadUrl } from '../utils/updateAllApiCalls';
+import { getUploadUrl } from '../utils/uploadUtils';
 import PassengerCard from '../components/PassengerCard';
 import PassengerForm from '../components/PassengerForm';
 
@@ -159,6 +159,9 @@ const ClientDetails = () => {
           specialRequests: editFormData.specialRequests.trim() || undefined
         }
       };
+      
+      // Remove specialRequests from top level since it's now in preferences
+      delete cleanedFormData.specialRequests;
 
       const response = await api.put(`/api/clients/${clientId}`, cleanedFormData);
 

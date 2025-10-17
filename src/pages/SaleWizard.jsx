@@ -115,7 +115,7 @@ const SaleWizard = () => {
   const [editingService, setEditingService] = useState(null);
   const [serviceName, setServiceName] = useState('');
   const [serviceInformation, setServiceInformation] = useState('');
-  const [serviceLoading, setServiceLoading] = useState(true); // Start with true to show loading initially
+  const [serviceLoading, setServiceLoading] = useState(false); // Start with false to avoid blocking template selection
   
   // Current Service Instance Data
   const [currentServiceTemplate, setCurrentServiceTemplate] = useState(null);
@@ -134,14 +134,13 @@ const SaleWizard = () => {
   const [selectedProviderFiles, setSelectedProviderFiles] = useState(null);
 
   const steps = [
-    { number: 1, title: 'Select Passengers', description: 'Choose passengers' },
-    { number: 2, title: 'Acompañante Selection', description: 'Manage companions' },
-    { number: 3, title: 'Price Per Passenger', description: 'Set passenger pricing' },
-    { number: 4, title: 'Select Service Template', description: 'Choose service type' },
-    { number: 5, title: 'Service Dates', description: 'Set dates' },
-    { number: 6, title: 'Service Cost & Provider', description: 'Set cost and select provider' },
-    { number: 7, title: 'Add More Services', description: 'Add services' },
-    { number: 8, title: 'Review & Create', description: 'Review and finalize' }
+    { number: 1, title: 'Select Passengers & Companions', description: 'Choose passengers and companions' },
+    { number: 2, title: 'Price Per Passenger', description: 'Set passenger pricing' },
+    { number: 3, title: 'Select Service Template', description: 'Choose service type' },
+    { number: 4, title: 'Service Dates', description: 'Set dates' },
+    { number: 5, title: 'Service Cost & Provider', description: 'Set cost and select provider' },
+    { number: 6, title: 'Edit Services', description: 'Edit and manage services' },
+    { number: 7, title: 'Review & Create', description: 'Review and finalize' }
   ];
 
   useEffect(() => {
@@ -296,12 +295,8 @@ const SaleWizard = () => {
   useEffect(() => {
     if (currentStep === 3 && !isEditMode) {
       console.log('🔄 User reached step 3, refreshing service templates...');
-      // Add a small delay to ensure state is properly reset
-      const timeoutId = setTimeout(() => {
-        fetchServiceTemplates();
-      }, 100);
-      
-      return () => clearTimeout(timeoutId);
+      // Fetch service templates immediately without delay
+      fetchServiceTemplates();
     }
   }, [currentStep, isEditMode]);
 
@@ -315,9 +310,10 @@ const SaleWizard = () => {
   // Reset companions fetched flag when passenger changes
   useEffect(() => {
     setCompanionsFetched(false);
-    // Only clear selected companions when NOT in edit mode to avoid clearing loaded data
-    if (!isEditMode) {
-      setSelectedCompanions([]); // Clear selected companions when passenger changes
+    // Only clear selected companions when NOT in edit mode and when no passengers are selected
+    // This prevents clearing companions during step transitions when passengers are already selected
+    if (!isEditMode && selectedPassengers.length === 0) {
+      setSelectedCompanions([]);
     }
   }, [selectedPassengers, isEditMode]);
 
@@ -388,18 +384,21 @@ const SaleWizard = () => {
 
   // Filter available templates when service instances change
   useEffect(() => {
-    if (serviceTemplateInstances.length > 0 && serviceTemplates.length > 0) {
-      const selectedTemplateIds = serviceTemplateInstances.map(instance => instance.templateId);
-      const filtered = serviceTemplates.filter(template => !selectedTemplateIds.includes(template._id));
-      console.log('🔍 Filtering available templates:');
+    if (serviceTemplates.length > 0) {
+      // Count how many times each template has been selected
+      const templateSelectionCounts = {};
+      serviceTemplateInstances.forEach(instance => {
+        const templateId = instance.templateId;
+        templateSelectionCounts[templateId] = (templateSelectionCounts[templateId] || 0) + 1;
+      });
+      
+      // Show all templates - don't filter them out
+      // The UI will handle disabling templates that have reached 7 selections
+      console.log('🔍 Setting available templates:');
       console.log('  - Service instances:', serviceTemplateInstances);
-      console.log('  - Selected template IDs:', selectedTemplateIds);
+      console.log('  - Template selection counts:', templateSelectionCounts);
       console.log('  - All templates:', serviceTemplates.map(t => ({ id: t._id, name: t.name })));
-      console.log('  - Filtered templates:', filtered.map(t => ({ id: t._id, name: t.name })));
-      setAvailableServiceTemplates(filtered);
-    } else if (serviceTemplateInstances.length === 0 && serviceTemplates.length > 0) {
-      // If no services selected, show all templates
-      console.log('📋 No services selected, showing all templates');
+      
       setAvailableServiceTemplates(serviceTemplates);
     }
   }, [serviceTemplateInstances, serviceTemplates]);
@@ -814,30 +813,46 @@ const SaleWizard = () => {
   };
 
   const togglePassengerSelection = (passenger) => {
-    const isSelected = selectedPassengers.find(p => p._id === passenger._id);
-    if (isSelected) {
-      // Remove the passenger if already selected
+    const isAlreadyInPassengers = selectedPassengers.find(p => p._id === passenger._id);
+    const isAlreadyInCompanions = selectedCompanions.find(c => c._id === passenger._id);
+    
+    // If already in selected passengers, remove it
+    if (isAlreadyInPassengers) {
       setSelectedPassengers([]);
-    } else {
-      // Select only this passenger (replace any existing selection)
-      console.log('Selected passenger data:', JSON.stringify(passenger, null, 2));
-      console.log('🔍 Passenger DNI field:', passenger.dni);
-      console.log('🔍 All passenger fields:', Object.keys(passenger));
-      
-      // Ensure we use complete passenger data from available passengers if DNI is missing
-      let completePassenger = passenger;
-      if (!passenger.dni) {
-        console.log('⚠️ Selected passenger missing DNI, looking for complete data in available passengers');
-        const completeData = availablePassengers.find(p => p._id === passenger._id);
-        if (completeData) {
-          console.log('✅ Found complete passenger data:', completeData);
-          console.log('✅ Complete passenger DNI:', completeData.dni);
-          completePassenger = completeData;
-        } else {
-          console.log('❌ Could not find complete passenger data');
-        }
+      return;
+    }
+    
+    // If already in selected companions, remove it from companions
+    if (isAlreadyInCompanions) {
+      setSelectedCompanions(prev => prev.filter(c => c._id !== passenger._id));
+      return;
+    }
+    
+    console.log('Selected passenger data:', JSON.stringify(passenger, null, 2));
+    console.log('🔍 Passenger DNI field:', passenger.dni);
+    console.log('🔍 All passenger fields:', Object.keys(passenger));
+    
+    // Ensure we use complete passenger data from available passengers if DNI is missing
+    let completePassenger = passenger;
+    if (!passenger.dni) {
+      console.log('⚠️ Selected passenger missing DNI, looking for complete data in available passengers');
+      const completeData = availablePassengers.find(p => p._id === passenger._id);
+      if (completeData) {
+        console.log('✅ Found complete passenger data:', completeData);
+        console.log('✅ Complete passenger DNI:', completeData.dni);
+        completePassenger = completeData;
+      } else {
+        console.log('❌ Could not find complete passenger data');
       }
-      
+    }
+    
+    // If there's already a selected passenger, add new selection as a companion
+    if (selectedPassengers.length > 0) {
+      console.log('✅ Primary passenger already selected, adding as companion');
+      setSelectedCompanions(prev => [...prev, completePassenger]);
+    } else {
+      // No selected passenger yet, make this the primary passenger
+      console.log('✅ No primary passenger, setting as primary');
       setSelectedPassengers([completePassenger]);
     }
   };
@@ -1604,7 +1619,7 @@ const SaleWizard = () => {
       setCurrentServiceInstance(null); // Clear the editing state only for new services
     }
     
-    setCurrentStep(8); // Move to add more services step
+    setCurrentStep(6); // Move to edit services step
   };
 
   const removeServiceInstance = (instanceId) => {
@@ -1632,6 +1647,22 @@ const SaleWizard = () => {
         providers: s.providers?.length || 0 
       })));
       
+      // Count how many times this provider has been selected globally across all services
+      const globalProviderSelectionCount = prev.reduce((total, service) => {
+        const serviceProviders = service.providers || (service.provider ? [service.provider] : []);
+        const serviceProviderCount = serviceProviders.filter(p => p._id === provider._id).length;
+        return total + serviceProviderCount;
+      }, 0);
+      
+      const maxSelections = 7;
+      console.log(`🔄 Global provider selection count for "${provider.name}": ${globalProviderSelectionCount}/${maxSelections}`);
+      
+      // Check if provider can be selected more times globally (up to 7 times across all services)
+      if (globalProviderSelectionCount >= maxSelections) {
+        console.log(`🔄 Provider "${provider.name}" has reached global maximum selections (${maxSelections}), skipping`);
+        return prev;
+      }
+      
       const updated = prev.map(service => {
         const serviceIdMatch = service.id === serviceId || service._id === serviceId;
         console.log(`🔄 Checking service: ${service.serviceInfo || service.templateName}, ID: ${service.id || service._id}, Target ID: ${serviceId}, Match: ${serviceIdMatch}`);
@@ -1639,23 +1670,16 @@ const SaleWizard = () => {
         if (serviceIdMatch) {
           console.log(`🔄 Adding provider to service: ${service.serviceInfo || service.templateName}`);
           const currentProviders = service.providers || (service.provider ? [service.provider] : []);
-          const providerExists = currentProviders.some(p => p._id === provider._id);
           
-          console.log(`🔄 Current providers: ${currentProviders.length}, Provider exists: ${providerExists}`);
-          
-          if (!providerExists) {
-            const newProviders = [...currentProviders, provider];
-            console.log(`🔄 New providers count: ${newProviders.length}`);
-            const updatedService = {
-              ...service,
-              providers: newProviders,
-              provider: newProviders.length > 0 ? newProviders[0] : null // Keep single provider for backward compatibility
-            };
-            console.log(`🔄 Updated service providers:`, updatedService.providers?.length || 0);
-            return updatedService;
-          } else {
-            console.log('🔄 Provider already exists, skipping');
-          }
+          const newProviders = [...currentProviders, provider];
+          console.log(`🔄 New providers count: ${newProviders.length}`);
+          const updatedService = {
+            ...service,
+            providers: newProviders,
+            provider: newProviders.length > 0 ? newProviders[0] : null // Keep single provider for backward compatibility
+          };
+          console.log(`🔄 Updated service providers:`, updatedService.providers?.length || 0);
+          return updatedService;
         }
         return service;
       });
@@ -1671,18 +1695,25 @@ const SaleWizard = () => {
   };
 
   // Remove provider from a specific service
-  const removeProviderFromService = (serviceId, providerId) => {
+  const removeProviderFromService = (serviceId, providerId, providerIndex) => {
     setServiceTemplateInstances(prev => 
       prev.map(service => {
         if (service.id === serviceId || service._id === serviceId) {
           const currentProviders = service.providers || (service.provider ? [service.provider] : []);
-          const updatedProviders = currentProviders.filter(p => p._id !== providerId);
           
-          return {
-            ...service,
-            providers: updatedProviders,
-            provider: updatedProviders.length > 0 ? updatedProviders[0] : null // Keep single provider for backward compatibility
-          };
+          // Remove the provider at the specific index
+          if (providerIndex >= 0 && providerIndex < currentProviders.length) {
+            const updatedProviders = [
+              ...currentProviders.slice(0, providerIndex),
+              ...currentProviders.slice(providerIndex + 1)
+            ];
+            
+            return {
+              ...service,
+              providers: updatedProviders,
+              provider: updatedProviders.length > 0 ? updatedProviders[0] : null // Keep single provider for backward compatibility
+            };
+          }
         }
         return service;
       })
@@ -2071,6 +2102,7 @@ const SaleWizard = () => {
             documents: uploadedDocuments
           };
         })),
+        
         // Calculate total provider costs in USD
         totalProviderCostsUSD: allProviders.reduce((total, provider) => {
           const providerId = provider._id || provider.providerId;
@@ -2093,6 +2125,54 @@ const SaleWizard = () => {
           }
         })
       };
+
+      // Map documents from selectedProviders to serviceTemplateInstances providers
+      console.log(`🔍 Mapping documents after selectedProviders creation`);
+      console.log(`🔍 SelectedProviders:`, saleData.selectedProviders.map(sp => ({ 
+        id: sp.providerId, 
+        name: sp.name, 
+        docCount: sp.documents?.length || 0 
+      })));
+      
+      saleData.serviceTemplateInstances = saleData.serviceTemplateInstances.map(service => {
+        console.log(`🔍 Processing service: ${service.templateName}`);
+        
+        // Map documents from selectedProviders to individual providers in this service
+        const providersWithDocuments = service.providers.map(provider => {
+          const providerId = provider._id || provider.providerId;
+          const selectedProvider = saleData.selectedProviders.find(sp => sp.providerId === providerId);
+          
+          console.log(`🔍 Mapping documents for provider ${provider.name} (${providerId}):`, {
+            selectedProvider: !!selectedProvider,
+            hasDocuments: selectedProvider?.documents?.length > 0,
+            documentCount: selectedProvider?.documents?.length || 0
+          });
+          
+          if (selectedProvider && selectedProvider.documents) {
+            return {
+              ...provider,
+              documents: selectedProvider.documents
+            };
+          }
+          
+          return provider;
+        });
+
+        const mappedService = {
+          ...service,
+          providers: providersWithDocuments
+        };
+
+        console.log(`🔍 Final mapped service ${service.templateName} providers:`, 
+          providersWithDocuments.map(p => ({ 
+            name: p.name, 
+            id: p._id || p.providerId, 
+            docCount: p.documents?.length || 0
+          }))
+        );
+
+        return mappedService;
+      });
 
       // Clear upload message and show creating sale message
       if (totalFiles > 0) {
@@ -2127,34 +2207,34 @@ const SaleWizard = () => {
   };
 
   const nextStep = () => {
-    if (currentStep < 10) {
+    if (currentStep < 7) {
       // Validate current step before proceeding
       if (currentStep === 1 && selectedPassengers.length === 0) {
         setError('Please select at least one passenger to continue');
         return;
       }
       
-      if (currentStep === 3 && (!pricePerPassenger || parseFloat(pricePerPassenger) <= 0)) {
+      if (currentStep === 2 && (!pricePerPassenger || parseFloat(pricePerPassenger) <= 0)) {
         setError('Please enter a valid price per passenger to continue');
         return;
       }
       
-      if (currentStep === 3 && passengerCurrency === 'ARS' && (!passengerExchangeRate || parseFloat(passengerExchangeRate) <= 0)) {
+      if (currentStep === 2 && passengerCurrency === 'ARS' && (!passengerExchangeRate || parseFloat(passengerExchangeRate) <= 0)) {
         setError('Please enter a valid exchange rate for ARS to USD conversion');
         return;
       }
       
-      if (currentStep === 4 && serviceTemplateInstances.length === 0) {
+      if (currentStep === 3 && serviceTemplateInstances.length === 0) {
         setError('Please select a service template to continue');
         return;
       }
       
-      if (currentStep === 5 && (!currentServiceDates.checkIn || !currentServiceDates.checkOut || !destination.city)) {
+      if (currentStep === 4 && (!currentServiceDates.checkIn || !currentServiceDates.checkOut || !destination.city)) {
         setError('Please enter check-in and check-out dates and city to continue');
         return;
       }
       
-      if (currentStep === 6) {
+      if (currentStep === 5) {
         // Validate that all service instances have valid costs and providers
         console.log('🔍 Step 6 validation - Service instances:', serviceTemplateInstances);
         
@@ -2741,10 +2821,10 @@ const SaleWizard = () => {
               <div className="flex-1 max-w-xs bg-dark-700 rounded-full h-2">
                 <div 
                   className="bg-primary-600 h-2 rounded-full transition-all duration-500 ease-out"
-                  style={{ width: `${(currentStep / 8) * 100}%` }}
+                  style={{ width: `${(currentStep / 7) * 100}%` }}
                 ></div>
               </div>
-              <div className="text-sm text-dark-300">{Math.round((currentStep / 8) * 100)}%</div>
+              <div className="text-sm text-dark-300">{Math.round((currentStep / 7) * 100)}%</div>
             </div>
           </div>
         </div>
@@ -2879,27 +2959,18 @@ const SaleWizard = () => {
         </button>
 
         <div className="flex space-x-4">
-          {currentStep === 7 && (
-            <button
-              onClick={() => setCurrentStep(8)}
-              className="px-6 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md"
-            >
-              Continue to Review
-            </button>
-          )}
-          
-          {currentStep === 8 ? (
+          {currentStep === 7 ? (
             <button
               onClick={createSale}
               disabled={loading}
               className="px-6 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md disabled:opacity-50"
             >
-              {loading ? 'Creating Sale...' : 'Create Sale'}
+              {loading ? 'Creating Sale...' : 'Complete Sale'}
             </button>
           ) : (
             <button
               onClick={nextStep}
-              disabled={currentStep === 10}
+              disabled={currentStep === 7}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md disabled:opacity-50"
             >
               Next

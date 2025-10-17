@@ -16,6 +16,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
   const [selectedPaymentId, setSelectedPaymentId] = useState(null);
   const [completedReceipts, setCompletedReceipts] = useState(new Set());
   const [respondedReceipts, setRespondedReceipts] = useState(new Set());
+  const [existingReceipts, setExistingReceipts] = useState(new Set());
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingPayment, setEditingPayment] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -48,15 +49,23 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
       if (response.data.success) {
         setPayments(response.data.data.payments);
         
-        // Check for responded receipts for each payment
+        // Check for existing and responded receipts for each payment
         const respondedSet = new Set();
+        const existingSet = new Set();
         for (const payment of response.data.data.payments) {
           const isResponded = await checkReceiptStatus(payment._id);
           if (isResponded) {
             respondedSet.add(payment._id);
           }
+          
+          // Check if receipt exists
+          const hasReceipt = await checkReceiptExists(payment._id);
+          if (hasReceipt) {
+            existingSet.add(payment._id);
+          }
         }
         setRespondedReceipts(respondedSet);
+        setExistingReceipts(existingSet);
       }
     } catch (error) {
       setError(error.response?.data?.message || 'Failed to fetch payments');
@@ -146,16 +155,30 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
     try {
       setError(''); // Clear any previous errors
       
-      // First, try to find an existing receipt for this payment
-      const existingReceiptsResponse = await api.get(`/api/receipts?paymentId=${paymentId}`);
+      // First, get the payment to check if it has a receipt image
+      const paymentResponse = await api.get(`/api/payments/${paymentId}`);
       
-      if (existingReceiptsResponse.data.success && existingReceiptsResponse.data.data.length > 0) {
-        // Load the existing receipt
-        setSelectedPaymentId(paymentId);
-        setShowReceipt(true);
+      if (paymentResponse.data.success) {
+        const payment = paymentResponse.data.data.payment;
+        
+        if (payment.receiptImage) {
+          // Open the uploaded receipt image directly in a new tab
+          // Use the same base URL as the API calls
+          const baseUrl = api.defaults.baseURL || 'http://localhost:5000';
+          const receiptUrl = `${baseUrl}${payment.receiptImage}`;
+          window.open(receiptUrl, '_blank');
+        } else {
+          // No receipt image found
+          setError('No receipt file found for this payment');
+          setTimeout(() => {
+            setError('');
+          }, 5000);
+        }
       } else {
-        // No existing receipt found, generate a new one
-        await generateReceipt(paymentId);
+        setError('Payment not found');
+        setTimeout(() => {
+          setError('');
+        }, 5000);
       }
     } catch (error) {
       console.error('View receipt error:', error);
@@ -183,6 +206,16 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
     }
   };
 
+  const checkReceiptExists = async (paymentId) => {
+    try {
+      const response = await api.get(`/api/receipts?paymentId=${paymentId}`);
+      return response.data.success && response.data.data.length > 0;
+    } catch (error) {
+      console.error('Error checking if receipt exists:', error);
+      return false;
+    }
+  };
+
   const handleReceiptClose = () => {
     setShowReceipt(false);
     setSelectedPaymentId(null);
@@ -191,6 +224,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
   const handleReceiptCompleted = (paymentId) => {
     // Mark this payment as having a completed receipt
     setCompletedReceipts(prev => new Set([...prev, paymentId]));
+    setExistingReceipts(prev => new Set([...prev, paymentId]));
     
     // Refresh the payments data to update the UI
     if (onPaymentAdded) {
@@ -424,7 +458,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
                   </td>
                   <td className="px-3 py-4">
                     <div className="truncate text-sm text-dark-300">
-                      {payment.receiptImage || completedReceipts.has(payment._id) || respondedReceipts.has(payment._id) ? (
+                      {payment.receiptImage ? (
                         <div className="flex items-center justify-center space-x-2">
                           <span className="text-lg">{getReceiptIcon(payment.receiptImage)}</span>
                           <button
