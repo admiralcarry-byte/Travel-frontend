@@ -387,7 +387,7 @@ const PaymentEditModal = ({
             <div className="bg-primary-500/5 border border-primary-500/20 rounded-lg p-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-dark-200">
-                  {formData.currency !== saleCurrency ? `${saleCurrency} Equivalent:` : 'USD Equivalent:'}
+                  {saleCurrency} Equivalent:
                 </span>
                 <span className="text-sm font-semibold text-primary-400">
                   {formData.currency !== saleCurrency ? (
