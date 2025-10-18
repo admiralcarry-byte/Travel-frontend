@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
-import { formatCurrencyCompact } from '../utils/formatNumbers';
+import { formatCurrency, getCurrencySymbol } from '../utils/formatNumbers';
 
 const MonthlySales = () => {
   const navigate = useNavigate();
@@ -24,6 +24,8 @@ const MonthlySales = () => {
     total: 0,
     pages: 0
   });
+  const [selectedCurrency, setSelectedCurrency] = useState('ARS'); // Default to ARS as requested
+  const [showCurrencyTooltip, setShowCurrencyTooltip] = useState(false);
 
   // Fetch monthly sales data
   const fetchMonthlySales = async () => {
@@ -36,7 +38,8 @@ const MonthlySales = () => {
         limit: pagination.limit,
         status: filters.status,
         sortBy: filters.sortBy,
-        sortOrder: filters.sortOrder
+        sortOrder: filters.sortOrder,
+        currency: selectedCurrency
       });
 
       const response = await api.get(`/api/sales/seller/monthly-sales?${params}`);
@@ -58,7 +61,21 @@ const MonthlySales = () => {
 
   useEffect(() => {
     fetchMonthlySales();
-  }, [filters, pagination.page]);
+  }, [filters, pagination.page, selectedCurrency]);
+
+  // Close currency tooltip when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showCurrencyTooltip && !event.target.closest('.currency-tooltip-container')) {
+        setShowCurrencyTooltip(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showCurrencyTooltip]);
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -69,9 +86,9 @@ const MonthlySales = () => {
     setPagination(prev => ({ ...prev, page: newPage }));
   };
 
-  const formatCurrency = (amount) => {
-    // Use compact formatting for better readability
-    return formatCurrencyCompact(amount, 'USD', 2);
+  const formatCurrencyValue = (amount) => {
+    // Use exact formatting to show precise values instead of abbreviations
+    return formatCurrency(amount, selectedCurrency);
   };
 
   const formatDate = (dateString) => {
@@ -147,12 +164,65 @@ const MonthlySales = () => {
               View all your sales and profit for {new Date(filters.year, filters.month - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </p>
           </div>
-          <button 
-            onClick={() => navigate('/dashboard')}
-            className="btn-secondary"
-          >
-            Back to Dashboard
-          </button>
+          <div className="flex items-center space-x-3">
+            {/* Currency Selection Tooltip */}
+            <div className="relative currency-tooltip-container">
+              <button
+                onClick={() => setShowCurrencyTooltip(!showCurrencyTooltip)}
+                className="flex items-center space-x-2 px-4 py-2 bg-dark-700 hover:bg-dark-600 border border-dark-600 rounded-lg text-dark-100 transition-colors duration-200"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
+                <span className="text-sm font-medium">{getCurrencySymbol(selectedCurrency)}</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {showCurrencyTooltip && (
+                <div className="absolute z-50 right-0 mt-2 w-48 bg-dark-800 border border-dark-600 rounded-lg shadow-xl">
+                  <div className="py-2">
+                    <button
+                      onClick={() => {
+                        setSelectedCurrency('ARS');
+                        setShowCurrencyTooltip(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-dark-700 transition-colors duration-200 ${
+                        selectedCurrency === 'ARS' ? 'bg-primary-600 text-white' : 'text-dark-100'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium">AR$</span>
+                        <span className="text-xs text-dark-300">Argentine Peso</span>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedCurrency('USD');
+                        setShowCurrencyTooltip(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-dark-700 transition-colors duration-200 ${
+                        selectedCurrency === 'USD' ? 'bg-primary-600 text-white' : 'text-dark-100'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium">U$</span>
+                        <span className="text-xs text-dark-300">US Dollar</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <button 
+              onClick={() => navigate('/dashboard')}
+              className="btn-secondary"
+            >
+              Back to Dashboard
+            </button>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -180,7 +250,7 @@ const MonthlySales = () => {
                 </div>
               </div>
               <h3 className="text-lg font-bold text-dark-100 mb-2">Total Revenue</h3>
-              <p className="text-3xl font-bold text-accent-400">{formatCurrency(summary.totalRevenue)}</p>
+              <p className="text-3xl font-bold text-accent-400">{formatCurrencyValue(summary.totalRevenue)}</p>
               <p className="text-sm text-accent-300">This month</p>
             </div>
 
@@ -194,7 +264,7 @@ const MonthlySales = () => {
               </div>
               <h3 className="text-lg font-bold text-dark-100 mb-2">Total Profit</h3>
               <p className={`text-3xl font-bold ${getProfitColor(summary.totalProfit)}`}>
-                {formatCurrency(summary.totalProfit)}
+                {formatCurrencyValue(summary.totalProfit)}
               </p>
               <p className="text-sm text-success-300">{summary.avgProfitMargin}% margin</p>
             </div>
@@ -208,7 +278,7 @@ const MonthlySales = () => {
                 </div>
               </div>
               <h3 className="text-lg font-bold text-dark-100 mb-2">Avg Sale Value</h3>
-              <p className="text-3xl font-bold text-info-400">{formatCurrency(summary.avgSaleValue)}</p>
+              <p className="text-3xl font-bold text-info-400">{formatCurrencyValue(summary.avgSaleValue)}</p>
               <p className="text-sm text-info-300">Per transaction</p>
             </div>
           </div>
@@ -339,10 +409,10 @@ const MonthlySales = () => {
                             {getStatusBadge(sale.status)}
                           </td>
                           <td className="py-3 px-4 text-right font-medium text-dark-100">
-                            {formatCurrency(sale.totalSalePrice)}
+                            {formatCurrencyValue(sale.totalSalePrice)}
                           </td>
                           <td className={`py-3 px-4 text-right font-medium ${getProfitColor(sale.profit)}`}>
-                            {formatCurrency(sale.profit)}
+                            {formatCurrencyValue(sale.profit)}
                           </td>
                           <td className="py-3 px-4 text-right text-dark-300">
                             {profitMargin}%

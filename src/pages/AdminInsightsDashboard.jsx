@@ -8,7 +8,7 @@ import InteractiveBarChart from '../components/InteractiveBarChart';
 import PieChart from '../components/PieChart';
 import DataTable from '../components/DataTable';
 import PaymentMethodsTable from '../components/PaymentMethodsTable';
-import { formatCurrencyCompact } from '../utils/formatNumbers';
+import { formatCurrencyCompact, formatCurrencyFull } from '../utils/formatNumbers';
 
 // Mapping from display names to enum values - moved outside component to prevent re-creation
 const paymentMethodMapping = {
@@ -58,7 +58,7 @@ const AdminInsightsDashboard = () => {
     maxAmount: '',
     paymentType: '',
     paymentMethod: '',
-    currency: ''
+    currency: 'ARS' // Default to ARS
   });
   
   // Pagination states
@@ -243,6 +243,7 @@ const AdminInsightsDashboard = () => {
       if (filters.period) params.append('period', filters.period);
       if (filters.startDate) params.append('startDate', filters.startDate);
       if (filters.endDate) params.append('endDate', filters.endDate);
+      if (filters.currency) params.append('currency', filters.currency);
 
       const response = await api.get(`/api/admin-insights/overview?${params}`);
       if (response.data.success && response.data.data.insights) {
@@ -269,7 +270,7 @@ const AdminInsightsDashboard = () => {
     } catch (error) {
       console.error('Error fetching chart data:', error);
     }
-  }, [filters.period, filters.startDate, filters.endDate]);
+  }, [filters.period, filters.startDate, filters.endDate, filters.currency]);
 
 
   // Fetch payment methods from database
@@ -314,12 +315,12 @@ const AdminInsightsDashboard = () => {
     }
   }, [user, fetchAllData]);
 
-  // Refetch payment methods data when payment method filter changes
+  // Refetch data when currency filter changes
   useEffect(() => {
     if (user && user.role === 'admin') {
-      fetchPaymentMethods();
+      fetchAllData();
     }
-  }, [filters.paymentMethod, filters.paymentType, filters.currency, user]);
+  }, [filters.currency, user, fetchAllData]);
 
 
   // Handle filter changes
@@ -399,7 +400,7 @@ const AdminInsightsDashboard = () => {
       maxAmount: '',
       paymentType: '',
       paymentMethod: '',
-      currency: ''
+      currency: 'ARS' // Reset to ARS default
     });
     setPagination(prev => ({
       ...prev,
@@ -572,8 +573,8 @@ const AdminInsightsDashboard = () => {
                   style={{ wordWrap: 'break-word' }}
                 >
                   <option value="">All Types</option>
-                  <option value="client">Customer Payments</option>
-                  <option value="provider">Supplier Payments</option>
+                  <option value="client">Passenger Payments</option>
+                  <option value="provider">Provider Payments</option>
                 </select>
               </div>
 
@@ -606,9 +607,8 @@ const AdminInsightsDashboard = () => {
                   className="input-field"
                   style={{ wordWrap: 'break-word' }}
                 >
-                  <option value="">All Currencies</option>
-                  <option value="USD">USD - US Dollar</option>
                   <option value="ARS">ARS - Argentine Peso</option>
+                  <option value="USD">USD - US Dollar</option>
                 </select>
               </div>
 
@@ -636,6 +636,8 @@ const AdminInsightsDashboard = () => {
                 icon="money"
                 color="blue"
                 valueType="currency"
+                useFullNumber={true}
+                currency={filters.currency || 'ARS'}
               />
               <KPICard
                 title="Total Profit"
@@ -644,6 +646,8 @@ const AdminInsightsDashboard = () => {
                 icon="chart"
                 color="green"
                 valueType="currency"
+                useFullNumber={true}
+                currency={filters.currency || 'ARS'}
               />
               <KPICard
                 title="Total Users"
@@ -660,6 +664,8 @@ const AdminInsightsDashboard = () => {
                 icon="dollar"
                 color="purple"
                 valueType="currency"
+                useFullNumber={true}
+                currency={filters.currency || 'ARS'}
               />
             </div>
 
@@ -679,6 +685,7 @@ const AdminInsightsDashboard = () => {
                     { dataKey: 'profit', name: 'Profit', color: '#10B981' }
                   ]}
                   height={350}
+                  currency={filters.currency || 'ARS'}
                 />
               )}
 
@@ -700,6 +707,7 @@ const AdminInsightsDashboard = () => {
                     { dataKey: 'profit', name: 'Profit', color: '#10B981' }
                   ]}
                   height={350}
+                  currency={filters.currency || 'ARS'}
                 />
               )}
 
@@ -717,6 +725,7 @@ const AdminInsightsDashboard = () => {
                     { dataKey: 'sales', name: 'Sales', color: '#3B82F6' }
                   ]}
                   height={350}
+                  currency={filters.currency || 'ARS'}
                 />
               )}
             </div>
@@ -781,7 +790,7 @@ const AdminInsightsDashboard = () => {
             {/* Payment Methods Analysis */}
             {paymentMethodsData && (
               <div className="mt-8">
-                <PaymentMethodsTable data={paymentMethodsData} />
+                <PaymentMethodsTable data={paymentMethodsData} currency={filters.currency || 'ARS'} />
               </div>
             )}
           </div>
@@ -834,10 +843,10 @@ const AdminInsightsDashboard = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                          {formatCurrencyCompact(seller.performance?.totalSales || 0)}
+                          {formatCurrencyFull(seller.performance?.totalSales || 0, filters.currency || 'ARS')}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-green-400">
-                          {formatCurrencyCompact(seller.performance?.totalProfit || 0)}
+                          {formatCurrencyFull(seller.performance?.totalProfit || 0, filters.currency || 'ARS')}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
                           {seller.performance?.profitMargin || 0}%
@@ -846,7 +855,7 @@ const AdminInsightsDashboard = () => {
                           {seller.performance?.saleCount || 0}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                          {formatCurrencyCompact(seller.performance?.averageSaleValue || 0)}
+                          {formatCurrencyFull(seller.performance?.averageSaleValue || 0, filters.currency || 'ARS')}
                         </td>
                       </tr>
                     ))}
@@ -869,9 +878,6 @@ const AdminInsightsDashboard = () => {
                   <thead className="bg-dark-700/50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
-                        Sale ID
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
                         Passenger
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
@@ -889,14 +895,14 @@ const AdminInsightsDashboard = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
                         Date
                       </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-dark-300 uppercase tracking-wider">
+                        Sale ID
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
                     {transactionDetails.map((transaction) => (
                       <tr key={transaction.saleId} className="hover:bg-white/5 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-dark-100">
-                          #{transaction.saleId.slice(-8)}
-                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
                           <div>
                             <div className="font-medium">{transaction.clientName}</div>
@@ -907,10 +913,10 @@ const AdminInsightsDashboard = () => {
                           {transaction.sellerName}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                          {formatCurrencyCompact(transaction.totalSalePrice)}
+                          {formatCurrencyFull(transaction.totalSalePrice, filters.currency || 'ARS')}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-green-400">
-                          {formatCurrencyCompact(transaction.profit)}
+                          {formatCurrencyFull(transaction.profit, filters.currency || 'ARS')}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -925,6 +931,9 @@ const AdminInsightsDashboard = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
                           {new Date(transaction.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-dark-100">
+                          #{transaction.saleId.slice(-8)}
                         </td>
                       </tr>
                     ))}
@@ -995,6 +1004,7 @@ const AdminInsightsDashboard = () => {
                   { dataKey: 'sales', name: 'Sales Count', color: '#10B981' }
                 ]}
                 height={400}
+                currency={filters.currency || 'ARS'}
               />
               
               <LineChart
@@ -1009,6 +1019,7 @@ const AdminInsightsDashboard = () => {
                   { dataKey: 'margin', name: 'Margin %', color: '#F59E0B' }
                 ]}
                 height={400}
+                currency={filters.currency || 'ARS'}
               />
             </div>
           </div>

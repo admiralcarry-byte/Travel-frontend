@@ -11,7 +11,8 @@ const ServiceTemplateInstanceEditor = ({
   isEditing = false,
   onEditStart,
   onEditCancel,
-  getGlobalProviderCount
+  getGlobalProviderCount,
+  saleCurrency = 'USD'
 }) => {
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState('');
@@ -26,16 +27,18 @@ const ServiceTemplateInstanceEditor = ({
     checkOut: instance.checkOut
   });
   const [tempCurrency, setTempCurrency] = useState(instance.currency);
+  const [exchangeRate, setExchangeRate] = useState('');
+  const [convertedAmount, setConvertedAmount] = useState(null);
   
   // Multiple provider selection
   const [selectedProviders, setSelectedProviders] = useState([]);
   
   // Local search state for the modal
   const [localProviderSearch, setLocalProviderSearch] = useState('');
+  
+  // Provider cost states
+  const [providerCosts, setProviderCosts] = useState({});
 
-  // Currency conversion states
-  const [exchangeRate, setExchangeRate] = useState('');
-  const [convertedAmount, setConvertedAmount] = useState(null);
   
   // Initialize selected providers when modal opens
   useEffect(() => {
@@ -73,24 +76,17 @@ const ServiceTemplateInstanceEditor = ({
       setSelectedProviders(currentProviders);
       // Reset search when modal opens
       setLocalProviderSearch('');
+      
+      // Initialize provider costs from existing data
+      const initialCosts = {};
+      currentProviders.forEach((provider, index) => {
+        const costKey = `${provider._id}_${index}`;
+        initialCosts[costKey] = provider.costProvider || '';
+        initialCosts[`${costKey}_currency`] = saleCurrency; // Use sale currency
+      });
+      setProviderCosts(initialCosts);
     }
   }, [showProviderModal, instance.provider, instance.providers, getGlobalProviderCount]);
-
-  // Currency conversion effect
-  useEffect(() => {
-    if (exchangeRate && editValue && tempCurrency && tempCurrency !== 'USD') {
-      setConvertedAmount(parseFloat(editValue) / parseFloat(exchangeRate));
-    } else if (tempCurrency && tempCurrency === 'USD') {
-      setConvertedAmount(parseFloat(editValue));
-    } else {
-      setConvertedAmount(null);
-    }
-  }, [exchangeRate, editValue, tempCurrency]);
-
-  const handleExchangeRateChange = (e) => {
-    const value = e.target.value;
-    setExchangeRate(value);
-  };
 
   const startEditing = (field, currentValue) => {
     setEditingField(field);
@@ -142,8 +138,18 @@ const ServiceTemplateInstanceEditor = ({
       } else if (field === 'cost') {
         updateData.cost = parseFloat(value); // Keep consistent with display field
         updateData.priceClient = parseFloat(value);
-        updateData.costProvider = parseFloat(value) * 0.8; // 20% markup
+        updateData.costProvider = parseFloat(value); // Update costProvider directly
         updateData.currency = tempCurrency; // Include the selected currency
+        
+        // Update the providers array to reflect the new costProvider value
+        if (instance.providers && instance.providers.length > 0) {
+          // When editing cost directly, set the total cost as the first provider's cost
+          // and set other providers to 0 to maintain the total
+          updateData.providers = instance.providers.map((provider, index) => ({
+            ...provider,
+            costProvider: index === 0 ? parseFloat(value) : 0
+          }));
+        }
       } else if (field === 'checkIn' || field === 'checkOut') {
         updateData[field] = value; // Keep consistent with display field
         updateData.serviceDates = {
@@ -232,23 +238,59 @@ const ServiceTemplateInstanceEditor = ({
       return;
     }
     
-    // Save providers array
+    // Calculate total cost from provider costs
+    let totalCost = 0;
+    
+    // Group providers by ID to match the UI structure
+    const providerGroups = {};
+    selectedProviders.forEach((provider, index) => {
+      if (!providerGroups[provider._id]) {
+        providerGroups[provider._id] = {
+          provider,
+          indices: []
+        };
+      }
+      providerGroups[provider._id].indices.push(index);
+    });
+    
+    // Calculate costs using the same key structure as the UI
+    const providersWithCosts = [];
+    Object.values(providerGroups).forEach(({ provider, indices }) => {
+      indices.forEach((originalIndex, i) => {
+        const costKey = `${provider._id}_${i}`;
+        const providerCost = parseFloat(providerCosts[costKey]) || 0;
+        
+        totalCost += providerCost;
+        
+        providersWithCosts.push({
+          ...provider,
+          costProvider: providerCost,
+          currency: saleCurrency
+        });
+      });
+    });
+    
+    // Save providers array with costs
     const updatedInstance = {
       ...instance,
-      providers: selectedProviders,
-      provider: selectedProviders[0] // Keep first provider for backward compatibility
+      providers: providersWithCosts,
+      provider: providersWithCosts[0], // Keep first provider for backward compatibility
+      cost: totalCost, // Update total cost
+      costProvider: totalCost, // Update costProvider to match calculated total
+      currency: saleCurrency // Use sale currency
     };
     
-    console.log('🔧 ServiceTemplateInstanceEditor - Saving providers:', {
+    console.log('🔧 ServiceTemplateInstanceEditor - Saving providers with costs:', {
       selectedProviders,
+      providersWithCosts,
+      totalCost,
       updatedInstance,
-      providersArray: updatedInstance.providers,
-      providerField: updatedInstance.provider
+      providerCosts
     });
     
     onUpdate(updatedInstance);
     setShowProviderModal(false);
-    toast.success(`${selectedProviders.length} provider(s) selected`);
+    toast.success(`${selectedProviders.length} provider(s) selected with costs`);
   };
 
   const handleDateSave = () => {
@@ -286,13 +328,8 @@ const ServiceTemplateInstanceEditor = ({
                field === 'cost' ? (
                  <div>
                    <div className="text-dark-100 font-medium">
-                     {instance.currency} {currentValue || instance.cost}
+                     {instance.currency} {currentValue || (instance.cost !== null && instance.cost !== undefined ? instance.cost : (instance.costProvider !== null && instance.costProvider !== undefined ? instance.costProvider : 0))}
                    </div>
-                   {instance.currency && instance.currency !== 'USD' && exchangeRate && convertedAmount && (
-                     <div className="text-xs text-dark-400 mt-1">
-                       USD Equivalent: U${convertedAmount.toFixed(2)} (Rate: 1 USD = {exchangeRate} {instance.currency})
-                     </div>
-                   )}
                  </div>
                ) :
                field === 'checkIn' || field === 'checkOut' ? new Date(currentValue).toLocaleDateString() :
@@ -403,48 +440,6 @@ const ServiceTemplateInstanceEditor = ({
                 </select>
               </div>
               
-              {/* Exchange Rate Section for non-USD currencies */}
-              {tempCurrency && tempCurrency !== 'USD' && (
-                <div className="bg-primary-500/5 border border-primary-500/20 rounded-lg p-3">
-                  <div className="mb-2">
-                    <h5 className="text-xs font-medium text-dark-200">Exchange Rate *</h5>
-                    <p className="text-xs text-dark-400 mt-1">
-                      Manual exchange rate entry is required for non-USD currencies
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label htmlFor="exchangeRate" className="block text-xs font-medium text-dark-200 mb-1">
-                        Exchange Rate *
-                      </label>
-                      <input
-                        type="number"
-                        id="exchangeRate"
-                        value={exchangeRate}
-                        onChange={handleExchangeRateChange}
-                        required
-                        min="0"
-                        step="0.0001"
-                        className="input-field text-xs"
-                        placeholder={`Enter exchange rate (1 USD = ? ${instance.currency})`}
-                      />
-                      <p className="mt-1 text-xs text-dark-400">
-                        Enter the rate for 1 USD = ? {instance.currency}
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-xs font-medium text-dark-200 mb-1">
-                        USD Equivalent
-                      </label>
-                      <div className="input-field text-xs bg-gray-100 text-gray-700">
-                        {convertedAmount ? `U$${convertedAmount.toFixed(2)} USD` : 'Enter amount and rate'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
             <input
@@ -508,11 +503,54 @@ const ServiceTemplateInstanceEditor = ({
         {/* Service Info */}
         {renderFieldEditor('serviceInfo', 'Service Details', instance.serviceInfo)}
         
-        {/* Service Description */}
-        {renderFieldEditor('serviceDescription', 'Service Description', instance.serviceDescription)}
         
-        {/* Cost */}
-        {renderFieldEditor('cost', 'Cost', instance.cost, 'number')}
+        {/* Cost - Show actual provider cost, not client price */}
+        <div className="flex items-center justify-between group">
+          <div className="flex-1">
+            <span className="text-sm text-dark-400">Cost:</span>
+            <div className="text-dark-100 font-medium">
+              {instance.currency} {(() => {
+                // First priority: Use the calculated cost from providers (updated by modal)
+                if (instance.cost !== null && instance.cost !== undefined) {
+                  return instance.cost;
+                }
+                // Second priority: Display costProvider field directly from the service
+                if (instance.costProvider !== null && instance.costProvider !== undefined) {
+                  return instance.costProvider;
+                }
+                // Fallback: Calculate from providers array if neither cost nor costProvider is available
+                if (instance.providers && instance.providers.length > 0) {
+                  return instance.providers.reduce((total, provider) => {
+                    return total + (parseFloat(provider.costProvider) || 0);
+                  }, 0);
+                }
+                return 0;
+              })()}
+            </div>
+            <div className="text-xs text-dark-400 mt-1">
+              Total provider costs
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const currentCost = (() => {
+                if (instance.providers && instance.providers.length > 0) {
+                  return instance.providers.reduce((total, provider) => {
+                    return total + (parseFloat(provider.costProvider) || 0);
+                  }, 0);
+                }
+                return 0;
+              })();
+              startEditing('cost', currentCost);
+            }}
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-primary-400 hover:text-primary-300"
+            title="Edit cost"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+        </div>
         
         {/* Dates */}
         <div className="space-y-2">
@@ -590,7 +628,7 @@ const ServiceTemplateInstanceEditor = ({
 
                     return Object.values(providerGroups).map(({ provider, indices }) => (
                       <div key={provider._id} className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-3">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between mb-3">
                           <div className="flex-1">
                             <h5 className="font-medium text-dark-100">{provider.name}</h5>
                             <div className="text-sm text-dark-300">
@@ -610,6 +648,48 @@ const ServiceTemplateInstanceEditor = ({
                               Remove 1
                             </button>
                           </div>
+                        </div>
+                        
+                        {/* Cost Entry Section for each provider instance */}
+                        <div className="space-y-2">
+                          {indices.map((index, i) => {
+                            const costKey = `${provider._id}_${i}`;
+                            const currentCost = providerCosts[costKey] || '';
+                            const currentCurrency = providerCosts[`${costKey}_currency`] || instance.currency || 'USD';
+                            
+                            return (
+                              <div key={i} className="bg-dark-800/50 rounded-lg p-3">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-xs text-dark-400">Instance {i + 1} Cost:</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="number"
+                                    value={currentCost}
+                                    onChange={(e) => setProviderCosts(prev => ({
+                                      ...prev,
+                                      [costKey]: e.target.value
+                                    }))}
+                                    className="flex-1 px-3 py-2 bg-dark-700 border border-white/20 rounded-lg text-dark-100 focus:border-blue-500 focus:outline-none text-sm"
+                                    placeholder="0.00"
+                                    step="0.01"
+                                    min="0"
+                                  />
+                                  <select
+                                    value={currentCurrency}
+                                    onChange={(e) => setProviderCosts(prev => ({
+                                      ...prev,
+                                      [`${costKey}_currency`]: e.target.value
+                                    }))}
+                                    className="px-3 py-2 bg-dark-700 border border-white/20 rounded-lg text-dark-100 focus:border-blue-500 focus:outline-none text-sm"
+                                    disabled
+                                  >
+                                    <option value={saleCurrency}>{saleCurrency}</option>
+                                  </select>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     ));

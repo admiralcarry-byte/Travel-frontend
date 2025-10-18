@@ -17,16 +17,18 @@ const BarChart = ({
   xAxisKey = 'label',
   bars = [],
   height = 300,
-  showLegend = true 
+  showLegend = true,
+  currency = 'USD'
 }) => {
   const formatValue = (value) => {
     if (typeof value === 'number') {
+      const currencySymbol = currency === 'ARS' ? 'AR$' : 'U$';
       if (value >= 1000000) {
-        return `$${(value / 1000000).toFixed(1)}M`;
+        return `${currencySymbol}${(value / 1000000).toFixed(1)}M`;
       } else if (value >= 1000) {
-        return `$${(value / 1000).toFixed(1)}K`;
+        return `${currencySymbol}${(value / 1000).toFixed(1)}K`;
       } else {
-        return `$${value.toFixed(2)}`;
+        return `${currencySymbol}${value.toFixed(2)}`;
       }
     }
     return value;

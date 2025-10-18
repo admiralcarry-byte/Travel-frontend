@@ -2,6 +2,9 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
   (import.meta.env.PROD ? 'https://travel-backend-production-5253.up.railway.app' : 'http://localhost:5000');
 
+// Export API_BASE_URL for components that need direct URL access
+export { API_BASE_URL };
+
 export const apiConfig = {
   baseURL: API_BASE_URL,
   endpoints: {

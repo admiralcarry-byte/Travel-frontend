@@ -118,7 +118,7 @@ const ProviderDetails = () => {
               </span>
             </div>
           </div>
-          <div className="flex space-x-3">
+          {/* <div className="flex space-x-3">
             <button
               onClick={() => navigate(`/providers/${providerId}/dashboard`)}
               className="btn-primary"
@@ -131,7 +131,7 @@ const ProviderDetails = () => {
             >
               Add New Provider
             </button>
-          </div>
+          </div> */}
         </div>
 
         {/* Provider Details */}

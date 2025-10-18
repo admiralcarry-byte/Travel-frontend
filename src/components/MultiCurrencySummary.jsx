@@ -21,13 +21,8 @@ const MultiCurrencySummary = ({ currencyData, title = "Sales by Currency" }) => 
 
   // Function to format currency with proper symbol (USD and ARS only)
   const formatWithCurrency = (amount, currency) => {
-    const symbols = {
-      USD: 'U$',
-      ARS: 'AR$'
-    };
-
-    const symbol = symbols[currency] || currency;
-    return `${symbol} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    // Use the standard formatCurrency function for consistent formatting
+    return formatCurrency(amount, currency);
   };
 
   // Get profit margin color

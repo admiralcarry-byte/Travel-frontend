@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
-import { formatCurrencyCompact } from '../utils/formatNumbers';
+import { formatCurrencyCompact, formatCurrency } from '../utils/formatNumbers';
 
 const SellerDashboard = () => {
   const navigate = useNavigate();
@@ -12,9 +12,9 @@ const SellerDashboard = () => {
   const [monthlyStats, setMonthlyStats] = useState(null);
   const [stats, setStats] = useState({
     totalRevenue: 0,
-    completedSales: 0,
-    pendingSales: 0,
-    totalSales: 0
+    totalSales: 0,
+    usdSales: 0,
+    arsSales: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -31,6 +31,9 @@ const SellerDashboard = () => {
 
         // Fetch monthly stats for current salesperson (this also provides the stats data)
         const monthlyStatsResponse = await api.get('/api/sales/seller/monthly-stats');
+
+        // Fetch currency-specific stats for current seller
+        const currencyResponse = await api.get('/api/sales/currency-stats');
 
         if (salesResponse.data.success) {
           // Transform sales data to match component expectations
@@ -49,17 +52,25 @@ const SellerDashboard = () => {
         if (monthlyStatsResponse.data.success) {
           const statsData = monthlyStatsResponse.data.data;
           const overview = statsData.overview;
-          const statusBreakdown = statsData.statusBreakdown;
           
-          // Calculate completed and pending sales from status breakdown
-          const completedCount = statusBreakdown.find(s => s._id === 'closed')?.count || 0;
-          const pendingCount = statusBreakdown.find(s => s._id === 'open')?.count || 0;
+          // Extract USD and ARS sales from currency stats
+          let usdSales = 0;
+          let arsSales = 0;
+          
+          if (currencyResponse.data.success && currencyResponse.data.data.currencyBreakdown) {
+            const currencyData = currencyResponse.data.data.currencyBreakdown;
+            const usdData = currencyData.find(item => item._id === 'USD');
+            const arsData = currencyData.find(item => item._id === 'ARS');
+            
+            usdSales = usdData ? usdData.totalSalesInCurrency || 0 : 0;
+            arsSales = arsData ? arsData.totalSalesInCurrency || 0 : 0;
+          }
           
           setStats({
             totalRevenue: overview.totalRevenue || 0,
-            completedSales: completedCount,
-            pendingSales: pendingCount,
-            totalSales: overview.totalSales || 0
+            totalSales: overview.totalSales || 0,
+            usdSales: usdSales,
+            arsSales: arsSales
           });
           
           setMonthlyStats(statsData);
@@ -129,129 +140,45 @@ const SellerDashboard = () => {
           </p>
         </div>
           
-        {/* Monthly Performance Cards */}
-        {monthlyStats && (
-          <div className="mb-12">
-            <h2 className="text-3xl font-bold text-dark-100 mb-8 text-center">
-              This Month's Performance ({monthlyStats.month}/{monthlyStats.year})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {/* Monthly Revenue */}
-              <div className="card-neon hover-lift p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="icon-container bg-primary-500">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                    </svg>
-                  </div>
-                </div>
-                <h3 className="text-lg font-bold text-dark-100 mb-2">Monthly Revenue</h3>
-                <p className="text-3xl font-bold text-primary-400 mb-1">{formatCurrencyCompact(monthlyStats.overview.totalRevenue)}</p>
-                <p className="text-sm text-primary-300">From {monthlyStats.overview.totalSales} sales</p>
-              </div>
-
-              {/* Monthly Profit */}
-              <div className="card hover-lift p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="icon-container bg-success-500">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                  </div>
-                </div>
-                <h3 className="text-lg font-bold text-dark-100 mb-2">Monthly Profit</h3>
-                <p className="text-3xl font-bold text-success-400 mb-1">{formatCurrencyCompact(monthlyStats.overview.totalProfit)}</p>
-                <p className="text-sm text-success-300">{monthlyStats.overview.avgProfitMargin}% margin</p>
-              </div>
-
-              {/* Average Sale Value */}
-              <div className="card hover-lift p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="icon-container bg-accent-500">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                  </div>
-                </div>
-                <h3 className="text-lg font-bold text-dark-100 mb-2">Avg Sale Value</h3>
-                <p className="text-3xl font-bold text-accent-400 mb-1">{formatCurrencyCompact(monthlyStats.overview.avgSaleValue)}</p>
-                <p className="text-sm text-accent-300">Per transaction</p>
-              </div>
-
-              {/* Average Profit */}
-              <div className="card hover-lift p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="icon-container bg-info-500">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                    </svg>
-                  </div>
-                </div>
-                <h3 className="text-lg font-bold text-dark-100 mb-2">Avg Profit</h3>
-                <p className="text-3xl font-bold text-info-400 mb-1">{formatCurrencyCompact(monthlyStats.overview.avgProfit)}</p>
-                <p className="text-sm text-info-300">Per sale</p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Overall Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          {/* Total Sales Card */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+          {/* USD Sales Card */}
           <div className="card-neon hover-lift p-8">
             <div className="flex items-center justify-between mb-8">
-              <div className="icon-container bg-primary-500">
+              <div className="icon-container bg-success-500">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
               </div>
               <div className="text-right">
-                <div className="text-sm font-medium text-primary-300">Total Revenue</div>
-                <div className="text-xs text-primary-400">All time</div>
+                <div className="text-sm font-medium text-success-300">USD Sales</div>
+                <div className="text-xs text-success-400">All time</div>
               </div>
             </div>
             
-            <h3 className="text-2xl font-bold text-dark-100 mb-3">Total Sales</h3>
-            <p className="text-5xl font-bold text-primary-400 mb-3">{formatCurrencyCompact(stats.totalRevenue)}</p>
-            <p className="text-sm text-primary-300">From {stats.totalSales} sales</p>
+            <h3 className="text-2xl font-bold text-dark-100 mb-3">Sales in USD</h3>
+            <p className="text-5xl font-bold text-success-400 mb-3">{formatCurrency(stats.usdSales, 'USD')}</p>
+            <p className="text-sm text-success-300">USD transactions</p>
           </div>
-          
-          {/* Completed Sales Card */}
-          <div className="card hover-lift p-8">
-            <div className="flex items-center justify-between mb-8">
-              <div className="icon-container bg-success-500">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-medium text-success-300">Success Rate</div>
-                <div className="text-xs text-success-400">Completed</div>
-              </div>
-            </div>
-            
-            <h3 className="text-2xl font-bold text-dark-100 mb-3">Completed Sales</h3>
-            <p className="text-5xl font-bold text-success-400 mb-3">{stats.completedSales}</p>
-            <p className="text-sm text-success-300">Successful bookings</p>
-          </div>
-          
-          {/* Pending Sales Card */}
-          <div className="card hover-lift p-8">
+
+          {/* ARS Sales Card */}
+          <div className="card-neon hover-lift p-8">
             <div className="flex items-center justify-between mb-8">
               <div className="icon-container bg-warning-500">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
               </div>
               <div className="text-right">
-                <div className="text-sm font-medium text-warning-300">In Progress</div>
-                <div className="text-xs text-warning-400">Awaiting</div>
+                <div className="text-sm font-medium text-warning-300">ARS Sales</div>
+                <div className="text-xs text-warning-400">All time</div>
               </div>
             </div>
             
-            <h3 className="text-2xl font-bold text-dark-100 mb-3">Pending Sales</h3>
-            <p className="text-5xl font-bold text-warning-400 mb-3">{stats.pendingSales}</p>
-            <p className="text-sm text-warning-300">Awaiting confirmation</p>
+            <h3 className="text-2xl font-bold text-dark-100 mb-3">Sales in ARS</h3>
+            <p className="text-5xl font-bold text-warning-400 mb-3">{formatCurrency(stats.arsSales, 'ARS')}</p>
+            <p className="text-sm text-warning-300">ARS transactions</p>
           </div>
         </div>
 
@@ -384,13 +311,6 @@ const SellerDashboard = () => {
                       <div className="text-3xl font-bold text-dark-100 mb-3">
                         {formatCurrencyCompact(sale.amount)}
                       </div>
-                      <span className={`badge ${
-                        sale.status === 'completed' 
-                          ? 'badge-success' 
-                          : 'badge-warning'
-                      }`}>
-                        {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
-                      </span>
                     </div>
                     <div className="relative">
                       <button 

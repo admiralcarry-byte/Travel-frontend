@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { formatMethodName, getMethodIcon } from '../utils/paymentMethodUtils';
 
-const PaymentMethodsTable = ({ data }) => {
+const PaymentMethodsTable = ({ data, currency = 'USD' }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
@@ -134,10 +134,10 @@ const PaymentMethodsTable = ({ data }) => {
                     {detail.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {detail._id.currency}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                    U${detail.totalAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {currency === 'ARS' ? 'AR$' : 'U$'}{detail.totalAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                    U${detail.avgAmountUSD ? detail.avgAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'N/A'}
+                    {currency === 'ARS' ? 'AR$' : 'U$'}{detail.avgAmountUSD ? detail.avgAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'N/A'}
                   </td>
                 </tr>
               ))}

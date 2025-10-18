@@ -33,7 +33,20 @@ const CupoDetails = () => {
         setCupo(response.data.data.cupo);
       }
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to fetch cupo data');
+      console.error('Failed to fetch cupo data:', error);
+      
+      if (error.response?.status === 401) {
+        setError('Authentication required. Please log in again.');
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+      } else if (error.response?.status === 403) {
+        setError('Access denied. You need admin or seller permissions to view cupo details.');
+      } else if (error.response?.status === 404) {
+        setError('Cupo not found or you do not have permission to view it.');
+      } else {
+        setError(error.response?.data?.message || 'Failed to fetch cupo data');
+      }
     } finally {
       setLoading(false);
     }

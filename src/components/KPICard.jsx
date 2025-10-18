@@ -1,6 +1,6 @@
 import React from 'react';
 
-const KPICard = ({ title, value, subtitle, icon, color = 'blue', trend, trendValue, delay = 0, valueType = 'currency' }) => {
+const KPICard = ({ title, value, subtitle, icon, color = 'blue', trend, trendValue, delay = 0, valueType = 'currency', useFullNumber = false, currency = 'USD' }) => {
   // Icon mapping for modern SVG icons
   const iconComponents = {
     'money': (
@@ -43,12 +43,21 @@ const KPICard = ({ title, value, subtitle, icon, color = 'blue', trend, trendVal
       const sign = isNegative ? '-' : '';
       
       if (valueType === 'currency') {
-        if (absVal >= 1000000) {
-          return `${sign}U$${(absVal / 1000000).toFixed(1)}M`;
-        } else if (absVal >= 1000) {
-          return `${sign}U$${(absVal / 1000).toFixed(1)}K`;
+        // Get currency symbol
+        const currencySymbol = currency === 'ARS' ? 'AR$' : 'U$';
+        
+        if (useFullNumber) {
+          // Display full number with proper formatting (no decimal places)
+          return `${sign}${currencySymbol}${absVal.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
         } else {
-          return `${sign}U$${absVal.toFixed(2)}`;
+          // Use abbreviated format (original behavior)
+          if (absVal >= 1000000) {
+            return `${sign}${currencySymbol}${(absVal / 1000000).toFixed(1)}M`;
+          } else if (absVal >= 1000) {
+            return `${sign}${currencySymbol}${(absVal / 1000).toFixed(1)}K`;
+          } else {
+            return `${sign}${currencySymbol}${absVal.toFixed(2)}`;
+          }
         }
       } else if (valueType === 'number') {
         // Format as plain number with commas

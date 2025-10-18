@@ -6,7 +6,8 @@ const PaymentEditModal = ({
   isOpen, 
   onClose, 
   onSave, 
-  saving = false 
+  saving = false,
+  saleCurrency = 'USD'
 }) => {
   const [formData, setFormData] = useState({
     amount: '',
@@ -22,25 +23,45 @@ const PaymentEditModal = ({
   const [receiptFile, setReceiptFile] = useState(null);
   const [extracting, setExtracting] = useState(false);
   const [extractionError, setExtractionError] = useState('');
+  const [extractedCurrency, setExtractedCurrency] = useState('');
+  const [showExchangeRate, setShowExchangeRate] = useState(false);
+  const [convertedAmount, setConvertedAmount] = useState(null);
 
-  // Calculate USD equivalent when amount, currency, or exchange rate changes
-  const calculateUsdEquivalent = () => {
+  // Calculate converted amount when amount, currency, or exchange rate changes
+  const calculateConvertedAmount = () => {
     if (!formData.amount || !formData.currency) {
+      setConvertedAmount(null);
       setUsdEquivalent(null);
       return;
     }
 
-    if (formData.currency === 'USD') {
+    if (formData.currency === saleCurrency) {
+      // Same currency, no conversion needed
+      setConvertedAmount(parseFloat(formData.amount));
       setUsdEquivalent(parseFloat(formData.amount));
-    } else if (formData.currency !== 'USD' && formData.exchangeRate) {
+    } else if (formData.currency !== saleCurrency && formData.exchangeRate) {
       const amount = parseFloat(formData.amount);
       const rate = parseFloat(formData.exchangeRate);
       if (amount && rate) {
-        setUsdEquivalent(amount / rate);
+        if (saleCurrency === 'USD') {
+          // Converting to USD: divide by exchange rate (e.g., 1600 ARS / 4 = 400 USD)
+          setConvertedAmount(amount / rate);
+        } else if (saleCurrency === 'ARS') {
+          // Converting to ARS: multiply by exchange rate (e.g., 1600 USD * 4 = 6400 ARS)
+          setConvertedAmount(amount * rate);
+        }
+        // Always show USD equivalent for reference
+        if (formData.currency === 'ARS') {
+          setUsdEquivalent(amount / rate); // ARS to USD: divide by rate
+        } else if (formData.currency === 'USD') {
+          setUsdEquivalent(amount); // Already in USD
+        }
       } else {
+        setConvertedAmount(null);
         setUsdEquivalent(null);
       }
     } else {
+      setConvertedAmount(null);
       setUsdEquivalent(null);
     }
   };
@@ -76,7 +97,7 @@ const PaymentEditModal = ({
         method: payment.method || '',
         date: new Date(payment.date).toISOString().split('T')[0],
         notes: payment.notes || '',
-        exchangeRate: payment.exchangeRate ? (1 / payment.exchangeRate).toString() : ''
+        exchangeRate: payment.exchangeRate ? payment.exchangeRate.toString() : ''
       });
       // Fetch payment methods when modal opens
       fetchPaymentMethods();
@@ -85,8 +106,8 @@ const PaymentEditModal = ({
 
   // Recalculate USD equivalent when form data changes
   useEffect(() => {
-    calculateUsdEquivalent();
-  }, [formData.amount, formData.currency, formData.exchangeRate]);
+    calculateConvertedAmount();
+  }, [formData.amount, formData.currency, formData.exchangeRate, saleCurrency]);
 
   // Handle receipt file upload
   const handleFileChange = (e) => {
@@ -124,7 +145,19 @@ const PaymentEditModal = ({
           handleInputChange('amount', extractedData.amount.toString());
         }
         if (extractedData.currency) {
-          handleInputChange('currency', extractedData.currency);
+          const extractedCurr = extractedData.currency.toUpperCase();
+          setExtractedCurrency(extractedCurr);
+          handleInputChange('currency', extractedCurr);
+          
+          // Check if currency conversion is needed
+          if (extractedCurr !== saleCurrency) {
+            setShowExchangeRate(true);
+            // Clear existing exchange rate when currency changes
+            handleInputChange('exchangeRate', '');
+          } else {
+            setShowExchangeRate(false);
+            handleInputChange('exchangeRate', '');
+          }
         }
         if (extractedData.date) {
           // Convert date to YYYY-MM-DD format for input
@@ -153,25 +186,54 @@ const PaymentEditModal = ({
       ...prev,
       [field]: value
     }));
+    
+    // Check if currency conversion is needed when currency changes
+    if (field === 'currency') {
+      if (value && value !== saleCurrency) {
+        setShowExchangeRate(true);
+        setFormData(prev => ({
+          ...prev,
+          exchangeRate: ''
+        }));
+      } else {
+        setShowExchangeRate(false);
+        setFormData(prev => ({
+          ...prev,
+          exchangeRate: ''
+        }));
+      }
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Calculate USD amount if currency is not USD
+    // Handle currency conversion
     let updateData = { ...formData };
     
-    if (formData.currency !== 'USD') {
+    if (formData.currency !== saleCurrency) {
       if (!formData.exchangeRate) {
-        alert('Exchange rate is required for non-USD currencies');
+        alert(`Exchange rate is required to convert ${formData.currency} to ${saleCurrency}`);
         return;
       }
       const exchangeRate = parseFloat(formData.exchangeRate);
-      updateData.amount = parseFloat(formData.amount) * (1 / exchangeRate);
-      updateData.exchangeRate = 1 / exchangeRate;
-      updateData.baseCurrency = 'USD';
+      
+      // Convert amount based on sale currency
+      if (saleCurrency === 'USD') {
+        // Converting to USD: divide by exchange rate (e.g., 1600 ARS / 4 = 400 USD)
+        updateData.amount = parseFloat(formData.amount) / exchangeRate;
+        updateData.currency = 'USD';
+      } else if (saleCurrency === 'ARS') {
+        // Converting to ARS: multiply by exchange rate (e.g., 1600 USD * 4 = 6400 ARS)
+        updateData.amount = parseFloat(formData.amount) * exchangeRate;
+        updateData.currency = 'ARS';
+      }
+      
+      updateData.exchangeRate = exchangeRate;
+      updateData.baseCurrency = saleCurrency;
     } else {
       updateData.amount = parseFloat(formData.amount);
+      updateData.currency = formData.currency;
       updateData.exchangeRate = null;
       updateData.baseCurrency = null;
     }
@@ -183,7 +245,28 @@ const PaymentEditModal = ({
     updateData.originalAmount = parseFloat(formData.amount);
     updateData.originalCurrency = formData.currency;
 
-    onSave(updateData);
+    // If a receipt file was uploaded, create FormData to handle file upload
+    if (receiptFile) {
+      const submitData = new FormData();
+      
+      // Append all the form data
+      Object.keys(updateData).forEach(key => {
+        if (key === 'date') {
+          submitData.append(key, updateData[key].toISOString());
+        } else if (updateData[key] !== null && updateData[key] !== undefined) {
+          submitData.append(key, updateData[key]);
+        }
+      });
+      
+      // Append the receipt file
+      submitData.append('receipt', receiptFile);
+      
+      // Call onSave with FormData for file upload
+      onSave(submitData);
+    } else {
+      // No receipt file, use regular object
+      onSave(updateData);
+    }
   };
 
   if (!isOpen || !payment) return null;
@@ -299,48 +382,67 @@ const PaymentEditModal = ({
             </div>
           </div>
 
-          {/* USD Equivalent Display */}
+          {/* Currency Conversion Display */}
           {formData.currency && formData.amount && (
             <div className="bg-primary-500/5 border border-primary-500/20 rounded-lg p-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-dark-200">
-                  USD Equivalent:
+                  {formData.currency !== saleCurrency ? `${saleCurrency} Equivalent:` : 'USD Equivalent:'}
                 </span>
                 <span className="text-sm font-semibold text-primary-400">
-                  {usdEquivalent !== null 
-                    ? `U$${usdEquivalent.toFixed(2)} USD`
-                    : formData.currency === 'USD' 
-                      ? `U$${parseFloat(formData.amount || 0).toFixed(2)} USD`
+                  {formData.currency !== saleCurrency ? (
+                    convertedAmount !== null 
+                      ? `${saleCurrency} ${convertedAmount.toFixed(2)}`
                       : 'Enter exchange rate'
-                  }
+                  ) : (
+                    usdEquivalent !== null 
+                      ? `USD ${usdEquivalent.toFixed(2)}`
+                      : `${saleCurrency} ${parseFloat(formData.amount || 0).toFixed(2)}`
+                  )}
                 </span>
               </div>
-              {formData.currency !== 'USD' && !formData.exchangeRate && (
+              {formData.currency !== saleCurrency && !formData.exchangeRate && (
                 <p className="text-xs text-dark-400 mt-1">
-                  Enter exchange rate below to calculate USD equivalent
+                  Enter exchange rate below to calculate {saleCurrency} equivalent
                 </p>
               )}
             </div>
           )}
 
-          {/* Exchange Rate for non-USD currencies */}
-          {formData.currency !== 'USD' && (
-            <div>
-              <label className="block text-sm font-medium text-dark-200 mb-2">
-                Exchange Rate (USD to {formData.currency})
-              </label>
-              <input
-                type="number"
-                step="0.0001"
-                value={formData.exchangeRate}
-                onChange={(e) => handleInputChange('exchangeRate', e.target.value)}
-                className="w-full px-3 py-2 bg-dark-600 border border-dark-500 rounded-md text-white focus:border-primary-500 focus:outline-none"
-                placeholder="e.g., 1000 (for ARS)"
-                required
-              />
-              <p className="text-xs text-dark-400 mt-1">
-                Enter how many {formData.currency} equal 1 USD
-              </p>
+          {/* Exchange Rate for currency conversion */}
+          {showExchangeRate && formData.currency && formData.currency !== saleCurrency && (
+            <div className="bg-primary-500/5 border border-primary-500/20 rounded-lg p-4">
+              <div className="mb-3">
+                <h4 className="text-sm font-medium text-dark-200">Currency Conversion Required *</h4>
+                <p className="text-xs text-dark-400 mt-1">
+                  The currency ({formData.currency}) differs from the sale currency ({saleCurrency}). 
+                  Please enter the exchange rate to convert the amount.
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-2">
+                  Exchange Rate *
+                </label>
+                <input
+                  type="number"
+                  step="0.0001"
+                  value={formData.exchangeRate}
+                  onChange={(e) => handleInputChange('exchangeRate', e.target.value)}
+                  className="w-full px-3 py-2 bg-dark-600 border border-dark-500 rounded-md text-white focus:border-primary-500 focus:outline-none"
+                  placeholder={saleCurrency === 'USD' 
+                    ? `How many ${formData.currency} = 1 USD?` 
+                    : `How many ${saleCurrency} = 1 ${formData.currency}?`
+                  }
+                  required
+                />
+                <p className="text-xs text-dark-400 mt-1">
+                  {saleCurrency === 'USD' 
+                    ? `Enter how many ${formData.currency} equal 1 USD (e.g., if 1 USD = 4 ARS, enter 4)`
+                    : `Enter how many ${saleCurrency} equal 1 ${formData.currency} (e.g., if 1 USD = 4 ARS, enter 4)`
+                  }
+                </p>
+              </div>
             </div>
           )}
 

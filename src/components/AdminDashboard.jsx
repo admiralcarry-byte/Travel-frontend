@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useSystemStats } from '../contexts/SystemStatsContext';
-import { formatCurrencyCompact } from '../utils/formatNumbers';
+import { formatCurrency, formatCurrencyCompact } from '../utils/formatNumbers';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -416,8 +416,8 @@ const AdminDashboard = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {/* Total Revenue */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* USD Sales */}
             <div className="card-neon hover-lift p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="icon-container bg-success-500">
@@ -425,19 +425,38 @@ const AdminDashboard = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                   </svg>
                 </div>
-                <span className="text-success-400 text-sm font-medium">
-                  {loading ? '...' : `+${businessStats.monthlyGrowth}%`}
-                </span>
+                <span className="text-success-400 text-sm font-medium">USD</span>
               </div>
-              <h4 className="text-lg font-semibold text-dark-100 mb-2">Total Revenue</h4>
+              <h4 className="text-lg font-semibold text-dark-100 mb-2">Sales in USD</h4>
               <p className="text-3xl font-bold text-success-400">
                 {loading ? (
                   <div className="animate-pulse bg-success-400/20 h-8 w-32 rounded"></div>
                 ) : (
-                  formatCurrencyCompact(businessStats.totalRevenue)
+                  formatCurrency(businessStats.usdSales, 'USD')
                 )}
               </p>
-              <p className="text-sm text-dark-400 mt-2">All time revenue</p>
+              <p className="text-sm text-dark-400 mt-2">USD transactions</p>
+            </div>
+
+            {/* ARS Sales */}
+            <div className="card-neon hover-lift p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="icon-container bg-warning-500">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                  </svg>
+                </div>
+                <span className="text-warning-400 text-sm font-medium">ARS</span>
+              </div>
+              <h4 className="text-lg font-semibold text-dark-100 mb-2">Sales in ARS</h4>
+              <p className="text-3xl font-bold text-warning-400">
+                {loading ? (
+                  <div className="animate-pulse bg-warning-400/20 h-8 w-32 rounded"></div>
+                ) : (
+                  formatCurrency(businessStats.arsSales, 'ARS')
+                )}
+              </p>
+              <p className="text-sm text-dark-400 mt-2">ARS transactions</p>
             </div>
 
             {/* Total Sales */}

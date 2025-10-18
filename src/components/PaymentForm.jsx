@@ -3,7 +3,7 @@ import api from '../utils/api';
 import ProvisionalReceipt from './ProvisionalReceipt';
 import Modal from './Modal';
 
-const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
+const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel, saleCurrency = 'USD' }) => {
   const [formData, setFormData] = useState({
     amount: '',
     currencyType: '',
@@ -27,6 +27,8 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
   const [addingMethod, setAddingMethod] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [extractionError, setExtractionError] = useState('');
+  const [extractedCurrency, setExtractedCurrency] = useState('');
+  const [showExchangeRate, setShowExchangeRate] = useState(false);
 
 
   useEffect(() => {
@@ -41,14 +43,23 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
   }, [formData.currencyType]);
 
   useEffect(() => {
-    if (exchangeRate && formData.amount && formData.currencyType && formData.currencyType !== 'USD') {
-      // Exchange rate represents how many foreign currency units equal 1 USD
-      // So to convert foreign currency to USD, we divide by the rate
-      setConvertedAmount(parseFloat(formData.amount) / parseFloat(exchangeRate));
-    } else if (formData.currencyType && formData.currencyType === 'USD') {
+    if (exchangeRate && formData.amount && formData.currencyType && formData.currencyType !== saleCurrency) {
+      const amount = parseFloat(formData.amount);
+      const rate = parseFloat(exchangeRate);
+      
+      if (saleCurrency === 'USD') {
+        // Converting to USD: divide by exchange rate (e.g., 1600 ARS / 4 = 400 USD)
+        setConvertedAmount(amount / rate);
+      } else if (saleCurrency === 'ARS') {
+        // Converting to ARS: multiply by exchange rate (e.g., 1600 USD * 4 = 6400 ARS)
+        setConvertedAmount(amount * rate);
+      }
+    } else if (formData.currencyType && formData.currencyType === saleCurrency) {
       setConvertedAmount(parseFloat(formData.amount));
+    } else {
+      setConvertedAmount(null);
     }
-  }, [exchangeRate, formData.amount, formData.currencyType]);
+  }, [exchangeRate, formData.amount, formData.currencyType, saleCurrency]);
 
   const fetchCurrencies = async () => {
     try {
@@ -89,6 +100,19 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
       [name]: value
     }));
     setError('');
+    
+    // Check if currency conversion is needed when currency type changes
+    if (name === 'currencyType') {
+      if (value && value !== saleCurrency) {
+        setShowExchangeRate(true);
+        setExchangeRate('');
+        setConvertedAmount(null);
+      } else {
+        setShowExchangeRate(false);
+        setExchangeRate('');
+        setConvertedAmount(null);
+      }
+    }
   };
 
   const handleFileChange = (e) => {
@@ -129,10 +153,24 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
           }));
         }
         if (extractedData.currency) {
+          const extractedCurr = extractedData.currency.toUpperCase();
+          setExtractedCurrency(extractedCurr);
           setFormData(prev => ({
             ...prev,
-            currencyType: extractedData.currency
+            currencyType: extractedCurr
           }));
+          
+          // Check if currency conversion is needed
+          if (extractedCurr !== saleCurrency) {
+            setShowExchangeRate(true);
+            // Clear existing exchange rate when currency changes
+            setExchangeRate('');
+            setConvertedAmount(null);
+          } else {
+            setShowExchangeRate(false);
+            setExchangeRate('');
+            setConvertedAmount(null);
+          }
         }
         if (extractedData.date) {
           // Convert date to YYYY-MM-DD format for input
@@ -200,15 +238,17 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
       submitData.append('date', formData.date);
       submitData.append('notes', formData.notes);
       
-      // Include exchange rate if currency is not USD (now mandatory)
-      if (formData.currencyType !== 'USD') {
+      // Include exchange rate if currency conversion is needed
+      if (formData.currencyType !== saleCurrency) {
         if (!exchangeRate) {
-          setError('Exchange rate is required for non-USD currencies');
+          setError(`Exchange rate is required to convert ${formData.currencyType} to ${saleCurrency}`);
           setLoading(false);
           return;
         }
         submitData.append('exchangeRate', exchangeRate);
-        submitData.append('baseCurrency', 'USD');
+        submitData.append('baseCurrency', saleCurrency);
+        submitData.append('originalCurrency', formData.currencyType);
+        submitData.append('originalAmount', formData.amount);
       }
       
       if (receiptFile) {
@@ -254,6 +294,8 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
     setConvertedAmount(null);
     setShowAddMethod(false);
     setNewMethodName('');
+    setExtractedCurrency('');
+    setShowExchangeRate(false);
   };
 
   if (showReceipt) {
@@ -413,12 +455,13 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
           </div>
         </div>
 
-        {formData.currencyType && formData.currencyType !== 'USD' && (
+        {showExchangeRate && formData.currencyType && formData.currencyType !== saleCurrency && (
           <div className="bg-primary-500/5 border border-primary-500/20 rounded-lg p-4">
             <div className="mb-3">
-              <h4 className="text-sm font-medium text-dark-200">Exchange Rate *</h4>
+              <h4 className="text-sm font-medium text-dark-200">Currency Conversion Required *</h4>
               <p className="text-xs text-dark-400 mt-1">
-                Manual exchange rate entry is required for non-USD currencies
+                The extracted currency ({formData.currencyType}) differs from the sale currency ({saleCurrency}). 
+                Please enter the exchange rate to convert the amount.
               </p>
             </div>
             
@@ -436,19 +479,25 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel }) => {
                   min="0"
                   step="0.0001"
                   className="input-field"
-                  placeholder={`How many ${formData.currencyType} = 1 USD?`}
+                  placeholder={saleCurrency === 'USD' 
+                    ? `How many ${formData.currencyType} = 1 USD?` 
+                    : `How many ${saleCurrency} = 1 ${formData.currencyType}?`
+                  }
                 />
                 <p className="mt-1 text-xs text-dark-400">
-                  Enter how many {formData.currencyType} equal 1 USD (e.g., if 1 USD = 4 ARS, enter 4)
+                  {saleCurrency === 'USD' 
+                    ? `Enter how many ${formData.currencyType} equal 1 USD (e.g., if 1 USD = 4 ARS, enter 4)`
+                    : `Enter how many ${saleCurrency} equal 1 ${formData.currencyType} (e.g., if 1 USD = 4 ARS, enter 4)`
+                  }
                 </p>
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-dark-200 mb-2">
-                  USD Equivalent
+                  {saleCurrency} Equivalent
                 </label>
                 <div className="input-field bg-gray-100 text-gray-700">
-                  {convertedAmount ? `U$${convertedAmount.toFixed(2)} USD` : 'Enter amount and rate'}
+                  {convertedAmount ? `${saleCurrency} ${convertedAmount.toFixed(2)}` : 'Enter amount and rate'}
                 </div>
               </div>
             </div>

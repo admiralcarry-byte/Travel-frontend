@@ -5,6 +5,7 @@ import NewSaleWizardSteps from '../components/NewSaleWizardSteps';
 import ProviderCreationModal from '../components/ProviderCreationModal';
 import AddServiceTemplateModal from '../components/AddServiceTemplateModal';
 import AddServiceTypeModal from '../components/AddServiceTypeModal';
+import ServiceEntryModal from '../components/ServiceEntryModal';
 import ServiceTypeService from '../services/serviceTypeService';
 
 const SaleWizard = () => {
@@ -37,11 +38,28 @@ const SaleWizard = () => {
   // Template Editing state
   const [editingTemplate, setEditingTemplate] = useState(null);
 
+  // Global currency state for consistency across all sales steps
+  const [globalCurrency, setGlobalCurrency] = useState('USD');
+  const [currencyLocked, setCurrencyLocked] = useState(false);
+
   // Price per Passenger state
   const [pricePerPassenger, setPricePerPassenger] = useState('');
   const [passengerCurrency, setPassengerCurrency] = useState('USD');
-  const [passengerExchangeRate, setPassengerExchangeRate] = useState('');
-  const [passengerConvertedAmount, setPassengerConvertedAmount] = useState(null);
+  
+  // Compute converted amount for passenger pricing (no exchange rate conversion)
+  const passengerConvertedAmount = pricePerPassenger;
+
+  // Function to handle currency changes and enforce consistency
+  const handleCurrencyChange = (newCurrency) => {
+    if (currencyLocked) {
+      // If currency is locked, don't allow changes
+      return;
+    }
+    
+    setPassengerCurrency(newCurrency);
+    setGlobalCurrency(newCurrency);
+    setSaleCurrency(newCurrency); // Also update the sale currency
+  };
 
   // Step 1: Passengers
   const [selectedPassengers, setSelectedPassengers] = useState([]);
@@ -60,8 +78,6 @@ const SaleWizard = () => {
   // Step 3: Sale Price
   const [salePrice, setSalePrice] = useState('');
   const [saleCurrency, setSaleCurrency] = useState('USD');
-  const [exchangeRate, setExchangeRate] = useState('');
-  const [convertedAmount, setConvertedAmount] = useState(null);
   const [pricingModel, setPricingModel] = useState('unit');
   const [saleNotes, setSaleNotes] = useState('');
 
@@ -77,7 +93,6 @@ const SaleWizard = () => {
   const [providerLoading, setProviderLoading] = useState(false);
   const [expandedProviders, setExpandedProviders] = useState(new Set());
   const [providerFormData, setProviderFormData] = useState({});
-  const [providerExchangeRates, setProviderExchangeRates] = useState({});
 
   // Summary
   const [saleSummary, setSaleSummary] = useState(null);
@@ -149,9 +164,6 @@ const SaleWizard = () => {
     const clientIdParam = urlParams.get('clientId');
     
     if (location.state?.preSelectedPassenger && !isEditMode && !clientIdParam) {
-      console.log('🎯 Pre-selected passenger found:', location.state.preSelectedPassenger);
-      console.log('🔍 Pre-selected passenger DNI:', location.state.preSelectedPassenger.dni);
-      console.log('🔍 Pre-selected passenger fields:', Object.keys(location.state.preSelectedPassenger));
       
       // Check if pre-selected passenger has complete data (including DNI)
       if (!location.state.preSelectedPassenger.dni) {
@@ -200,12 +212,9 @@ const SaleWizard = () => {
         } else if (clientIdParam) {
           try {
             // Fetch client data using the clientId
-            console.log('🔍 Fetching client data for clientId:', clientIdParam);
             const response = await api.get(`/api/clients/${clientIdParam}`);
             if (response.data.success) {
               const clientData = response.data.data.client;
-              console.log('🔍 Fetched client data:', clientData);
-              console.log('🔍 Client DNI:', clientData.dni);
               
               // Set the client as pre-selected passenger with complete data
               setSelectedPassengers([clientData]);
@@ -245,13 +254,14 @@ const SaleWizard = () => {
     fetchProviders();
     fetchServices();
     fetchServiceTemplates();
+    fetchServiceTypes();
     
     // Set up periodic refresh for real-time synchronization
     // Only refresh if user is not actively working on services
     const interval = setInterval(() => {
       // Only refresh if no services are selected and not in edit mode
       if (serviceTemplateInstances.length === 0 && !isEditMode) {
-        fetchServiceTemplates();
+        fetchServiceTypes();
         fetchProviders();
       }
     }, 30000); // Refresh every 30 seconds
@@ -291,12 +301,12 @@ const SaleWizard = () => {
     }
   }, [companionSearch, isEditMode, currentStep, loading]);
 
-  // Ensure service templates are loaded when reaching step 3 (Select Service Template)
+  // Ensure service types are loaded when reaching step 3 (Select Service Template)
   useEffect(() => {
     if (currentStep === 3 && !isEditMode) {
-      console.log('🔄 User reached step 3, refreshing service templates...');
-      // Fetch service templates immediately without delay
-      fetchServiceTemplates();
+      console.log('🔄 User reached step 3, refreshing service types...');
+      // Fetch service types immediately without delay
+      fetchServiceTypes();
     }
   }, [currentStep, isEditMode]);
 
@@ -382,6 +392,18 @@ const SaleWizard = () => {
     }
   }, [isCupoReservation, cupoContext, serviceTemplates, serviceTemplateInstances.length]);
 
+  // Set currency from cupo when it's a cupo reservation
+  useEffect(() => {
+    if (isCupoReservation && cupoContext && cupoContext.metadata?.currency) {
+      const cupoCurrency = cupoContext.metadata.currency;
+      console.log(`🔄 Setting currency from cupo: ${cupoCurrency}`);
+      setPassengerCurrency(cupoCurrency);
+      setGlobalCurrency(cupoCurrency);
+      setSaleCurrency(cupoCurrency);
+      setCurrencyLocked(true); // Lock the currency for cupo reservations
+    }
+  }, [isCupoReservation, cupoContext]);
+
   // Filter available templates when service instances change
   useEffect(() => {
     if (serviceTemplates.length > 0) {
@@ -394,54 +416,25 @@ const SaleWizard = () => {
       
       // Show all templates - don't filter them out
       // The UI will handle disabling templates that have reached 7 selections
-      console.log('🔍 Setting available templates:');
-      console.log('  - Service instances:', serviceTemplateInstances);
-      console.log('  - Template selection counts:', templateSelectionCounts);
-      console.log('  - All templates:', serviceTemplates.map(t => ({ id: t._id, name: t.name })));
       
       setAvailableServiceTemplates(serviceTemplates);
     }
   }, [serviceTemplateInstances, serviceTemplates]);
 
+  // For step 3, we now use service types instead of service templates
+  // This effect is no longer needed for the new service type functionality
 
-  // Currency conversion effects
-  useEffect(() => {
-    if (saleCurrency === 'USD') {
-      setExchangeRate('');
-      setConvertedAmount(null);
-    }
-  }, [saleCurrency]);
 
-  useEffect(() => {
-    if (exchangeRate && salePrice && saleCurrency && saleCurrency !== 'USD') {
-      setConvertedAmount(parseFloat(salePrice) / parseFloat(exchangeRate));
-    } else if (saleCurrency === 'USD') {
-      setConvertedAmount(parseFloat(salePrice));
-    }
-  }, [exchangeRate, salePrice, saleCurrency]);
-
-  // Price per passenger currency conversion effects
-  useEffect(() => {
-    if (passengerCurrency === 'USD') {
-      setPassengerExchangeRate('');
-      setPassengerConvertedAmount(null);
-    }
-  }, [passengerCurrency]);
-
-  useEffect(() => {
-    if (passengerExchangeRate && pricePerPassenger && passengerCurrency && passengerCurrency !== 'USD') {
-      setPassengerConvertedAmount(parseFloat(pricePerPassenger) / parseFloat(passengerExchangeRate));
-    } else if (passengerCurrency === 'USD') {
-      setPassengerConvertedAmount(parseFloat(pricePerPassenger));
-    }
-  }, [passengerExchangeRate, pricePerPassenger, passengerCurrency]);
 
   // Connect pricePerPassenger to salePrice for sale creation
+  // Calculate total sale price (price per passenger × number of passengers)
   useEffect(() => {
     if (pricePerPassenger) {
-      setSalePrice(pricePerPassenger);
+      const totalPassengers = selectedPassengers.length + selectedCompanions.length;
+      const totalSalePrice = parseFloat(pricePerPassenger) * totalPassengers;
+      setSalePrice(totalSalePrice.toString());
     }
-  }, [pricePerPassenger]);
+  }, [pricePerPassenger, selectedPassengers.length, selectedCompanions.length]);
 
   const fetchServices = async () => {
     try {
@@ -472,13 +465,6 @@ const SaleWizard = () => {
       setPassengerLoading(true);
       const response = await api.get(`/api/clients?search=${passengerSearch}&limit=50&isMainClient=true`);
       if (response.data.success) {
-        console.log('Fetched available passengers:', response.data.data.clients);
-        // Debug: Check if DNI field is present in fetched data
-        if (response.data.data.clients.length > 0) {
-          console.log('🔍 First passenger from API:', response.data.data.clients[0]);
-          console.log('🔍 First passenger DNI:', response.data.data.clients[0].dni);
-          console.log('🔍 First passenger fields:', Object.keys(response.data.data.clients[0]));
-        }
         setAvailablePassengers(response.data.data.clients);
         
         // Auto-complete selected passengers with complete data if they're missing DNI
@@ -528,13 +514,6 @@ const SaleWizard = () => {
       const response = await api.get(`/api/clients/${selectedPassengers[0]._id}/companions?search=${companionSearch}`);
       if (response.data.success) {
         const companions = response.data.data.companions;
-        console.log('Fetched companions from API:', companions);
-        // Debug: Check if DNI field is present in companion data
-        if (companions.length > 0) {
-          console.log('🔍 First companion from API:', companions[0]);
-          console.log('🔍 First companion DNI:', companions[0].dni);
-          console.log('🔍 First companion fields:', Object.keys(companions[0]));
-        }
         setAvailableCompanions(companions);
         
         // Auto-complete selected companions with complete data if they're missing DNI
@@ -718,9 +697,6 @@ const SaleWizard = () => {
         if (sale.saleCurrency) {
           setSaleCurrency(sale.saleCurrency);
         }
-        if (sale.exchangeRate) {
-          setExchangeRate(sale.exchangeRate.toString());
-        }
         if (sale.saleNotes) {
           setSaleNotes(sale.saleNotes);
         }
@@ -735,14 +711,9 @@ const SaleWizard = () => {
         
         // Pre-populate services and providers
         if (sale.services && sale.services.length > 0) {
-          console.log('🔍 Sale services for edit mode:', sale.services);
           const selectedServiceTemplates = sale.services.map(serviceSale => {
-            console.log('Mapping service for edit mode:', serviceSale);
-            console.log('Service providers:', serviceSale.providers);
             if (serviceSale.providers) {
               serviceSale.providers.forEach((provider, index) => {
-                console.log(`Provider ${index}:`, provider);
-                console.log(`Provider ${index} documents:`, provider.documents);
               });
             }
             const mappedService = {
@@ -773,11 +744,6 @@ const SaleWizard = () => {
             if (serviceSale.providers && serviceSale.providers.length > 0) {
               serviceSale.providers.forEach(provider => {
                 const providerId = provider.providerId?._id || provider.providerId;
-                console.log('🔍 Processing provider for form data:', {
-                  providerId,
-                  provider,
-                  documents: provider.documents
-                });
                 if (providerId && !allProviders.find(p => p._id === providerId)) {
                   allProviders.push(provider.providerId || provider);
                   
@@ -843,9 +809,6 @@ const SaleWizard = () => {
       return;
     }
     
-    console.log('Selected passenger data:', JSON.stringify(passenger, null, 2));
-    console.log('🔍 Passenger DNI field:', passenger.dni);
-    console.log('🔍 All passenger fields:', Object.keys(passenger));
     
     // Ensure we use complete passenger data from available passengers if DNI is missing
     let completePassenger = passenger;
@@ -877,10 +840,6 @@ const SaleWizard = () => {
   };
 
   const toggleCompanionSelection = (companion) => {
-    console.log('toggleCompanionSelection called with:', companion);
-    console.log('🔍 Companion DNI field:', companion.dni);
-    console.log('🔍 All companion fields:', Object.keys(companion));
-    console.log('Current selectedCompanions before toggle:', selectedCompanions);
     
     const isSelected = selectedCompanions.find(c => c._id === companion._id);
     console.log('Is companion already selected?', isSelected);
@@ -1001,9 +960,6 @@ const SaleWizard = () => {
 
   // Helper function to get form data with defaults
   const getProviderFormData = (providerId) => {
-    console.log('🔍 Getting form data for provider:', providerId);
-    console.log('📁 All provider form data:', providerFormData);
-    console.log('📄 Specific provider data:', providerFormData[providerId]);
     
     return providerFormData[providerId] || {
       cost: '',
@@ -1082,10 +1038,6 @@ const SaleWizard = () => {
 
   const openFileModal = (providerId) => {
     const formData = getProviderFormData(providerId);
-    console.log('🔍 Opening file modal for provider:', providerId);
-    console.log('📁 Form data:', formData);
-    console.log('📄 Files (receipts):', formData.receipts);
-    console.log('📄 Files (documents):', formData.documents);
     
     // Combine existing documents with new receipts
     const existingDocuments = formData.documents || [];
@@ -1127,27 +1079,11 @@ const SaleWizard = () => {
   const fetchServiceTemplates = async () => {
     try {
       setServiceLoading(true);
-      console.log('🔍 Fetching service templates for sale wizard...');
-      console.log('🌐 API URL:', api.defaults.baseURL + '/api/service-templates/sale-wizard');
       
       const response = await api.get('/api/service-templates/sale-wizard');
       
-      console.log('📡 Full API response:', response);
-      console.log('📋 Response data:', response.data);
       
       if (response.data.success) {
-        console.log('📋 Raw service templates from API:', response.data.data.serviceTemplates);
-        console.log('📊 Total templates received:', response.data.data.serviceTemplates.length);
-        
-        // Log each template individually
-        response.data.data.serviceTemplates.forEach((template, index) => {
-          console.log(`Template ${index + 1}:`, {
-            id: template._id,
-            name: template.name,
-            category: template.category,
-            isActive: template.isActive
-          });
-        });
         
         const templates = response.data.data.serviceTemplates;
         setServiceTemplates(templates);
@@ -1354,10 +1290,8 @@ const SaleWizard = () => {
           // Also set the main sale currency based on the cupo service currency
           if (cupoServiceInstance.currency === 'ARS') {
             setSaleCurrency('ARS');
-            setExchangeRate(cupoServiceInstance.exchangeRate ? cupoServiceInstance.exchangeRate.toString() : '');
           } else {
             setSaleCurrency('USD');
-            setExchangeRate('');
           }
         }
         
@@ -1503,31 +1437,26 @@ const SaleWizard = () => {
     setCurrentServiceProvider(remaining.length > 0 ? remaining[0] : null);
   };
 
-  const addServiceInstance = () => {
+  const addServiceInstance = (serviceInstance = null) => {
+    // If serviceInstance is provided (from service type flow), add it directly
+    if (serviceInstance) {
+      setServiceTemplateInstances(prev => [...prev, serviceInstance]);
+      return;
+    }
+    
+    // Otherwise, validate service template fields
     if (!currentServiceTemplate || !currentServiceInfo || !currentServiceDates.checkIn || !currentServiceDates.checkOut || !currentServiceCost || currentServiceProviders.length === 0) {
       setError('Please complete all required fields for this service, including selecting at least one provider');
       return;
     }
 
-    // Validate exchange rate for ARS
-    if (currentServiceCurrency === 'ARS' && (!currentServiceExchangeRate || parseFloat(currentServiceExchangeRate) <= 0)) {
-      setError('Please provide a valid exchange rate for ARS to USD conversion');
-      return;
-    }
-
-    // Convert cost to USD if currency is ARS
+    // Use cost as provided (assuming it's already in USD)
     let costInUSD = parseFloat(currentServiceCost);
     let originalCurrency = currentServiceCurrency;
     let originalAmount = parseFloat(currentServiceCost);
     let exchangeRate = null;
 
-    if (currentServiceCurrency === 'ARS') {
-      exchangeRate = parseFloat(currentServiceExchangeRate);
-      costInUSD = originalAmount / exchangeRate;
-      originalCurrency = 'ARS'; // Keep track of original currency
-    }
-
-    const serviceInstance = {
+    const newServiceInstance = {
       id: currentServiceInstance?.id || Date.now(), // Use existing ID if editing, or create new one
       templateId: currentServiceTemplate._id,
       templateName: currentServiceTemplate.name,
@@ -1539,7 +1468,6 @@ const SaleWizard = () => {
       currency: 'USD', // Always store as USD in database
       originalCurrency: originalCurrency, // Keep track of original currency
       originalAmount: originalAmount, // Keep track of original amount
-      exchangeRate: exchangeRate, // Store exchange rate used for conversion
       provider: currentServiceProvider, // Keep for backward compatibility
       providers: currentServiceProviders, // New: Multiple providers
       destination: {
@@ -1551,17 +1479,15 @@ const SaleWizard = () => {
     // Update main sale currency and exchange rate based on service currency
     if (originalCurrency === 'ARS' && exchangeRate) {
       setSaleCurrency('ARS');
-      setExchangeRate(exchangeRate.toString());
     } else if (originalCurrency === 'USD') {
       setSaleCurrency('USD');
-      setExchangeRate('');
     }
 
     if (currentServiceInstance) {
       // Editing existing service - update it
       setServiceTemplateInstances(prev => 
         prev.map(instance => 
-          instance.id === currentServiceInstance.id ? serviceInstance : instance
+          instance.id === currentServiceInstance.id ? newServiceInstance : instance
         )
       );
       
@@ -1576,23 +1502,22 @@ const SaleWizard = () => {
       
       // Update the currentServiceInstance to reflect the new values
       // This ensures the form shows the updated values
-      setCurrentServiceInstance(serviceInstance);
+      setCurrentServiceInstance(newServiceInstance);
       
       // Also update the form fields to reflect the new values
       // This ensures the comparison view shows the correct new values
-      setCurrentServiceInfo(serviceInstance.serviceInfo);
+      setCurrentServiceInfo(newServiceInstance.serviceInfo);
       setCurrentServiceDates({
-        checkIn: serviceInstance.checkIn,
-        checkOut: serviceInstance.checkOut
+        checkIn: newServiceInstance.checkIn,
+        checkOut: newServiceInstance.checkOut
       });
-      setCurrentServiceCost((serviceInstance.originalAmount || serviceInstance.cost).toString());
-      setCurrentServiceCurrency(serviceInstance.originalCurrency || serviceInstance.currency);
-      setCurrentServiceExchangeRate(serviceInstance.exchangeRate ? serviceInstance.exchangeRate.toString() : '');
-      setCurrentServiceProviders(serviceInstance.providers || [serviceInstance.provider]); // Update multiple providers
-      setCurrentServiceProvider(serviceInstance.provider); // Keep single provider for compatibility
+      setCurrentServiceCost((newServiceInstance.originalAmount || newServiceInstance.cost).toString());
+      setCurrentServiceCurrency(newServiceInstance.originalCurrency || newServiceInstance.currency);
+      setCurrentServiceProviders(newServiceInstance.providers || [newServiceInstance.provider]); // Update multiple providers
+      setCurrentServiceProvider(newServiceInstance.provider); // Keep single provider for compatibility
       setDestination({
-        city: serviceInstance.destination.city,
-        country: serviceInstance.destination.country
+        city: newServiceInstance.destination.city,
+        country: newServiceInstance.destination.country
       });
       
       // Don't reset form data when editing - keep the updated values visible
@@ -1601,27 +1526,26 @@ const SaleWizard = () => {
       // Creating new service - add it and update all other unconfigured services
       setServiceTemplateInstances(prev => {
         // First, add the new service instance
-        const updatedInstances = [...prev, serviceInstance];
+        const updatedInstances = [...prev, newServiceInstance];
         
         // Then update all other service instances that don't have cost/providers configured
         return updatedInstances.map(instance => {
           // If this instance doesn't have cost or providers configured, apply the same values
           // Skip the newly added service instance to avoid duplicating it
-          if (instance.id !== serviceInstance.id && 
+          if (instance.id !== newServiceInstance.id && 
               (instance.cost === 0 || !instance.cost || instance.isTemplateOnly) && 
               (instance.providers.length === 0 || !instance.providers || instance.isTemplateOnly)) {
             return {
               ...instance,
-              cost: serviceInstance.cost,
-              currency: serviceInstance.currency,
-              originalCurrency: serviceInstance.originalCurrency,
-              originalAmount: serviceInstance.originalAmount,
-              exchangeRate: serviceInstance.exchangeRate,
-              provider: serviceInstance.provider,
-              providers: serviceInstance.providers,
-              checkIn: serviceInstance.checkIn,
-              checkOut: serviceInstance.checkOut,
-              destination: serviceInstance.destination,
+              cost: newServiceInstance.cost,
+              currency: newServiceInstance.currency,
+              originalCurrency: newServiceInstance.originalCurrency,
+              originalAmount: newServiceInstance.originalAmount,
+              provider: newServiceInstance.provider,
+              providers: newServiceInstance.providers,
+              checkIn: newServiceInstance.checkIn,
+              checkOut: newServiceInstance.checkOut,
+              destination: newServiceInstance.destination,
               isTemplateOnly: false // Mark as configured
             };
           }
@@ -1694,11 +1618,25 @@ const SaleWizard = () => {
           console.log(`🔄 Adding provider to service: ${service.serviceInfo || service.templateName}`);
           const currentProviders = service.providers || (service.provider ? [service.provider] : []);
           
-          const newProviders = [...currentProviders, provider];
+          // Initialize provider with default cost values
+          const providerWithCost = {
+            ...provider,
+            costProvider: 0, // Default cost
+            currency: globalCurrency // Use global currency
+          };
+          
+          const newProviders = [...currentProviders, providerWithCost];
           console.log(`🔄 New providers count: ${newProviders.length}`);
+          
+          // Calculate new total service cost
+          const totalCost = newProviders.reduce((sum, provider) => {
+            return sum + (parseFloat(provider.costProvider) || 0);
+          }, 0);
+          
           const updatedService = {
             ...service,
             providers: newProviders,
+            cost: totalCost, // Update service total cost
             provider: newProviders.length > 0 ? newProviders[0] : null // Keep single provider for backward compatibility
           };
           console.log(`🔄 Updated service providers:`, updatedService.providers?.length || 0);
@@ -1743,6 +1681,66 @@ const SaleWizard = () => {
     );
   };
 
+  // Update individual provider cost
+  const updateProviderCost = (serviceId, providerId, providerIndex, cost) => {
+    setServiceTemplateInstances(prev => 
+      prev.map(service => {
+        if (service.id === serviceId || service._id === serviceId) {
+          const currentProviders = service.providers || (service.provider ? [service.provider] : []);
+          
+          // Update the provider at the specific index
+          if (providerIndex >= 0 && providerIndex < currentProviders.length) {
+            const updatedProviders = [...currentProviders];
+            updatedProviders[providerIndex] = {
+              ...updatedProviders[providerIndex],
+              costProvider: cost
+            };
+            
+            // Calculate new total service cost
+            const totalCost = updatedProviders.reduce((sum, provider) => {
+              return sum + (parseFloat(provider.costProvider) || 0);
+            }, 0);
+            
+            return {
+              ...service,
+              providers: updatedProviders,
+              cost: totalCost, // Update service total cost
+              provider: updatedProviders.length > 0 ? updatedProviders[0] : null // Keep single provider for backward compatibility
+            };
+          }
+        }
+        return service;
+      })
+    );
+  };
+
+  // Update individual provider currency
+  const updateProviderCurrency = (serviceId, providerId, providerIndex, currency) => {
+    setServiceTemplateInstances(prev => 
+      prev.map(service => {
+        if (service.id === serviceId || service._id === serviceId) {
+          const currentProviders = service.providers || (service.provider ? [service.provider] : []);
+          
+          // Update the provider at the specific index
+          if (providerIndex >= 0 && providerIndex < currentProviders.length) {
+            const updatedProviders = [...currentProviders];
+            updatedProviders[providerIndex] = {
+              ...updatedProviders[providerIndex],
+              currency: currency
+            };
+            
+            return {
+              ...service,
+              providers: updatedProviders,
+              provider: updatedProviders.length > 0 ? updatedProviders[0] : null // Keep single provider for backward compatibility
+            };
+          }
+        }
+        return service;
+      })
+    );
+  };
+
   const editServiceInstance = (instance) => {
     setCurrentServiceInstance(instance);
     setCurrentServiceTemplate(serviceTemplates.find(t => t._id === instance.templateId));
@@ -1755,7 +1753,6 @@ const SaleWizard = () => {
     setCurrentServiceCost((instance.originalAmount || instance.cost).toString());
     setCurrentServiceCurrency(instance.originalCurrency || instance.currency);
     // Restore exchange rate if it was used for ARS conversion
-    setCurrentServiceExchangeRate(instance.exchangeRate ? instance.exchangeRate.toString() : '');
     setCurrentServiceProvider(instance.provider);
     // Restore multiple providers
     setCurrentServiceProviders(instance.providers || (instance.provider ? [instance.provider] : []));
@@ -2021,6 +2018,10 @@ const SaleWizard = () => {
         setError(`Uploading ${totalFiles} document(s)... Please wait.`);
       }
 
+      // Calculate per-passenger price from total salePrice
+      const totalPassengers = selectedPassengers.length + selectedCompanions.length;
+      const perPassengerPrice = salePrice && totalPassengers > 0 ? parseFloat(salePrice) / totalPassengers : 0;
+      
       const saleData = {
         passengers: [
           ...selectedPassengers.map(p => {
@@ -2035,7 +2036,7 @@ const SaleWizard = () => {
               email: p.email || null,
               phone: p.phone || null,
               type: 'main_passenger',
-              price: salePrice ? parseFloat(salePrice) : 0
+              price: perPassengerPrice
             };
           }),
           ...selectedCompanions.map(c => {
@@ -2050,7 +2051,7 @@ const SaleWizard = () => {
               email: c.email || null,
               phone: c.phone || null,
               type: 'companion',
-              price: salePrice ? parseFloat(salePrice) : 0
+              price: perPassengerPrice
             };
           })
         ],
@@ -2077,10 +2078,9 @@ const SaleWizard = () => {
           checkIn: service.checkIn,
           checkOut: service.checkOut,
           cost: service.cost,
-          currency: service.currency,
+          currency: saleCurrency, // Use the sale currency instead of service currency
           originalCurrency: service.originalCurrency,
           originalAmount: service.originalAmount,
-          exchangeRate: service.exchangeRate,
           provider: {
             providerId: service.provider?.providerId || service.provider?._id,
             name: service.provider?.name,
@@ -2128,7 +2128,7 @@ const SaleWizard = () => {
             phone: provider.phone,
             email: provider.email,
             cost: formData.cost ? parseFloat(formData.cost) : null,
-            currency: formData.currency || 'USD',
+            currency: formData.currency || saleCurrency,
             usdAmount: parseFloat(usdAmount),
             startDate: formData.startDate || null,
             endDate: formData.endDate || null,
@@ -2145,9 +2145,8 @@ const SaleWizard = () => {
         }, 0),
         pricingModel: 'unit', // Always unit pricing
         saleCurrency,
-        exchangeRate: exchangeRate ? parseFloat(exchangeRate) : null,
         baseCurrency: 'USD',
-        originalSalePrice: salePrice ? parseFloat(salePrice) : null,
+        originalSalePrice: salePrice ? parseFloat(salePrice) : null, // This is the total price
         originalCurrency: saleCurrency,
         // Add cupo context for seat reservation
         ...(isCupoReservation && cupoContext && {
@@ -2252,10 +2251,6 @@ const SaleWizard = () => {
         return;
       }
       
-      if (currentStep === 2 && passengerCurrency === 'ARS' && (!passengerExchangeRate || parseFloat(passengerExchangeRate) <= 0)) {
-        setError('Please enter a valid exchange rate for ARS to USD conversion');
-        return;
-      }
       
       if (currentStep === 3 && serviceTemplateInstances.length === 0) {
         setError('Please select a service template to continue');
@@ -2284,6 +2279,13 @@ const SaleWizard = () => {
           setError('Please enter a valid service cost and select providers for all services to continue');
           return;
         }
+      }
+      
+      // Lock currency when moving from Step 2 (Price Per Passenger) to Step 3
+      if (currentStep === 2) {
+        setCurrencyLocked(true);
+        setGlobalCurrency(passengerCurrency);
+        setSaleCurrency(passengerCurrency); // Also lock the sale currency
       }
       
       setCurrentStep(currentStep + 1);
@@ -2410,6 +2412,10 @@ const SaleWizard = () => {
         });
       });
 
+      // Calculate per-passenger price from total salePrice
+      const totalPassengersNewFlow = selectedPassengers.length + selectedCompanions.length;
+      const perPassengerPriceNewFlow = salePrice && totalPassengersNewFlow > 0 ? parseFloat(salePrice) / totalPassengersNewFlow : 0;
+      
       // Prepare sale data for new flow
       const saleData = {
         clientId: selectedPassengers[0]._id, // Add the required clientId field
@@ -2429,7 +2435,7 @@ const SaleWizard = () => {
               email: p.email || '',
               phone: p.phone || '',
               type: 'main_passenger',
-              price: salePrice ? parseFloat(salePrice) : 0
+              price: perPassengerPriceNewFlow
             };
           }),
           ...selectedCompanions.map(c => {
@@ -2444,7 +2450,7 @@ const SaleWizard = () => {
               email: c.email || null,
               phone: c.phone || null,
               type: 'companion',
-              price: salePrice ? parseFloat(salePrice) : 0
+              price: perPassengerPriceNewFlow
             };
           })
         ],
@@ -2462,10 +2468,9 @@ const SaleWizard = () => {
           checkIn: instance.checkIn,
           checkOut: instance.checkOut,
           cost: instance.cost,
-          currency: instance.currency,
+          currency: saleCurrency, // Use the sale currency instead of instance currency
           originalCurrency: instance.originalCurrency,
           originalAmount: instance.originalAmount,
-          exchangeRate: instance.exchangeRate,
           provider: instance.provider,
           providers: instance.providers,
           destination: instance.destination,
@@ -2486,7 +2491,7 @@ const SaleWizard = () => {
             phone: provider.phone,
             email: provider.email,
             cost: formData.cost ? parseFloat(formData.cost) : null,
-            currency: formData.currency || 'USD',
+            currency: formData.currency || saleCurrency,
             usdAmount: parseFloat(usdAmount),
             startDate: formData.startDate || null,
             endDate: formData.endDate || null,
@@ -2501,7 +2506,6 @@ const SaleWizard = () => {
         }, 0),
         pricingModel: 'unit', // Always unit pricing
         saleCurrency,
-        exchangeRate: exchangeRate ? parseFloat(exchangeRate) : 1,
         notes: saleNotes || ''
       };
 
@@ -2634,6 +2638,10 @@ const SaleWizard = () => {
         }
       }
 
+      // Calculate per-passenger price from total salePrice
+      const totalPassengersUpdate = selectedPassengers.length + selectedCompanions.length;
+      const perPassengerPriceUpdate = salePrice && totalPassengersUpdate > 0 ? parseFloat(salePrice) / totalPassengersUpdate : 0;
+      
       // Prepare sale data for update
       const saleData = {
         clientId: clientId,
@@ -2641,12 +2649,12 @@ const SaleWizard = () => {
           ...selectedPassengers.map(p => ({
             isMainClient: true,
             clientId: clientId,
-            price: parseFloat(salePrice) || 0,
+            price: perPassengerPriceUpdate,
             notes: ''
           })),
           ...selectedCompanions.map(c => ({
             passengerId: c._id,
-            price: parseFloat(salePrice) || 0,
+            price: perPassengerPriceUpdate,
             notes: ''
           }))
         ],
@@ -2713,7 +2721,6 @@ const SaleWizard = () => {
           city: destination.city
         },
         saleCurrency: saleCurrency,
-        exchangeRate: exchangeRate ? parseFloat(exchangeRate) : 1,
         notes: saleNotes || ''
       };
 
@@ -2946,8 +2953,6 @@ const SaleWizard = () => {
           setCurrentServiceDates={setCurrentServiceDates}
           setCurrentServiceCost={setCurrentServiceCost}
           setCurrentServiceCurrency={setCurrentServiceCurrency}
-          currentServiceExchangeRate={currentServiceExchangeRate}
-          setCurrentServiceExchangeRate={setCurrentServiceExchangeRate}
           setCurrentServiceProvider={setCurrentServiceProvider}
           setCurrentServiceProviders={setCurrentServiceProviders}
           addServiceInstance={addServiceInstance}
@@ -2956,6 +2961,8 @@ const SaleWizard = () => {
           editServiceInstance={editServiceInstance}
           addProviderToService={addProviderToService}
           removeProviderFromService={removeProviderFromService}
+          updateProviderCost={updateProviderCost}
+          updateProviderCurrency={updateProviderCurrency}
           currentServiceInstance={currentServiceInstance}
           setCurrentServiceInstance={setCurrentServiceInstance}
           setCurrentServiceTemplate={setCurrentServiceTemplate}
@@ -2987,6 +2994,11 @@ const SaleWizard = () => {
           showAddServiceTemplateModal={showAddServiceTemplateModal}
           setShowAddServiceTemplateModal={setShowAddServiceTemplateModal}
           onServiceTemplateAdded={handleServiceTemplateAdded}
+          // Service Type Modal
+          showAddServiceTypeModal={showAddServiceTypeModal}
+          setShowAddServiceTypeModal={setShowAddServiceTypeModal}
+          onServiceTypeAdded={handleServiceTypeAdded}
+          serviceTypes={serviceTypes}
           // Service Template Search
           serviceTemplateSearch={serviceTemplateSearch}
           setServiceTemplateSearch={setServiceTemplateSearch}
@@ -2999,9 +3011,14 @@ const SaleWizard = () => {
           setPricePerPassenger={setPricePerPassenger}
           passengerCurrency={passengerCurrency}
           setPassengerCurrency={setPassengerCurrency}
-          passengerExchangeRate={passengerExchangeRate}
-          setPassengerExchangeRate={setPassengerExchangeRate}
           passengerConvertedAmount={passengerConvertedAmount}
+          // Currency Consistency
+          globalCurrency={globalCurrency}
+          currencyLocked={currencyLocked}
+          handleCurrencyChange={handleCurrencyChange}
+          // Cupo Context
+          cupoContext={cupoContext}
+          isCupoReservation={isCupoReservation}
         />
       </div>
 

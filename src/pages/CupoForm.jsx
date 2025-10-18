@@ -19,7 +19,6 @@ const CupoForm = () => {
       destination: '',
       value: '',
       currency: 'USD',
-      exchangeRate: '',
       providerRef: '',
       notes: ''
     },
@@ -47,6 +46,15 @@ const CupoForm = () => {
   const [providers, setProviders] = useState([]);
   const [providerLoading, setProviderLoading] = useState(false);
   const [showProviderModal, setShowProviderModal] = useState(false);
+
+  // New Service entry state
+  const [selectedServiceType, setSelectedServiceType] = useState(null);
+  const [serviceDescription, setServiceDescription] = useState('');
+  const [showServiceDescriptionModal, setShowServiceDescriptionModal] = useState(false);
+  const [serviceCard, setServiceCard] = useState(null);
+  const [isEditingServiceType, setIsEditingServiceType] = useState(false);
+  const [isEditingServiceTypeName, setIsEditingServiceTypeName] = useState(false);
+  const [editingServiceTypeName, setEditingServiceTypeName] = useState('');
 
   const currencyOptions = [
     { value: 'USD', label: 'USD' },
@@ -195,9 +203,138 @@ const CupoForm = () => {
       }
       return prev;
     });
+    
+    // Refresh service templates to include the new service type
+    fetchServiceTemplates();
+    
     setServiceInformation(newServiceType.name);
     setIsServiceTypeModalOpen(false);
     setShowServiceTypeDropdown(false);
+    
+    // Trigger service description modal for new service type
+    handleServiceTypeSelected(newServiceType);
+  };
+
+  // New Service entry handlers
+  const handleServiceTypeSelected = (serviceType) => {
+    setSelectedServiceType(serviceType);
+    setServiceDescription('');
+    setIsEditingServiceType(false);
+    setShowServiceDescriptionModal(true);
+  };
+
+  const handleServiceDescriptionComplete = () => {
+    if (selectedServiceType && serviceDescription.trim()) {
+      if (isEditingServiceType) {
+        // Update existing service type
+        updateServiceType(selectedServiceType._id, serviceDescription.trim());
+      } else {
+        // Create new service card
+        const newServiceCard = {
+          id: Date.now(),
+          type: selectedServiceType.name,
+          description: serviceDescription.trim()
+        };
+        setServiceCard(newServiceCard);
+      }
+      setShowServiceDescriptionModal(false);
+      setSelectedServiceType(null);
+      setServiceDescription('');
+      setIsEditingServiceType(false);
+    }
+  };
+
+  const handleServiceCardRemove = () => {
+    setServiceCard(null);
+  };
+
+  const updateServiceType = async (serviceTypeId, newDescription) => {
+    try {
+      const response = await api.put(`/api/service-types/${serviceTypeId}`, {
+        description: newDescription
+      });
+      
+      if (response.data.success) {
+        // Update the service types list
+        setServiceTypes(prev => 
+          prev.map(st => 
+            st._id === serviceTypeId 
+              ? { ...st, description: newDescription }
+              : st
+          )
+        );
+        
+        // Update service card if it exists
+        if (serviceCard) {
+          setServiceCard(prev => ({
+            ...prev,
+            description: newDescription
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update service type:', error);
+      setError('Failed to update service type');
+    }
+  };
+
+  const updateServiceTypeName = async (serviceTypeId, newName) => {
+    try {
+      const response = await api.put(`/api/service-types/${serviceTypeId}`, {
+        name: newName
+      });
+      
+      if (response.data.success) {
+        // Update the service types list
+        setServiceTypes(prev => 
+          prev.map(st => 
+            st._id === serviceTypeId 
+              ? { ...st, name: newName }
+              : st
+          )
+        );
+        
+        // Update form data if this service type is selected
+        if (formData.serviceTemplateId === serviceTypeId) {
+          setFormData(prev => ({
+            ...prev,
+            serviceTemplateId: serviceTypeId // Keep the same ID but the name will be updated in the dropdown
+          }));
+        }
+        
+        // Update service card if it exists
+        if (serviceCard) {
+          setServiceCard(prev => ({
+            ...prev,
+            type: newName
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update service type name:', error);
+      setError('Failed to update service type name');
+    }
+  };
+
+  const handleEditServiceTypeName = (serviceType) => {
+    setSelectedServiceType(serviceType);
+    setEditingServiceTypeName(serviceType.name);
+    setIsEditingServiceTypeName(true);
+  };
+
+  const handleSaveServiceTypeName = async () => {
+    if (selectedServiceType && editingServiceTypeName.trim()) {
+      await updateServiceTypeName(selectedServiceType._id, editingServiceTypeName.trim());
+      setIsEditingServiceTypeName(false);
+      setSelectedServiceType(null);
+      setEditingServiceTypeName('');
+    }
+  };
+
+  const handleCancelEditServiceTypeName = () => {
+    setIsEditingServiceTypeName(false);
+    setSelectedServiceType(null);
+    setEditingServiceTypeName('');
   };
 
   const openServiceTypeModal = () => {
@@ -248,6 +385,16 @@ const CupoForm = () => {
           [metadataField]: value
         }
       }));
+    } else if (name === 'serviceTemplateId') {
+      // Handle service type selection
+      const selectedServiceType = serviceTypes.find(st => st._id === value);
+      if (selectedServiceType) {
+        handleServiceTypeSelected(selectedServiceType);
+      }
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
     } else {
       setFormData(prev => ({
         ...prev,
@@ -263,30 +410,52 @@ const CupoForm = () => {
     setError('');
 
     try {
-      // Validate exchange rate for ARS
-      if (formData.metadata.currency === 'ARS' && (!formData.metadata.exchangeRate || parseFloat(formData.metadata.exchangeRate) <= 0)) {
-        setError('Please provide a valid exchange rate for ARS to USD conversion');
-        setLoading(false);
-        return;
+      // Create service directly instead of using service templates
+      let serviceId = null;
+      
+      if (serviceCard) {
+        // Create service from service card data
+        const serviceResponse = await api.post('/api/services', {
+          destino: serviceCard.type,
+          type: serviceCard.type,
+          description: serviceCard.description,
+          providerId: formData.providerId,
+          sellingPrice: formData.metadata.value || 0,
+          baseCurrency: formData.metadata.currency || 'USD'
+        });
+        
+        if (serviceResponse.data.success) {
+          serviceId = serviceResponse.data.data.service._id;
+        }
+      } else if (formData.serviceTemplateId) {
+        // If a service type is selected from dropdown, create service from it
+        const selectedServiceType = serviceTypes.find(st => st._id === formData.serviceTemplateId);
+        if (selectedServiceType) {
+          const serviceResponse = await api.post('/api/services', {
+            destino: selectedServiceType.name,
+            type: selectedServiceType.name,
+            description: selectedServiceType.name,
+            providerId: formData.providerId,
+            sellingPrice: formData.metadata.value || 0,
+            baseCurrency: formData.metadata.currency || 'USD'
+          });
+          
+          if (serviceResponse.data.success) {
+            serviceId = serviceResponse.data.data.service._id;
+          }
+        }
       }
 
-      // Prepare data with currency conversion
-      let submissionData = { ...formData };
-      
-      if (formData.metadata.currency === 'ARS') {
-        const originalAmount = parseFloat(formData.metadata.value);
-        const exchangeRate = parseFloat(formData.metadata.exchangeRate);
-        const convertedAmount = originalAmount / exchangeRate;
-        
-        submissionData.metadata = {
-          ...formData.metadata,
-          value: convertedAmount, // Store converted amount in USD
-          currency: 'USD', // Always store as USD in database
-          originalCurrency: 'ARS', // Keep track of original currency
-          originalAmount: originalAmount, // Keep track of original amount
-          exchangeRate: exchangeRate // Store exchange rate used
-        };
+      if (!serviceId) {
+        throw new Error('Failed to create service for cupo');
       }
+
+      const submissionData = {
+        ...formData,
+        serviceId: serviceId,
+        // Remove serviceTemplateId since we're using serviceId now
+        serviceTemplateId: undefined
+      };
 
       const response = await api.post('/api/cupos', submissionData);
 
@@ -297,7 +466,8 @@ const CupoForm = () => {
         }, 2000);
       }
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to create cupo');
+      console.error('Failed to create cupo:', error);
+      setError(error.response?.data?.message || error.message || 'Failed to create cupo');
     } finally {
       setLoading(false);
     }
@@ -339,48 +509,113 @@ const CupoForm = () => {
                     </label>
                     <button
                       type="button"
-                      onClick={openAddServiceModal}
+                      onClick={() => setIsServiceTypeModalOpen(true)}
                       className="text-xs text-primary-400 hover:text-primary-300 underline"
                     >
                       + Add New Service
                     </button>
                   </div>
                   <div className="relative">
-                    <select
-                      id="serviceTemplateId"
-                      name="serviceTemplateId"
-                      value={formData.serviceTemplateId}
-                      onChange={handleChange}
-                      required
-                      disabled={serviceLoading}
-                      className="input-field mt-1 pr-16"
-                    >
-                      <option value="">
-                        {serviceLoading ? 'Loading services...' : 'Select service'}
-                      </option>
-                      {serviceTemplates.map((service, index) => (
-                        <option key={service._id || `service-${index}`} value={service._id}>
-                          {service.name} - {service.description}
-                        </option>
-                      ))}
-                    </select>
-                    {/* Edit button positioned to the left of the dropdown arrow */}
-                    {formData.serviceTemplateId && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const selectedService = serviceTemplates.find(s => s._id === formData.serviceTemplateId);
-                          if (selectedService) editService(selectedService);
-                        }}
-                        className="absolute right-8 top-1/2 transform -translate-y-1/2 text-primary-400 hover:text-primary-300"
-                        title="Edit selected service"
-                      >
-                        ✏️
-                      </button>
+                    {isEditingServiceTypeName ? (
+                      <div className="flex items-center space-x-2 mt-1">
+                        <input
+                          type="text"
+                          value={editingServiceTypeName}
+                          onChange={(e) => setEditingServiceTypeName(e.target.value)}
+                          className="input-field flex-1"
+                          placeholder="Enter service type name"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleSaveServiceTypeName();
+                            } else if (e.key === 'Escape') {
+                              handleCancelEditServiceTypeName();
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSaveServiceTypeName}
+                          className="px-3 py-1 text-sm text-white bg-green-600 hover:bg-green-700 rounded"
+                          title="Save changes"
+                        >
+                          ✓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelEditServiceTypeName}
+                          className="px-3 py-1 text-sm text-white bg-red-600 hover:bg-red-700 rounded"
+                          title="Cancel editing"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <select
+                          id="serviceTemplateId"
+                          name="serviceTemplateId"
+                          value={formData.serviceTemplateId}
+                          onChange={handleChange}
+                          required
+                          disabled={serviceLoading}
+                          className="input-field mt-1 pr-16"
+                        >
+                          <option value="">
+                            {serviceLoading ? 'Loading services...' : 'Select service'}
+                          </option>
+                          {serviceTypes.map((serviceType, index) => (
+                            <option key={serviceType._id || `service-${index}`} value={serviceType._id}>
+                              {serviceType.name}
+                            </option>
+                          ))}
+                        </select>
+                        {/* Edit button positioned to the left of the dropdown arrow */}
+                        {formData.serviceTemplateId && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const selectedServiceType = serviceTypes.find(st => st._id === formData.serviceTemplateId);
+                              if (selectedServiceType) {
+                                // Start direct editing of service type name
+                                handleEditServiceTypeName(selectedServiceType);
+                              }
+                            }}
+                            className="absolute right-8 top-1/2 transform -translate-y-1/2 text-primary-400 hover:text-primary-300"
+                            title="Edit selected service type"
+                          >
+                            ✏️
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
+                
+                {/* Service Card Display */}
+                {serviceCard && (
+                  <div className="bg-dark-700/50 border border-white/10 rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-dark-100 mb-1">{serviceCard.type}</h4>
+                        <p className="text-xs text-dark-300">{serviceCard.description}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleServiceCardRemove}
+                        className="text-dark-400 hover:text-dark-200 ml-2"
+                        title="Remove service"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <div className="flex items-center justify-between">
                     <label htmlFor="providerId" className="block text-sm font-medium text-dark-200">
@@ -559,51 +794,6 @@ const CupoForm = () => {
                 </div>
               </div>
 
-              {/* Exchange Rate Input for ARS */}
-              {formData.metadata.currency === 'ARS' && (
-                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                  <div className="flex items-center mb-3">
-                    <svg className="w-5 h-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <h4 className="text-lg font-semibold text-green-300">Currency Conversion</h4>
-                  </div>
-                  <p className="text-sm text-green-200 mb-4">
-                    Since you selected ARS, please provide the exchange rate to convert to USD. 
-                    The amount will be stored in USD in the database for consistency.
-                  </p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-green-200 mb-2">
-                        Exchange Rate (1 USD = ? ARS) *
-                      </label>
-                      <input
-                        type="number"
-                        name="metadata.exchangeRate"
-                        value={formData.metadata.exchangeRate}
-                        onChange={handleChange}
-                        className="input-field"
-                        placeholder="e.g., 1000"
-                        step="0.01"
-                        min="0"
-                        required
-                      />
-                    </div>
-                    
-                    {formData.metadata.value && formData.metadata.exchangeRate && (
-                      <div>
-                        <label className="block text-sm font-medium text-green-200 mb-2">
-                          Converted Amount (USD)
-                        </label>
-                        <div className="input-field bg-dark-700 text-dark-100 cursor-not-allowed">
-                          ${(parseFloat(formData.metadata.value) / parseFloat(formData.metadata.exchangeRate)).toFixed(2)} USD
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -893,6 +1083,75 @@ const CupoForm = () => {
         onClose={() => setIsServiceTypeModalOpen(false)}
         onServiceTypeAdded={handleServiceTypeAdded}
       />
+
+      {/* Service Description Modal */}
+      {showServiceDescriptionModal && selectedServiceType && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-[10000]">
+          <div className="bg-dark-800/95 backdrop-blur-md rounded-lg p-6 w-full max-w-md mx-4 border border-white/10 shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-dark-100">Service Description</h2>
+              <button
+                onClick={() => {
+                  setShowServiceDescriptionModal(false);
+                  setSelectedServiceType(null);
+                  setServiceDescription('');
+                }}
+                className="text-dark-400 hover:text-dark-200 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-2">
+                  Service Type
+                </label>
+                <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-3">
+                  <p className="text-primary-300 font-medium">{selectedServiceType.name}</p>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="serviceDescription" className="block text-sm font-medium text-dark-200 mb-2">
+                  Service Description *
+                </label>
+                <textarea
+                  id="serviceDescription"
+                  value={serviceDescription}
+                  onChange={(e) => setServiceDescription(e.target.value)}
+                  className="input-field"
+                  placeholder="Enter service description..."
+                  rows={4}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <button
+                onClick={() => {
+                  setShowServiceDescriptionModal(false);
+                  setSelectedServiceType(null);
+                  setServiceDescription('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-dark-300 bg-dark-700 hover:bg-dark-600 border border-white/10 rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleServiceDescriptionComplete}
+                disabled={!serviceDescription.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Complete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

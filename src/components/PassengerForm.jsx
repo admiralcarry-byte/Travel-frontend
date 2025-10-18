@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import api from '../utils/api';
+import { API_BASE_URL } from '../config/api';
 
 const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -77,7 +78,7 @@ const PassengerForm = ({ clientId, onPassengerAdded, onCancel }) => {
       formData.append('passportImage', passportImage);
 
       // Call the backend OpenAI Vision API
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/passengers/ocr`, {
+      const response = await fetch(`${API_BASE_URL}/api/passengers/ocr`, {
         method: 'POST',
         body: formData,
         headers: {

@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { formatCurrency, formatCurrencyCompact } from '../utils/formatNumbers';
 
-const FinancialSummary = ({ sales, period = 'all' }) => {
+const FinancialSummary = ({ sales, period = 'all', selectedCurrency = 'ARS' }) => {
   const [selectedPeriod, setSelectedPeriod] = useState(period);
   const [viewMode, setViewMode] = useState('overview'); // 'overview', 'detailed', 'comparison'
 
-  // Filter sales by period
+  // Filter sales by period and currency
   const filteredSales = React.useMemo(() => {
-    if (!sales || selectedPeriod === 'all') return sales;
+    if (!sales) return [];
+
+    // First filter by currency
+    let currencyFiltered = sales.filter(sale => sale.saleCurrency === selectedCurrency);
+
+    // Then filter by period
+    if (selectedPeriod === 'all') return currencyFiltered;
 
     const now = new Date();
     const filterDate = new Date();
@@ -15,23 +21,23 @@ const FinancialSummary = ({ sales, period = 'all' }) => {
     switch (selectedPeriod) {
       case 'today':
         filterDate.setHours(0, 0, 0, 0);
-        return sales.filter(sale => new Date(sale.createdAt) >= filterDate);
+        return currencyFiltered.filter(sale => new Date(sale.createdAt) >= filterDate);
       case 'week':
         filterDate.setDate(now.getDate() - 7);
-        return sales.filter(sale => new Date(sale.createdAt) >= filterDate);
+        return currencyFiltered.filter(sale => new Date(sale.createdAt) >= filterDate);
       case 'month':
         filterDate.setMonth(now.getMonth() - 1);
-        return sales.filter(sale => new Date(sale.createdAt) >= filterDate);
+        return currencyFiltered.filter(sale => new Date(sale.createdAt) >= filterDate);
       case 'quarter':
         filterDate.setMonth(now.getMonth() - 3);
-        return sales.filter(sale => new Date(sale.createdAt) >= filterDate);
+        return currencyFiltered.filter(sale => new Date(sale.createdAt) >= filterDate);
       case 'year':
         filterDate.setFullYear(now.getFullYear() - 1);
-        return sales.filter(sale => new Date(sale.createdAt) >= filterDate);
+        return currencyFiltered.filter(sale => new Date(sale.createdAt) >= filterDate);
       default:
-        return sales;
+        return currencyFiltered;
     }
-  }, [sales, selectedPeriod]);
+  }, [sales, selectedPeriod, selectedCurrency]);
 
   // Calculate comprehensive financial metrics
   const financialMetrics = React.useMemo(() => {
@@ -243,7 +249,7 @@ const FinancialSummary = ({ sales, period = 'all' }) => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-dark-300">Total Revenue</p>
-              <p className="text-2xl font-semibold text-dark-100">{formatCurrency(financialMetrics.totalRevenue)}</p>
+              <p className="text-2xl font-semibold text-dark-100">{formatCurrency(financialMetrics.totalRevenue, selectedCurrency)}</p>
             </div>
           </div>
         </div>
@@ -259,7 +265,7 @@ const FinancialSummary = ({ sales, period = 'all' }) => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-dark-300">Total Cost</p>
-              <p className="text-2xl font-semibold text-dark-100">{formatCurrency(financialMetrics.totalCost)}</p>
+              <p className="text-2xl font-semibold text-dark-100">{formatCurrency(financialMetrics.totalCost, selectedCurrency)}</p>
             </div>
           </div>
         </div>
@@ -276,7 +282,7 @@ const FinancialSummary = ({ sales, period = 'all' }) => {
             <div className="ml-4">
               <p className="text-sm font-medium text-dark-300">Total Profit</p>
               <p className={`text-2xl font-semibold ${getProfitColor(financialMetrics.totalProfit)}`}>
-                {formatCurrency(financialMetrics.totalProfit)}
+                {formatCurrency(financialMetrics.totalProfit, selectedCurrency)}
               </p>
               <p className="text-sm text-dark-400">
                 {financialMetrics.averageProfitMargin.toFixed(1)}% margin
@@ -294,11 +300,11 @@ const FinancialSummary = ({ sales, period = 'all' }) => {
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-dark-300">Average Sale Value:</span>
-                <span className="text-dark-100 font-medium">{formatCurrency(financialMetrics.averageSaleValue)}</span>
+                <span className="text-dark-100 font-medium">{formatCurrency(financialMetrics.averageSaleValue, selectedCurrency)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-dark-300">Average Profit:</span>
-                <span className="text-dark-100 font-medium">{formatCurrency(financialMetrics.averageProfit)}</span>
+                <span className="text-dark-100 font-medium">{formatCurrency(financialMetrics.averageProfit, selectedCurrency)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-dark-300">Gross Profit Margin:</span>
@@ -393,14 +399,14 @@ const FinancialSummary = ({ sales, period = 'all' }) => {
                         {service.count}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100 text-right">
-                        {formatCurrency(service.totalRevenue)}
+                        {formatCurrency(service.totalRevenue, selectedCurrency)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100 text-right">
-                        {formatCurrency(service.totalCost)}
+                        {formatCurrency(service.totalCost, selectedCurrency)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <div className={`text-sm font-medium ${getProfitColor(service.totalProfit)}`}>
-                          {formatCurrency(service.totalProfit)}
+                          {formatCurrency(service.totalProfit, selectedCurrency)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -430,7 +436,7 @@ const FinancialSummary = ({ sales, period = 'all' }) => {
                 Passenger: {financialMetrics.topPerformingSale.clientId?.name} {financialMetrics.topPerformingSale.clientId?.surname}
               </div>
               <div className="text-sm font-medium text-green-400">
-                Profit: {formatCurrency(financialMetrics.topPerformingSale.profit)}
+                Profit: {formatCurrency(financialMetrics.topPerformingSale.profit, selectedCurrency)}
               </div>
               <div className="text-sm text-dark-300">
                 Margin: {financialMetrics.topPerformingSale.totalSalePrice > 0 ? 
@@ -458,7 +464,7 @@ const FinancialSummary = ({ sales, period = 'all' }) => {
               <div className="flex justify-between text-sm">
                 <span className="text-dark-300">Revenue per Sale:</span>
                 <span className="text-dark-100 font-medium">
-                  {formatCurrency(financialMetrics.averageSaleValue)}
+                  {formatCurrency(financialMetrics.averageSaleValue, selectedCurrency)}
                 </span>
               </div>
             </div>

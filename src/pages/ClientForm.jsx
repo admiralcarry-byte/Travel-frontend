@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import { API_BASE_URL } from '../config/api';
 
 // Companion Form Component
 const CompanionForm = ({ onAddCompanion, onCancel, initialData = null, isEditing = false, onUpdateCompanion = null }) => {
@@ -182,7 +183,7 @@ const CompanionForm = ({ onAddCompanion, onCancel, initialData = null, isEditing
       formData.append('passportImage', passportImage);
 
       // Call the backend OpenAI Vision API
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/passengers/ocr`, {
+      const response = await fetch(`${API_BASE_URL}/api/passengers/ocr`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -780,7 +781,7 @@ const ClientForm = () => {
       formData.append('passportImage', passportImage);
 
       // Call the backend OpenAI Vision API
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/clients/ocr`, {
+      const response = await fetch(`${API_BASE_URL}/api/clients/ocr`, {
         method: 'POST',
         body: formData,
         headers: {

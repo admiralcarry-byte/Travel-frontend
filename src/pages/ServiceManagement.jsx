@@ -26,8 +26,7 @@ const ServiceManagement = () => {
     description: '',
     providerId: '',
     cost: '',
-    currency: 'USD',
-    exchangeRate: ''
+    currency: 'USD'
   });
 
   // Provider form state
@@ -124,35 +123,11 @@ const ServiceManagement = () => {
     setError('');
 
     try {
-      // Validate exchange rate for ARS
-      if (serviceFormData.currency === 'ARS' && (!serviceFormData.exchangeRate || parseFloat(serviceFormData.exchangeRate) <= 0)) {
-        setError('Please provide a valid exchange rate for ARS to USD conversion');
-        setLoading(false);
-        return;
-      }
-
-      // Prepare data with currency conversion
-      let serviceData = { ...serviceFormData };
-      
-      if (serviceFormData.currency === 'ARS') {
-        const originalAmount = parseFloat(serviceFormData.cost);
-        const exchangeRate = parseFloat(serviceFormData.exchangeRate);
-        const convertedAmount = originalAmount / exchangeRate;
-        
-        serviceData = {
-          ...serviceFormData,
-          cost: convertedAmount, // Store converted amount in USD
-          currency: 'USD', // Always store as USD in database
-          originalCurrency: 'ARS', // Keep track of original currency
-          originalAmount: originalAmount, // Keep track of original amount
-          exchangeRate: exchangeRate // Store exchange rate used
-        };
-      } else {
-        serviceData = {
-          ...serviceFormData,
-          cost: parseFloat(serviceFormData.cost)
-        };
-      }
+      // Use cost as provided (assuming it's already in USD)
+      const serviceData = {
+        ...serviceFormData,
+        cost: parseFloat(serviceFormData.cost)
+      };
 
       let response;
       if (editingService) {
@@ -172,7 +147,6 @@ const ServiceManagement = () => {
           providerId: '',
           cost: '',
           currency: 'USD',
-          exchangeRate: ''
         });
         fetchServices();
       }
@@ -601,7 +575,7 @@ const ServiceManagement = () => {
                   <select
                     value={serviceFormData.currency}
                     onChange={(e) => {
-                      setServiceFormData({...serviceFormData, currency: e.target.value, exchangeRate: ''});
+                      setServiceFormData({...serviceFormData, currency: e.target.value});
                     }}
                     required
                     className="input-field"
@@ -615,50 +589,6 @@ const ServiceManagement = () => {
                 </div>
               </div>
 
-              {/* Exchange Rate Input for ARS */}
-              {serviceFormData.currency === 'ARS' && (
-                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                  <div className="flex items-center mb-3">
-                    <svg className="w-5 h-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <h4 className="text-lg font-semibold text-green-300">Currency Conversion</h4>
-                  </div>
-                  <p className="text-sm text-green-200 mb-4">
-                    Since you selected ARS, please provide the exchange rate to convert to USD. 
-                    The amount will be stored in USD in the database for consistency.
-                  </p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-green-200 mb-2">
-                        Exchange Rate (1 USD = ? ARS) *
-                      </label>
-                      <input
-                        type="number"
-                        value={serviceFormData.exchangeRate || ''}
-                        onChange={(e) => setServiceFormData({...serviceFormData, exchangeRate: e.target.value})}
-                        className="input-field"
-                        placeholder="e.g., 1000"
-                        step="0.01"
-                        min="0"
-                        required
-                      />
-                    </div>
-                    
-                    {serviceFormData.cost && serviceFormData.exchangeRate && (
-                      <div>
-                        <label className="block text-sm font-medium text-green-200 mb-2">
-                          Converted Amount (USD)
-                        </label>
-                        <div className="input-field bg-dark-700 text-dark-100 cursor-not-allowed">
-                          U${(parseFloat(serviceFormData.cost) / parseFloat(serviceFormData.exchangeRate)).toFixed(2)} USD
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
 
               <div className="flex justify-end space-x-3 pt-4">
                 <button

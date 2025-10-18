@@ -13,8 +13,6 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
   const [serviceDates, setServiceDates] = useState({ checkIn: '', checkOut: '' });
   const [serviceCost, setServiceCost] = useState('');
   const [serviceCurrency, setServiceCurrency] = useState('USD');
-  const [serviceExchangeRate, setServiceExchangeRate] = useState('');
-  const [convertedAmount, setConvertedAmount] = useState(null);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [selectedProviders, setSelectedProviders] = useState([]);
   const [destination, setDestination] = useState({ city: '', country: '' });
@@ -34,20 +32,6 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
   }, [isOpen]);
 
   // Currency conversion effects
-  useEffect(() => {
-    if (serviceCurrency === 'USD') {
-      setServiceExchangeRate('');
-      setConvertedAmount(null);
-    }
-  }, [serviceCurrency]);
-
-  useEffect(() => {
-    if (serviceExchangeRate && serviceCost && serviceCurrency && serviceCurrency !== 'USD') {
-      setConvertedAmount(parseFloat(serviceCost) / parseFloat(serviceExchangeRate));
-    } else if (serviceCurrency === 'USD') {
-      setConvertedAmount(parseFloat(serviceCost));
-    }
-  }, [serviceExchangeRate, serviceCost, serviceCurrency]);
 
   const resetForm = () => {
     setCurrentStep(1);
@@ -100,11 +84,6 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
         return;
       }
       
-      // Validate exchange rate for ARS
-      if (serviceCurrency === 'ARS' && (!serviceExchangeRate || parseFloat(serviceExchangeRate) <= 0)) {
-        setError('Please provide a valid exchange rate for ARS to USD conversion');
-        return;
-      }
     }
     
     if (currentStep < 7) {
@@ -149,21 +128,16 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
       setLoading(true);
       setError('');
 
-      // Calculate USD cost for storage
+      // Use cost as provided (assuming it's already in USD)
       let costInUSD = parseFloat(serviceCost);
       let originalCurrency = serviceCurrency;
       let originalAmount = parseFloat(serviceCost);
       let exchangeRate = null;
 
-      if (serviceCurrency === 'ARS') {
-        exchangeRate = parseFloat(serviceExchangeRate);
-        costInUSD = originalAmount / exchangeRate;
-      }
-
       // Format providers array for backend
       const formattedProviders = selectedProviders.map(provider => ({
         providerId: provider._id,
-        costProvider: costInUSD * 0.8, // Use USD cost for provider calculation
+        costProvider: costInUSD, // Use actual provider cost
         currency: 'USD', // Always store provider costs in USD
         commissionRate: 0
       }));
@@ -378,48 +352,6 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
               </div>
             </div>
 
-            {/* Currency Conversion Section */}
-            {serviceCurrency === 'ARS' && (
-              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                <div className="flex items-center mb-3">
-                  <svg className="w-5 h-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <h4 className="font-medium text-green-300">Currency Conversion</h4>
-                </div>
-                <p className="text-sm text-green-200 mb-4">
-                  Since you selected ARS, please provide the exchange rate to convert to USD. The amount will be stored in USD in the database for consistency.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-green-200 mb-2">
-                      Exchange Rate (1 USD = ? ARS) *
-                    </label>
-                    <input
-                      type="number"
-                      value={serviceExchangeRate}
-                      onChange={(e) => setServiceExchangeRate(e.target.value)}
-                      className="input-field"
-                      placeholder="e.g., 6"
-                      min="0.01"
-                      step="0.01"
-                      required={serviceCurrency === 'ARS'}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-green-200 mb-2">
-                      Converted Amount (USD)
-                    </label>
-                    <input
-                      type="text"
-                      value={convertedAmount ? `U$${convertedAmount.toFixed(2)} USD` : 'U$0.00 USD'}
-                      className="input-field bg-dark-700 text-green-100"
-                      readOnly
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         );
 

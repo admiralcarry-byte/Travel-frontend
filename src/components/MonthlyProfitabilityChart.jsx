@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { formatCurrency, formatCurrencyCompact } from '../utils/formatNumbers';
 
-const MonthlyProfitabilityChart = ({ sales, onMonthClick }) => {
+const MonthlyProfitabilityChart = ({ sales, onMonthClick, selectedCurrency = 'ARS' }) => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [viewMode, setViewMode] = useState('chart'); // 'chart', 'table', 'summary'
 
   // Calculate monthly data
   const monthlyData = React.useMemo(() => {
     if (!sales || sales.length === 0) return [];
+
+    // Filter sales by selected currency
+    const currencyFilteredSales = sales.filter(sale => sale.saleCurrency === selectedCurrency);
 
     const months = {};
     const monthNames = [
@@ -33,7 +36,7 @@ const MonthlyProfitabilityChart = ({ sales, onMonthClick }) => {
     }
 
     // Process sales data
-    sales.forEach(sale => {
+    currencyFilteredSales.forEach(sale => {
       const saleDate = new Date(sale.createdAt);
       if (saleDate.getFullYear() === selectedYear) {
         const monthKey = `${selectedYear}-${String(saleDate.getMonth() + 1).padStart(2, '0')}`;
@@ -56,7 +59,7 @@ const MonthlyProfitabilityChart = ({ sales, onMonthClick }) => {
     });
 
     return Object.values(months).sort((a, b) => a.month - b.month);
-  }, [sales, selectedYear]);
+  }, [sales, selectedYear, selectedCurrency]);
 
   // Calculate year summary
   const yearSummary = React.useMemo(() => {
@@ -85,7 +88,7 @@ const MonthlyProfitabilityChart = ({ sales, onMonthClick }) => {
     });
     
     return Array.from(years).sort((a, b) => b - a);
-  }, [sales, selectedYear]);
+  }, [sales, selectedYear, selectedCurrency]);
 
   const getProfitColor = (profit) => {
     if (profit > 0) return 'text-green-400';
@@ -155,12 +158,12 @@ const MonthlyProfitabilityChart = ({ sales, onMonthClick }) => {
         </div>
         <div className="card p-6">
           <div className="text-sm font-medium text-dark-300">Total Revenue</div>
-          <div className="text-2xl font-semibold text-dark-100">{formatCurrency(yearSummary.totalRevenue)}</div>
+          <div className="text-2xl font-semibold text-dark-100">{formatCurrency(yearSummary.totalRevenue, selectedCurrency)}</div>
         </div>
         <div className="card p-6">
           <div className="text-sm font-medium text-dark-300">Total Profit</div>
           <div className={`text-2xl font-semibold ${getProfitColor(yearSummary.totalProfit)}`}>
-            {formatCurrency(yearSummary.totalProfit)}
+            {formatCurrency(yearSummary.totalProfit, selectedCurrency)}
           </div>
         </div>
         <div className="card p-6">
@@ -181,7 +184,7 @@ const MonthlyProfitabilityChart = ({ sales, onMonthClick }) => {
                 <div className="flex justify-between items-center">
                   <div className="text-sm font-medium text-dark-200">{month.monthName}</div>
                   <div className="text-sm text-dark-300">
-                    {month.totalSales} sales • {formatCurrency(month.totalProfit)} profit
+                    {month.totalSales} sales • {formatCurrency(month.totalProfit, selectedCurrency)} profit
                   </div>
                 </div>
                 <div className="w-full bg-dark-700 rounded-full h-4 relative">
@@ -194,8 +197,8 @@ const MonthlyProfitabilityChart = ({ sales, onMonthClick }) => {
                   ></div>
                 </div>
                 <div className="flex justify-between text-xs text-dark-400">
-                  <span>Revenue: {formatCurrency(month.totalRevenue)}</span>
-                  <span>Cost: {formatCurrency(month.totalCost)}</span>
+                  <span>Revenue: {formatCurrency(month.totalRevenue, selectedCurrency)}</span>
+                  <span>Cost: {formatCurrency(month.totalCost, selectedCurrency)}</span>
                   <span className={getProfitMarginColor(month.profitMargin)}>
                     Margin: {month.profitMargin.toFixed(1)}%
                   </span>
@@ -249,14 +252,14 @@ const MonthlyProfitabilityChart = ({ sales, onMonthClick }) => {
                       {month.totalSales}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100 text-right">
-                      {formatCurrency(month.totalRevenue)}
+                      {formatCurrency(month.totalRevenue, selectedCurrency)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100 text-right">
-                      {formatCurrency(month.totalCost)}
+                      {formatCurrency(month.totalCost, selectedCurrency)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <div className={`text-sm font-medium ${getProfitColor(month.totalProfit)}`}>
-                        {formatCurrency(month.totalProfit)}
+                        {formatCurrency(month.totalProfit, selectedCurrency)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -297,7 +300,7 @@ const MonthlyProfitabilityChart = ({ sales, onMonthClick }) => {
                       #{index + 1} {month.monthName}
                     </div>
                     <div className="text-sm font-medium text-green-400">
-                      {formatCurrency(month.totalProfit)}
+                      {formatCurrency(month.totalProfit, selectedCurrency)}
                     </div>
                   </div>
                 ))}

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 
 const InventoryDashboard = () => {
   const navigate = useNavigate();
+  const { user, isAdmin, isSeller, loading: authLoading } = useAuth();
   const [cupos, setCupos] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -85,7 +87,21 @@ const InventoryDashboard = () => {
         setError('');
       }
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to fetch slot');
+      console.error('Failed to fetch cupos:', error);
+      
+      if (error.response?.status === 401) {
+        setError('Authentication required. Please log in again.');
+        // Redirect to login if not authenticated
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+      } else if (error.response?.status === 403) {
+        setError('Access denied. You need admin or seller permissions to view cupos.');
+      } else if (error.response?.status === 404) {
+        setError('Cupos endpoint not found. Please check your connection.');
+      } else {
+        setError(error.response?.data?.message || 'Failed to fetch cupos');
+      }
     } finally {
       if (isInitialLoad) {
         setLoading(false);
@@ -114,11 +130,26 @@ const InventoryDashboard = () => {
     return () => clearTimeout(timer);
   }, [filters]);
 
-  // Initial load effect
+  // Check authentication and role
   useEffect(() => {
-    fetchCupos(true);
-    fetchServices();
-  }, [fetchCupos, fetchServices]);
+    if (!authLoading) {
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+      
+      if (!isAdmin && !isSeller) {
+        setError('Access denied. You need admin or seller permissions to view cupos.');
+        return;
+      }
+      
+      // Only fetch data if user has proper role
+      if (isAdmin || isSeller) {
+        fetchCupos(true);
+        fetchServices();
+      }
+    }
+  }, [authLoading, user, isAdmin, isSeller, navigate, fetchCupos, fetchServices]);
 
   // Search and filter effect
   useEffect(() => {
@@ -164,6 +195,18 @@ const InventoryDashboard = () => {
       }
     });
   }, [navigate]);
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-400 mx-auto mb-4"></div>
+          <p className="text-dark-300">Checking permissions...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading && cupos.length === 0) {
     return (

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
+import { API_BASE_URL } from '../config/api';
 import PaymentForm from './PaymentForm';
 import Modal from './Modal';
 import ProvisionalReceipt from './ProvisionalReceipt';
 import PaymentEditModal from './PaymentEditModal';
 import { formatMethodName, formatMethodNameShort } from '../utils/paymentMethodUtils';
 
-const PaymentsTable = ({ saleId, onPaymentAdded }) => {
+const PaymentsTable = ({ saleId, onPaymentAdded, saleCurrency = 'USD' }) => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -93,19 +94,36 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
 
     setSaving(true);
     try {
-      const response = await api.put(`/api/payments/${editingPayment._id}`, updatedPaymentData);
+      // Check if updatedPaymentData is FormData (file upload) or regular object
+      const isFormData = updatedPaymentData instanceof FormData;
+      
+      let response;
+      if (isFormData) {
+        // Handle file upload with FormData
+        response = await api.put(`/api/payments/${editingPayment._id}`, updatedPaymentData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+      } else {
+        // Handle regular object update
+        response = await api.put(`/api/payments/${editingPayment._id}`, updatedPaymentData);
+      }
       
       if (response.data.success) {
         // Update the payments list with the updated payment
         setPayments(prev => prev.map(payment => 
           payment._id === editingPayment._id 
-            ? { ...payment, ...updatedPaymentData }
+            ? { ...payment, ...response.data.data.payment }
             : payment
         ));
         
         // Close modal
         setShowEditModal(false);
         setEditingPayment(null);
+        
+        // Refresh payments to get updated receipt status
+        await fetchPayments();
         
         // Notify parent component to refresh sale data
         onPaymentAdded && onPaymentAdded();
@@ -164,12 +182,24 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
         if (payment.receiptImage) {
           // Open the uploaded receipt image directly in a new tab
           // Use the same base URL as the API calls
-          const baseUrl = api.defaults.baseURL || 'http://localhost:5000';
-          const receiptUrl = `${baseUrl}${payment.receiptImage}`;
+          const receiptUrl = `${API_BASE_URL}${payment.receiptImage}`;
           window.open(receiptUrl, '_blank');
+        } else if (existingReceipts.has(paymentId)) {
+          // Check if there's a generated receipt
+          const receiptResponse = await api.get(`/api/receipts?paymentId=${paymentId}`);
+          if (receiptResponse.data.success && receiptResponse.data.data.length > 0) {
+            // Open the receipt modal to view the generated receipt
+            setSelectedPaymentId(paymentId);
+            setShowReceipt(true);
+          } else {
+            setError('No receipt found for this payment');
+            setTimeout(() => {
+              setError('');
+            }, 5000);
+          }
         } else {
-          // No receipt image found
-          setError('No receipt file found for this payment');
+          // No receipt found
+          setError('No receipt found for this payment');
           setTimeout(() => {
             setError('');
           }, 5000);
@@ -235,6 +265,14 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
   const handleReceiptResponded = (paymentId) => {
     // Mark this payment as having a responded receipt
     setRespondedReceipts(prev => new Set([...prev, paymentId]));
+    
+    // Refresh the payments data to update the UI with receipt information
+    fetchPayments();
+    
+    // Also notify parent component to refresh sale data
+    if (onPaymentAdded) {
+      onPaymentAdded();
+    }
   };
 
   const formatCurrency = (amount, currency) => {
@@ -333,6 +371,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
           paymentType="client"
           onPaymentAdded={handlePaymentAdded}
           onCancel={() => setShowClientForm(false)}
+          saleCurrency={saleCurrency}
         />
       </Modal>
 
@@ -347,6 +386,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
           paymentType="provider"
           onPaymentAdded={handlePaymentAdded}
           onCancel={() => setShowProviderForm(false)}
+          saleCurrency={saleCurrency}
         />
       </Modal>
 
@@ -357,6 +397,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
         onClose={handleCancelEdit}
         onSave={handleSavePayment}
         saving={saving}
+        saleCurrency={saleCurrency}
       />
 
       {/* Payments Table */}
@@ -440,12 +481,14 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
                   </td>
                   <td className="px-3 py-4">
                     <div className="truncate">
-                      <div className="text-sm font-medium text-dark-100 truncate" title={formatCurrency(payment.amount, payment.currency)}>
-                        {formatCurrency(payment.amount, payment.currency)}
+                      {/* Display converted amount in sale currency as main amount */}
+                      <div className="text-sm font-medium text-dark-100 truncate" title={formatCurrency(payment.amount, saleCurrency)}>
+                        {formatCurrency(payment.amount, saleCurrency)}
                       </div>
+                      {/* Display original amount in Origin field */}
                       {payment.originalAmount && payment.originalCurrency && (
-                        <div className="text-xs text-dark-400 truncate" title={`Original: ${formatCurrency(payment.originalAmount, payment.originalCurrency)} (Rate: ${payment.exchangeRate?.toFixed(4) || 'N/A'})`}>
-                          Original: {formatCurrency(payment.originalAmount, payment.originalCurrency)}
+                        <div className="text-xs text-dark-400 truncate" title={`Origin: ${formatCurrency(payment.originalAmount, payment.originalCurrency)} (Rate: ${payment.exchangeRate?.toFixed(4) || 'N/A'})`}>
+                          Origin: {formatCurrency(payment.originalAmount, payment.originalCurrency)}
                           <span className="ml-1">(Rate: {payment.exchangeRate?.toFixed(4) || 'N/A'})</span>
                         </div>
                       )}
@@ -458,7 +501,7 @@ const PaymentsTable = ({ saleId, onPaymentAdded }) => {
                   </td>
                   <td className="px-3 py-4">
                     <div className="truncate text-sm text-dark-300">
-                      {payment.receiptImage ? (
+                      {(payment.receiptImage || existingReceipts.has(payment._id)) ? (
                         <div className="flex items-center justify-center space-x-2">
                           <span className="text-lg">{getReceiptIcon(payment.receiptImage)}</span>
                           <button

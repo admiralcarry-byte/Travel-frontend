@@ -37,28 +37,24 @@ export const formatLargeNumber = (num, decimals = 1, currency = 'U$') => {
  */
 export const formatCurrency = (amount, currency = 'USD', locale = 'en-US') => {
   if (amount === null || amount === undefined || isNaN(amount)) {
-    const formatted = new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: currency
-    }).format(0);
-    
-    // Replace $ with U$ for USD currency
-    if (currency.toUpperCase() === 'USD') {
-      return formatted.replace('$', 'U$');
-    }
-    
-    return formatted;
+    amount = 0;
   }
 
+  // Handle ARS currency specially since it's not a standard ISO currency code
+  if (currency.toUpperCase() === 'ARS') {
+    return `AR$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  // Handle USD currency
+  if (currency.toUpperCase() === 'USD') {
+    return `U$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  // For other currencies, use Intl.NumberFormat
   const formatted = new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: currency
   }).format(amount);
-  
-  // Replace $ with U$ for USD currency
-  if (currency.toUpperCase() === 'USD') {
-    return formatted.replace('$', 'U$');
-  }
   
   return formatted;
 };
@@ -105,6 +101,24 @@ export const formatPercentage = (value, decimals = 1) => {
   }
 
   return `${value.toFixed(decimals)}%`;
+};
+
+/**
+ * Format currency with full number display (no decimals, no abbreviations)
+ * @param {number} amount - The amount to format
+ * @param {string} currency - Currency code (default: 'USD')
+ * @returns {string} Formatted currency string with full numbers
+ */
+export const formatCurrencyFull = (amount, currency = 'USD') => {
+  if (amount === null || amount === undefined || isNaN(amount)) {
+    return formatLargeNumber(0, 0, getCurrencySymbol(currency));
+  }
+
+  const absAmount = Math.abs(amount);
+  const sign = amount < 0 ? '-' : '';
+  
+  // Display full number with proper formatting (no decimal places)
+  return `${sign}${getCurrencySymbol(currency)}${absAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 };
 
 /**

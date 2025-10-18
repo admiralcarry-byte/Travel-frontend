@@ -27,7 +27,9 @@ export const SystemStatsProvider = ({ children }) => {
     totalClients: 0,
     totalServices: 0,
     activeUsers: 0,
-    monthlyGrowth: 0
+    monthlyGrowth: 0,
+    usdSales: 0,
+    arsSales: 0
   });
 
   const [loading, setLoading] = useState(false);
@@ -90,18 +92,33 @@ export const SystemStatsProvider = ({ children }) => {
         return;
       }
 
-      const [salesRes, clientsRes, servicesRes] = await Promise.all([
+      const [salesRes, clientsRes, servicesRes, currencyRes] = await Promise.all([
         api.get('/api/reports/kpis'),
         api.get('/api/clients/all-passengers?limit=1'),
-        api.get('/api/services?limit=1')
+        api.get('/api/services?limit=1'),
+        api.get('/api/sales/currency-stats')
       ]);
 
       // Log the responses for debugging
       // console.log('Business Stats API Responses:', {
       //   sales: salesRes.data,
       //   clients: clientsRes.data,
-      //   services: servicesRes.data
+      //   services: servicesRes.data,
+      //   currency: currencyRes.data
       // });
+
+      // Extract USD and ARS sales from currency stats
+      let usdSales = 0;
+      let arsSales = 0;
+      
+      if (currencyRes.data.success && currencyRes.data.data.currencyBreakdown) {
+        const currencyData = currencyRes.data.data.currencyBreakdown;
+        const usdData = currencyData.find(item => item._id === 'USD');
+        const arsData = currencyData.find(item => item._id === 'ARS');
+        
+        usdSales = usdData ? usdData.totalSalesInCurrency || 0 : 0;
+        arsSales = arsData ? arsData.totalSalesInCurrency || 0 : 0;
+      }
 
       setBusinessStats({
         totalSales: salesRes.data.success ? (salesRes.data.data.saleCount || 0) : 0,
@@ -109,7 +126,9 @@ export const SystemStatsProvider = ({ children }) => {
         totalClients: clientsRes.data.success ? (clientsRes.data.data?.total || 0) : 0,
         totalServices: servicesRes.data.success ? (servicesRes.data.data?.total || 0) : 0,
         activeUsers: users.filter(u => u.role === 'seller').length,
-        monthlyGrowth: 12.5 // Mock data - would come from analytics
+        monthlyGrowth: 12.5, // Mock data - would come from analytics
+        usdSales: usdSales,
+        arsSales: arsSales
       });
     } catch (error) {
       console.error('Error fetching business stats:', error);
@@ -120,7 +139,9 @@ export const SystemStatsProvider = ({ children }) => {
         totalClients: 0,
         totalServices: 0,
         activeUsers: users.filter(u => u.role === 'seller').length,
-        monthlyGrowth: 0
+        monthlyGrowth: 0,
+        usdSales: 0,
+        arsSales: 0
       });
     }
   }, []);

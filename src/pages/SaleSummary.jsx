@@ -5,7 +5,7 @@ import PaymentsTable from '../components/PaymentsTable';
 import ProfitChart from '../components/ProfitChart';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
-import { formatCurrencyCompact, formatWithWarning } from '../utils/formatNumbers';
+import { formatCurrencyCompact, formatWithWarning, formatCurrencyFull, getCurrencySymbol } from '../utils/formatNumbers';
 
 // Component for individual provider cards with expandable details
 const ProviderCard = ({ provider, serviceIndex, providerIndex }) => {
@@ -33,7 +33,7 @@ const ProviderCard = ({ provider, serviceIndex, providerIndex }) => {
       const providerDetails = {
         name: providerName,
         costProvider: provider.costProvider !== undefined && provider.costProvider !== null ? provider.costProvider : null,
-        currency: provider.currency || 'USD',
+        currency: provider.currency || sale.saleCurrency,
         startDate: provider.startDate || provider.serviceDates?.startDate || null,
         endDate: provider.endDate || provider.serviceDates?.endDate || null,
         documents: provider.documents || []
@@ -387,7 +387,7 @@ const ProviderDisplay = ({ provider, providerIndex }) => {
       </div>
       {provider.costProvider && (
         <span className="text-sm font-semibold text-blue-400 ml-4 flex-shrink-0">
-          U${provider.costProvider.toFixed(2)}
+          {getCurrencySymbol(provider.currency || sale.saleCurrency)}{provider.costProvider.toFixed(2)}
         </span>
       )}
     </div>
@@ -434,7 +434,10 @@ const SaleSummary = () => {
       const response = await api.get(`/api/sales/${id}?t=${Date.now()}`);
 
       if (response.data.success) {
-        setSale(response.data.data.sale);
+        const saleData = response.data.data.sale;
+        
+        // Use the sale data as-is from the backend (totals should be correct)
+        setSale(saleData);
       }
     } catch (error) {
       console.error('Error fetching sale:', error);
@@ -465,6 +468,7 @@ const SaleSummary = () => {
     // Refresh sale data to get updated balances
     fetchSale();
   };
+
 
 
   const getStatusColor = (status) => {
@@ -844,9 +848,8 @@ const SaleSummary = () => {
                       
                       // Handle service data extraction based on actual schema
                       let serviceName = 'Unknown Service';
-                      let serviceDescription = 'No description available';
                       let serviceCost = null;
-                      let serviceCurrency = 'USD';
+                      let serviceCurrency = serviceSale.currency || sale.saleCurrency;
                       let startDate = null;
                       let endDate = null;
                       
@@ -857,16 +860,13 @@ const SaleSummary = () => {
                         serviceName = serviceSale.serviceId.destino || serviceSale.serviceId.title || 'Unknown Service';
                       }
                       
-                      // Extract service description
-                      if (serviceSale.notes) {
-                        serviceDescription = serviceSale.notes;
-                      } else if (serviceSale.serviceId && typeof serviceSale.serviceId === 'object') {
-                        serviceDescription = serviceSale.serviceId.description || 'No description available';
-                      }
                       
-                      // Extract pricing information
-                      serviceCost = serviceSale.priceClient || serviceSale.originalAmount;
-                      serviceCurrency = serviceSale.currency || serviceSale.originalCurrency || 'USD';
+                      // Extract pricing information - use costProvider instead of priceClient
+                      // Handle costProvider = 0 case by checking for null/undefined explicitly
+                      serviceCost = serviceSale.costProvider !== null && serviceSale.costProvider !== undefined 
+                        ? serviceSale.costProvider 
+                        : (serviceSale.priceClient || serviceSale.originalAmount);
+                      serviceCurrency = serviceSale.currency || serviceSale.originalCurrency || sale.saleCurrency;
                       
                       // Extract date information
                       if (serviceSale.serviceDates) {
@@ -881,7 +881,6 @@ const SaleSummary = () => {
                       // Debug: Log the extracted values
                       console.log('Extracted values:', {
                         serviceName,
-                        serviceDescription,
                         serviceCost,
                         serviceCurrency,
                         startDate,
@@ -895,9 +894,6 @@ const SaleSummary = () => {
                               <h3 className="text-lg font-semibold text-green-300 mb-1">
                                 {serviceName}
                               </h3>
-                              <p className="text-sm text-green-100">
-                                {serviceDescription}
-                              </p>
                             </div>
                             {serviceCost && (
                               <div className="text-right">
@@ -1087,6 +1083,7 @@ const SaleSummary = () => {
               <PaymentsTable
                 saleId={sale.id}
                 onPaymentAdded={handlePaymentAdded}
+                saleCurrency={sale.saleCurrency}
               />
             </div>
           </div>
@@ -1100,28 +1097,32 @@ const SaleSummary = () => {
                 <div className="flex justify-between">
                   <span className="text-dark-300">Total Sale Price:</span>
                   <span className="font-semibold text-dark-100">
-                    {formatCurrencyCompact(sale.totalSalePrice)}
+                    {formatCurrencyFull(sale.totalSalePrice || 0, sale.saleCurrency)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-dark-300">Total Cost:</span>
                   <span className="font-semibold text-dark-100">
-                    {formatCurrencyCompact(sale.totalCost)}
+                    {formatCurrencyFull(sale.totalCost || 0, sale.saleCurrency)}
                   </span>
                 </div>
                 <div className="border-t pt-3">
                   <div className="flex justify-between">
                     <span className="text-dark-300">Profit:</span>
-                    <span className={`font-bold text-lg ${sale.profit >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                      {formatCurrencyCompact(sale.profit)}
+                    <span className={`font-bold text-lg ${(sale.profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCurrencyFull(sale.profit || 0, sale.saleCurrency)}
                     </span>
                   </div>
                   <div className="flex justify-between mt-1">
                     <span className="text-dark-300">Profit Margin:</span>
-                    <span className={`font-semibold ${sale.profit >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                      {sale.profitMargin}%
+                    <span className={`font-semibold ${(() => {
+                      const margin = (sale.totalSalePrice || 0) > 0 ? ((sale.profit || 0) / (sale.totalSalePrice || 0)) * 100 : 0;
+                      return margin >= 0 ? 'text-green-600' : 'text-red-600';
+                    })()}`}>
+                      {(() => {
+                        const margin = (sale.totalSalePrice || 0) > 0 ? ((sale.profit || 0) / (sale.totalSalePrice || 0)) * 100 : 0;
+                        return `${margin.toFixed(2)}%`;
+                      })()}
                     </span>
                   </div>
                 </div>
@@ -1135,28 +1136,56 @@ const SaleSummary = () => {
                 <div className="flex justify-between">
                   <span className="text-dark-300">Passenger Payments:</span>
                   <span className="font-semibold text-dark-100">
-                    {formatCurrencyCompact(sale.totalClientPayments)}
+                    {formatCurrencyFull(sale.totalClientPayments, sale.saleCurrency)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-dark-300">Provider Payments:</span>
                   <span className="font-semibold text-dark-100">
-                    {formatCurrencyCompact(sale.totalProviderPayments)}
+                    {formatCurrencyFull(sale.totalProviderPayments, sale.saleCurrency)}
                   </span>
                 </div>
                 <div className="border-t pt-3">
                   <div className="flex justify-between">
                     <span className="text-dark-300">Passenger Balance:</span>
-                    <span className={`font-bold text-lg ${sale.clientBalance <= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                      {formatCurrencyCompact(sale.clientBalance)}
+                    <span className={`font-bold text-lg ${(() => {
+                      const totalPassengerPrice = sale.totalSalePrice || 0;
+                      const totalClientPayments = sale.totalClientPayments || 0;
+                      const balance = totalPassengerPrice - totalClientPayments;
+                      return balance <= 0 ? 'text-green-600' : 'text-red-600';
+                    })()}`}>
+                      {(() => {
+                        const totalPassengerPrice = sale.totalSalePrice || 0;
+                        const totalClientPayments = sale.totalClientPayments || 0;
+                        const balance = totalPassengerPrice - totalClientPayments;
+                        return formatCurrencyFull(balance, sale.saleCurrency);
+                      })()}
                     </span>
                   </div>
                   <div className="flex justify-between mt-1">
                     <span className="text-dark-300">Provider Balance:</span>
-                    <span className={`font-bold text-lg ${sale.providerBalance >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                      {formatCurrencyCompact(sale.providerBalance)}
+                    <span className={`font-bold text-lg ${(() => {
+                      const totalServiceCost = sale.services?.reduce((total, service) => {
+                        const costProvider = service.costProvider !== null && service.costProvider !== undefined 
+                          ? service.costProvider 
+                          : (service.priceClient || service.originalAmount);
+                        return total + (parseFloat(costProvider) || 0);
+                      }, 0) || 0;
+                      const totalProviderPayments = sale.totalProviderPayments || 0;
+                      const balance = totalServiceCost - totalProviderPayments;
+                      return balance >= 0 ? 'text-green-600' : 'text-red-600';
+                    })()}`}>
+                      {(() => {
+                        const totalServiceCost = sale.services?.reduce((total, service) => {
+                          const costProvider = service.costProvider !== null && service.costProvider !== undefined 
+                            ? service.costProvider 
+                            : (service.priceClient || service.originalAmount);
+                          return total + (parseFloat(costProvider) || 0);
+                        }, 0) || 0;
+                        const totalProviderPayments = sale.totalProviderPayments || 0;
+                        const balance = totalServiceCost - totalProviderPayments;
+                        return formatCurrencyFull(balance, sale.saleCurrency);
+                      })()}
                     </span>
                   </div>
                 </div>

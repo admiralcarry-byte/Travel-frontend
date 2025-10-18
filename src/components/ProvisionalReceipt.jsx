@@ -359,6 +359,28 @@ const ProvisionalReceipt = ({ paymentId, saleId, onClose, onReceiptCompleted, on
                 </button>
               )}
             </div>
+            
+            {/* Display payment amount and response message when responded */}
+            {whatsappStatus === 'responded' && (
+              <div className="mt-4 p-3 bg-gray-50 rounded-lg border">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">Amount:</span>
+                    <span className="text-sm font-bold text-gray-900">
+                      {receipt.paymentDetails?.currency || 'USD'} {receipt.paymentDetails?.amount || '0'}
+                    </span>
+                  </div>
+                  {receipt.whatsappStatus?.responseMessage && (
+                    <div className="mt-2">
+                      <span className="text-sm font-medium text-gray-700 block mb-1">Response:</span>
+                      <div className="text-sm text-gray-900 bg-white p-2 rounded border">
+                        {receipt.whatsappStatus.responseMessage}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Response Form */}

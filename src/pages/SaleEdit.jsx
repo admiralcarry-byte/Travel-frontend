@@ -115,9 +115,14 @@ const SaleEdit = () => {
         
         // Convert services to service template instances format
         console.log('🔍 SaleEdit - Processing sale services:', saleData.services);
+        console.log('🔍 SaleEdit - Sale totalCost from backend:', saleData.totalCost);
+        console.log('🔍 SaleEdit - Sale totalSalePrice from backend:', saleData.totalSalePrice);
+        console.log('🔍 SaleEdit - Sale passengers from backend:', saleData.passengers);
         const instances = saleData.services.map((service, index) => {
           console.log(`🔍 SaleEdit - Processing service ${index}:`, service);
           console.log(`🔍 SaleEdit - Service providers:`, service.providers);
+          console.log(`🔍 SaleEdit - Service costProvider:`, service.costProvider);
+          console.log(`🔍 SaleEdit - Service priceClient:`, service.priceClient);
           
           // Extract provider objects from the backend structure
           let providers = [];
@@ -127,12 +132,14 @@ const SaleEdit = () => {
               console.log(`🔍 SaleEdit - Processing provider ${pIndex}:`, p);
               console.log(`🔍 SaleEdit - Provider documents:`, p.documents);
               
-              // Preserve the full provider object with documents
+              // Preserve the full provider object with documents and costProvider
               const providerObj = p.providerId || p;
               const result = {
                 ...providerObj,
                 // Preserve documents from the provider data
-                documents: p.documents || []
+                documents: p.documents || [],
+                // Preserve costProvider from the original provider data
+                costProvider: p.costProvider !== null && p.costProvider !== undefined ? p.costProvider : (providerObj.costProvider || 0)
               };
               console.log(`🔍 SaleEdit - Provider result:`, result);
               return result;
@@ -151,7 +158,30 @@ const SaleEdit = () => {
             serviceDescription: service.notes || service.serviceId?.description || '',
             checkIn: service.serviceDates?.startDate ? new Date(service.serviceDates.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
             checkOut: service.serviceDates?.endDate ? new Date(service.serviceDates.endDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-            cost: service.priceClient || 0,
+            cost: (() => {
+              // Calculate cost from providers array if available
+              if (service.providers && service.providers.length > 0) {
+                const calculatedCost = service.providers.reduce((total, provider) => {
+                  return total + (parseFloat(provider.costProvider) || 0);
+                }, 0);
+                console.log(`🔍 SaleEdit - Calculated cost from providers for service ${index}:`, calculatedCost);
+                return calculatedCost;
+              }
+              // Fallback to service.costProvider or service.priceClient
+              const fallbackCost = service.costProvider !== null && service.costProvider !== undefined ? service.costProvider : (service.priceClient || 0);
+              console.log(`🔍 SaleEdit - Using fallback cost for service ${index}:`, fallbackCost);
+              return fallbackCost;
+            })(),
+            costProvider: (() => {
+              // Calculate costProvider from providers array if available
+              if (service.providers && service.providers.length > 0) {
+                return service.providers.reduce((total, provider) => {
+                  return total + (parseFloat(provider.costProvider) || 0);
+                }, 0);
+              }
+              // Fallback to service.costProvider
+              return service.costProvider !== null && service.costProvider !== undefined ? service.costProvider : 0;
+            })(),
             currency: service.currency || 'USD',
             provider: service.providerId || null, // Backend populates this with full provider object
             providers: providers, // Extract provider objects with documents preserved
@@ -175,9 +205,15 @@ const SaleEdit = () => {
         setServiceTemplateInstances(instances);
         setPassengers(saleData.passengers || []);
         
-        // Initialize price per passenger from first passenger's price
+        // Initialize price per passenger from totalSalePrice divided by passenger count
         if (saleData.passengers && saleData.passengers.length > 0) {
-          setPricePerPassenger(saleData.passengers[0].price || 0);
+          const calculatedPricePerPassenger = saleData.totalSalePrice / saleData.passengers.length;
+          setPricePerPassenger(calculatedPricePerPassenger);
+          console.log('🔍 SaleEdit - Initializing price per passenger:', {
+            totalSalePrice: saleData.totalSalePrice,
+            passengerCount: saleData.passengers.length,
+            calculatedPricePerPassenger: calculatedPricePerPassenger
+          });
         }
       }
     } catch (error) {
@@ -258,7 +294,15 @@ const SaleEdit = () => {
         serviceId: updatedInstance.templateId,
         serviceName: updatedInstance.serviceInfo,
         priceClient: updatedInstance.cost,
-        costProvider: updatedInstance.cost * 0.8,
+        costProvider: (() => {
+          // Calculate actual costProvider from providers array
+          if (updatedInstance.providers && updatedInstance.providers.length > 0) {
+            return updatedInstance.providers.reduce((total, provider) => {
+              return total + (parseFloat(provider.costProvider) || 0);
+            }, 0);
+          }
+          return updatedInstance.cost; // Fallback to instance cost if no providers
+        })(),
         currency: updatedInstance.currency,
         quantity: 1,
         serviceDates: {
@@ -320,7 +364,7 @@ const SaleEdit = () => {
           // Otherwise, it's a Provider object that needs to be formatted
           const formattedProvider = {
             providerId: provider._id,
-            costProvider: updatedInstance.cost * 0.8, // Default cost calculation
+            costProvider: parseFloat(provider.costProvider) || 0, // Use individual provider cost
             currency: updatedInstance.currency || 'USD',
             commissionRate: 0
           };
@@ -352,7 +396,15 @@ const SaleEdit = () => {
       const updatePayload = {
         serviceName: updatedInstance.serviceInfo,
         priceClient: updatedInstance.cost,
-        costProvider: updatedInstance.cost * 0.8,
+        costProvider: (() => {
+          // Calculate actual costProvider from providers array
+          if (updatedInstance.providers && updatedInstance.providers.length > 0) {
+            return updatedInstance.providers.reduce((total, provider) => {
+              return total + (parseFloat(provider.costProvider) || 0);
+            }, 0);
+          }
+          return updatedInstance.cost; // Fallback to instance cost if no providers
+        })(),
         currency: updatedInstance.currency,
         serviceDates: {
           startDate: new Date(updatedInstance.checkIn),
@@ -421,7 +473,7 @@ const SaleEdit = () => {
             // Otherwise, it's a Provider object that needs to be formatted
             const formattedProvider = {
               providerId: provider._id,
-              costProvider: instance.cost * 0.8, // Default cost calculation
+              costProvider: parseFloat(provider.costProvider) || 0, // Use individual provider cost
               currency: instance.currency || 'USD',
               commissionRate: 0
             };
@@ -439,7 +491,15 @@ const SaleEdit = () => {
           serviceId: instance.templateId,
           serviceName: instance.serviceInfo,
           priceClient: instance.cost,
-          costProvider: instance.cost * 0.8,
+          costProvider: (() => {
+                // Calculate actual costProvider from providers array
+                if (instance.providers && instance.providers.length > 0) {
+                  return instance.providers.reduce((total, provider) => {
+                    return total + (parseFloat(provider.costProvider) || 0);
+                  }, 0);
+                }
+                return instance.cost; // Fallback to instance cost if no providers
+              })(),
           currency: instance.currency,
           quantity: 1,
           serviceDates: {
@@ -496,7 +556,7 @@ const SaleEdit = () => {
             // Otherwise, it's a Provider object that needs to be formatted
             const formattedProvider = {
               providerId: provider._id,
-              costProvider: instance.cost * 0.8, // Default cost calculation
+              costProvider: parseFloat(provider.costProvider) || 0, // Use individual provider cost
               currency: instance.currency || 'USD',
               commissionRate: 0
             };
@@ -525,11 +585,16 @@ const SaleEdit = () => {
           });
         }
         
+        // Calculate costProvider from providers array
+        const calculatedCostProvider = formattedProviders.reduce((total, provider) => {
+          return total + (parseFloat(provider.costProvider) || 0);
+        }, 0);
+
         return {
           serviceId: instance.templateId,
           serviceName: instance.serviceInfo,
           priceClient: instance.cost,
-          costProvider: instance.cost * 0.8,
+          costProvider: calculatedCostProvider, // Calculate from providers array
           currency: instance.currency,
           quantity: 1,
           serviceDates: {
@@ -562,6 +627,12 @@ const SaleEdit = () => {
       if (response.data.success) {
         setSuccess('All changes saved successfully');
         toast.success('All changes saved successfully');
+        
+        // Update local sale state with the response data
+        if (response.data.data && response.data.data.sale) {
+          setSale(response.data.data.sale);
+        }
+        
         setTimeout(() => {
           navigate(`/sales/${id}`);
         }, 1500);
@@ -597,9 +668,46 @@ const SaleEdit = () => {
     }
   };
 
-  const handlePriceModalComplete = (price, currency) => {
+  const handlePriceModalComplete = async (price, currency) => {
     setPricePerPassenger(price);
     setPassengerCurrency(currency);
+    
+    // Automatically save the price changes
+    try {
+      setSaving(true);
+      
+      // Update passenger prices with the new price per passenger
+      const updatedPassengers = passengers.map(passenger => ({
+        ...passenger,
+        price: price
+      }));
+
+      const saleData = {
+        passengers: updatedPassengers
+      };
+      
+      console.log('🔥 Frontend - Updating passenger prices:', JSON.stringify(saleData, null, 2));
+      
+      const response = await api.put(`/api/sales/${id}`, saleData);
+      
+      if (response.data.success) {
+        setSuccess('Passenger prices updated successfully');
+        toast.success('Passenger prices updated successfully');
+        
+        // Update local sale state with the response data
+        if (response.data.data && response.data.data.sale) {
+          setSale(response.data.data.sale);
+        }
+      } else {
+        throw new Error(response.data.message || 'Failed to update passenger prices');
+      }
+    } catch (error) {
+      console.error('Error updating passenger prices:', error);
+      setError('Failed to update passenger prices');
+      toast.error('Failed to update passenger prices');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const openPriceModal = () => {
@@ -724,13 +832,31 @@ const SaleEdit = () => {
       {/* Service Template Instances */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-dark-100">Service Template Instances</h2>
-          <button
+          <div className="flex items-center space-x-4">
+            <h2 className="text-lg font-semibold text-dark-100">Service Template Instances</h2>
+            {/* <div className="text-sm text-red-400 font-medium">
+              Total Cost: {sale?.saleCurrency || 'USD'} {(() => {
+                // Calculate real-time total cost from current serviceTemplateInstances
+                const totalCost = serviceTemplateInstances.reduce((total, instance) => {
+                  if (instance.providers && instance.providers.length > 0) {
+                    // Sum individual provider costs
+                    return total + instance.providers.reduce((providerTotal, provider) => {
+                      return providerTotal + (parseFloat(provider.costProvider) || 0);
+                    }, 0);
+                  }
+                  // Fallback to instance cost if no providers
+                  return total + (parseFloat(instance.cost) || 0);
+                }, 0);
+                return totalCost.toFixed(2);
+              })()}
+            </div> */}
+          </div>
+          {/* <button
             onClick={() => setShowAddServiceModal(true)}
             className="btn-secondary"
           >
             Add New Service
-          </button>
+          </button> */}
         </div>
 
         {serviceTemplateInstances.length === 0 ? (
@@ -762,6 +888,7 @@ const SaleEdit = () => {
                 onEditStart={() => setEditingInstance(instance.id)}
                 onEditCancel={() => setEditingInstance(null)}
                 getGlobalProviderCount={getGlobalProviderCount}
+                saleCurrency={sale?.saleCurrency || 'USD'}
               />
             ))}
           </div>
@@ -774,9 +901,9 @@ const SaleEdit = () => {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-4">
               <h2 className="text-lg font-semibold text-dark-100">Passengers</h2>
-              <div className="text-sm text-green-400 font-medium">
-                Total: {passengerCurrency} {(pricePerPassenger * passengers.length).toFixed(2)}
-              </div>
+              {/* <div className="text-sm text-green-400 font-medium">
+                Total: {sale?.saleCurrency || 'USD'} {(sale?.totalSalePrice || 0).toFixed(2)}
+              </div> */}
             </div>
             <button
               onClick={openPriceModal}
@@ -838,6 +965,7 @@ const SaleEdit = () => {
         onComplete={handlePriceModalComplete}
         currentPrice={pricePerPassenger}
         passengerCount={passengers.length}
+        saleCurrency={sale?.saleCurrency || 'USD'}
       />
     </div>
   );

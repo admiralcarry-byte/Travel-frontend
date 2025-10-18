@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 
@@ -16,14 +16,9 @@ const VendorDashboard = () => {
     startDate: '',
     endDate: ''
   });
+  const [selectedCurrency, setSelectedCurrency] = useState('ARS');
 
-  useEffect(() => {
-    if (providerId) {
-      fetchProviderData();
-    }
-  }, [providerId, dateRange]);
-
-  const fetchProviderData = async () => {
+  const fetchProviderData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -39,10 +34,13 @@ const VendorDashboard = () => {
       if (dateRange.startDate) params.append('startDate', dateRange.startDate);
       if (dateRange.endDate) params.append('endDate', dateRange.endDate);
       params.append('providerId', providerId);
+      params.append('limit', '1000'); // Get more records for better dashboard data
+      if (selectedCurrency) params.append('currency', selectedCurrency);
 
       const salesResponse = await api.get(`/api/sales?${params}`);
       if (salesResponse.data.success) {
         const sales = salesResponse.data.data.sales || [];
+        
         
         // Calculate totals from sales data (same logic as Sale Summary)
         const providerTotals = {
@@ -62,67 +60,93 @@ const VendorDashboard = () => {
         sales.forEach(sale => {
           // Calculate provider-specific totals from this sale
           sale.services.forEach(service => {
+            let matchingProvider = null;
+            let serviceCurrency = service.currency || sale.saleCurrency || 'USD';
+            
+            // Check legacy single provider structure
             if (service.providerId && service.providerId._id === providerId) {
+              matchingProvider = {
+                providerId: service.providerId,
+                costProvider: service.costProvider,
+                currency: service.currency || sale.saleCurrency || 'USD',
+                commissionRate: 0
+              };
+            }
+            // Check new multiple providers structure
+            else if (service.providers && service.providers.length > 0) {
+              matchingProvider = service.providers.find(provider => 
+                provider.providerId._id === providerId
+              );
+              if (matchingProvider) {
+                serviceCurrency = matchingProvider.currency || sale.saleCurrency || 'USD';
+              }
+            }
+            
+            // Process if we found a matching provider
+            if (matchingProvider) {
               const serviceRevenue = (service.priceClient || 0) * (service.quantity || 1);
-              const serviceCost = (service.costProvider || 0) * (service.quantity || 1);
+              const serviceCost = (matchingProvider.costProvider || 0) * (service.quantity || 1);
               const serviceCommission = 0; // Commission disabled
 
-              // For now, use the service cost as the provider cost
-              // The actual payment data will be fetched separately if needed
+              // Convert to selected currency if needed (simplified for now)
               const effectiveProviderCost = serviceCost;
+              const effectiveRevenue = serviceRevenue;
 
-              providerTotals.totalRevenue += serviceRevenue;
+              providerTotals.totalRevenue += effectiveRevenue;
               providerTotals.totalCost += effectiveProviderCost;
               providerTotals.totalCommissions += serviceCommission;
-              providerTotals.totalPayments += effectiveProviderCost; // Use actual payment amount
-              providerTotals.totalProfit += serviceRevenue - effectiveProviderCost;
+              providerTotals.totalPayments += effectiveProviderCost;
+              providerTotals.totalProfit += effectiveRevenue - effectiveProviderCost;
 
               // Add to payment history
-              paymentHistory.push({
+              const paymentRecord = {
                 _id: sale._id,
                 saleId: { id: sale.saleNumber || sale._id },
                 serviceDetails: {
-                  serviceTitle: service.serviceId?.destino || service.serviceId?.title || 'Unknown Service',
+                  serviceTitle: service.serviceId?.destino || service.serviceId?.title || service.serviceName || 'Unknown Service',
                   quantity: service.quantity || 1
                 },
                 profit: {
-                  grossRevenue: serviceRevenue,
-                  providerCost: effectiveProviderCost, // Use actual payment amount
-                  netProfit: serviceRevenue - effectiveProviderCost,
-                  currency: service.currency || 'USD'
+                  grossRevenue: effectiveRevenue,
+                  providerCost: effectiveProviderCost,
+                  netProfit: effectiveRevenue - effectiveProviderCost,
+                  currency: serviceCurrency
                 },
                 commission: {
                   amount: 0, // Commission disabled
                   rate: 0, // Commission disabled
-                  currency: service.currency || 'USD'
+                  currency: serviceCurrency
                 },
                 paymentDetails: {
-                  status: 'pending' // Default status
+                  status: 'pending' // Default status - could be enhanced with actual payment status
                 },
                 dueDate: new Date(sale.createdAt.getTime() + (30 * 24 * 60 * 60 * 1000)),
                 isOverdue: new Date() > new Date(sale.createdAt.getTime() + (30 * 24 * 60 * 60 * 1000)),
                 daysOverdue: Math.max(0, Math.floor((new Date() - sale.createdAt) / (1000 * 60 * 60 * 24)) - 30)
-              });
+              };
+              
+              paymentHistory.push(paymentRecord);
             }
           });
 
-          // Add client payments to recent payments (simplified)
-          if (sale.paymentsClient && sale.paymentsClient.length > 0) {
-            sale.paymentsClient.forEach(payment => {
-              recentPayments.push({
+          // Add provider payments to recent payments
+          if (sale.paymentsProvider && sale.paymentsProvider.length > 0) {
+            sale.paymentsProvider.forEach(payment => {
+              const recentPayment = {
                 _id: payment._id,
                 saleId: { id: sale.saleNumber || sale._id },
                 serviceDetails: {
-                  serviceTitle: sale.services[0]?.serviceId?.destino || 'Unknown Service'
+                  serviceTitle: sale.services[0]?.serviceId?.destino || sale.services[0]?.serviceName || 'Unknown Service'
                 },
                 paymentDetails: {
-                  amount: 0, // Will be populated when payment data is available
-                  currency: 'USD',
-                  method: 'unknown',
-                  date: new Date(),
-                  status: 'pending'
+                  amount: payment.paymentId?.amount || 0,
+                  currency: payment.paymentId?.currency || sale.saleCurrency || 'USD',
+                  method: payment.paymentId?.method || 'unknown',
+                  date: payment.paymentId?.date || sale.createdAt,
+                  status: payment.paymentId?.status || 'pending'
                 }
-              });
+              };
+              recentPayments.push(recentPayment);
             });
           }
         });
@@ -138,6 +162,7 @@ const VendorDashboard = () => {
         // Sort recent payments by date
         recentPayments.sort((a, b) => new Date(b.paymentDetails.date) - new Date(a.paymentDetails.date));
 
+        
         setProviderTotals(providerTotals);
         setRecentPayments(recentPayments.slice(0, 5));
         setOverduePayments(paymentHistory.filter(p => p.isOverdue));
@@ -149,7 +174,13 @@ const VendorDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [providerId, dateRange, selectedCurrency]);
+
+  useEffect(() => {
+    if (providerId) {
+      fetchProviderData();
+    }
+  }, [providerId, fetchProviderData]);
 
   const handleDateRangeChange = (e) => {
     const { name, value } = e.target;
@@ -159,7 +190,11 @@ const VendorDashboard = () => {
     }));
   };
 
-  const formatCurrency = (amount, currency = 'USD') => {
+  const handleCurrencyChange = (e) => {
+    setSelectedCurrency(e.target.value);
+  };
+
+  const formatCurrency = (amount, currency = selectedCurrency) => {
     // Handle undefined, null, or NaN values
     if (amount === undefined || amount === null || isNaN(amount)) {
       const formatted = new Intl.NumberFormat('en-US', {
@@ -283,7 +318,7 @@ const VendorDashboard = () => {
         {/* Date Range Filter */}
         <div className="card-glass p-6 mb-8">
           <h3 className="text-lg font-medium text-white mb-4">Filter by Date Range</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label htmlFor="startDate" className="block text-sm font-medium text-gray-300 mb-2">
                 Start Date
@@ -310,6 +345,20 @@ const VendorDashboard = () => {
                 className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-dark-700 text-white"
               />
             </div>
+            <div>
+              <label htmlFor="currency" className="block text-sm font-medium text-gray-300 mb-2">
+                Currency
+              </label>
+              <select
+                id="currency"
+                value={selectedCurrency}
+                onChange={handleCurrencyChange}
+                className="w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 bg-dark-700 text-white"
+              >
+                <option value="ARS">ARS (AR$)</option>
+                <option value="USD">USD (U$)</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -326,7 +375,7 @@ const VendorDashboard = () => {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-300">Total Payments</p>
                   <p className="text-2xl font-semibold text-white">
-                    {formatCurrency(providerTotals.totalPayments)}
+                    {formatCurrency(providerTotals.totalPayments, selectedCurrency)}
                   </p>
                 </div>
               </div>
@@ -342,7 +391,7 @@ const VendorDashboard = () => {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-300">Total Commissions</p>
                   <p className="text-2xl font-semibold text-white">
-                    {formatCurrency(providerTotals.totalCommissions)}
+                    {formatCurrency(providerTotals.totalCommissions, selectedCurrency)}
                   </p>
                 </div>
               </div>
@@ -358,7 +407,7 @@ const VendorDashboard = () => {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-300">Net Profit</p>
                   <p className="text-2xl font-semibold text-white">
-                    {formatCurrency(providerTotals.totalProfit)}
+                    {formatCurrency(providerTotals.totalProfit, selectedCurrency)}
                   </p>
                 </div>
               </div>
@@ -374,7 +423,7 @@ const VendorDashboard = () => {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-300">Overdue Payments</p>
                   <p className="text-2xl font-semibold text-white">
-                    {formatCurrency(providerTotals.overduePayments)}
+                    {formatCurrency(providerTotals.overduePayments, selectedCurrency)}
                   </p>
                   <p className="text-sm text-red-400">
                     {providerTotals.overdueCount} payments
@@ -397,7 +446,7 @@ const VendorDashboard = () => {
               <div className="ml-3">
                 <h3 className="text-lg font-medium text-red-400">Overdue Payments</h3>
                 <p className="text-red-300">
-                  You have {overduePayments.length} overdue payment(s) totaling {formatCurrency(providerTotals.overduePayments)}
+                  You have {overduePayments.length} overdue payment(s) totaling {formatCurrency(providerTotals.overduePayments, selectedCurrency)}
                 </p>
               </div>
             </div>
@@ -444,7 +493,7 @@ const VendorDashboard = () => {
                         {payment.serviceDetails.serviceTitle}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                        {formatCurrency(payment.paymentDetails.amount, payment.paymentDetails.currency)}
+                        {formatCurrency(payment.paymentDetails.amount, selectedCurrency)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPaymentMethodColor(payment.paymentDetails.method)}`}>
@@ -522,20 +571,20 @@ const VendorDashboard = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                        {formatCurrency(payment.profit.grossRevenue, payment.profit.currency)}
+                        {formatCurrency(payment.profit.grossRevenue, selectedCurrency)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                        {formatCurrency(payment.profit.providerCost, payment.profit.currency)}
+                        {formatCurrency(payment.profit.providerCost, selectedCurrency)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                         <div>
-                          <div>{formatCurrency(payment.commission.amount, payment.commission.currency)}</div>
+                          <div>{formatCurrency(payment.commission.amount, selectedCurrency)}</div>
                           <div className="text-gray-300">(0%)</div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                         <span className={payment.profit.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}>
-                          {formatCurrency(payment.profit.netProfit, payment.profit.currency)}
+                          {formatCurrency(payment.profit.netProfit, selectedCurrency)}
                         </span>
                         {/* Debug info - remove in production */}
                         {console.log(`Frontend profit debug:`, {

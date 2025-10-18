@@ -1,47 +1,30 @@
 import React, { useState, useEffect } from 'react';
 
-const PassengerPriceModal = ({ isOpen, onClose, onComplete, currentPrice = 0, passengerCount = 0 }) => {
+const PassengerPriceModal = ({ isOpen, onClose, onComplete, currentPrice = 0, passengerCount = 0, saleCurrency = 'USD' }) => {
   const [price, setPrice] = useState(currentPrice);
-  const [currency, setCurrency] = useState('USD');
-  const [exchangeRate, setExchangeRate] = useState('');
-  const [usdPrice, setUsdPrice] = useState(currentPrice);
+  const [currency, setCurrency] = useState(saleCurrency);
 
-  // Calculate USD price based on currency and exchange rate
+  // Update currency when saleCurrency prop changes
   useEffect(() => {
-    if (currency === 'USD') {
-      setUsdPrice(price);
-    } else if (currency === 'ARS' && exchangeRate && parseFloat(exchangeRate) > 0) {
-      setUsdPrice(price / parseFloat(exchangeRate));
-    } else {
-      setUsdPrice(price);
-    }
-  }, [price, currency, exchangeRate]);
+    setCurrency(saleCurrency);
+  }, [saleCurrency]);
 
   const handleComplete = () => {
     if (price > 0) {
-      // Validate exchange rate for ARS
-      if (currency === 'ARS' && (!exchangeRate || parseFloat(exchangeRate) <= 0)) {
-        return; // Don't complete if ARS is selected but no valid exchange rate
-      }
-      // Always pass the USD price to the parent component
-      onComplete(usdPrice, 'USD');
+      // Pass the price directly (assuming it's already in USD)
+      onComplete(price, currency);
       onClose();
     }
   };
 
   const handleClose = () => {
     setPrice(currentPrice);
-    setCurrency('USD');
-    setExchangeRate('');
-    setUsdPrice(currentPrice);
+    setCurrency(saleCurrency);
     onClose();
   };
 
   const handleCurrencyChange = (newCurrency) => {
     setCurrency(newCurrency);
-    if (newCurrency === 'USD') {
-      setExchangeRate('');
-    }
   };
 
   if (!isOpen) return null;
@@ -81,9 +64,9 @@ const PassengerPriceModal = ({ isOpen, onClose, onComplete, currentPrice = 0, pa
                 value={currency}
                 onChange={(e) => handleCurrencyChange(e.target.value)}
                 className="px-3 py-2 bg-dark-700 border border-white/20 rounded-lg text-dark-100 focus:border-blue-500 focus:outline-none"
+                disabled
               >
-                <option value="USD">USD</option>
-                <option value="ARS">ARS</option>
+                <option value={saleCurrency}>{saleCurrency}</option>
               </select>
             </div>
             <p className="text-xs text-dark-400 mt-1">
@@ -92,41 +75,17 @@ const PassengerPriceModal = ({ isOpen, onClose, onComplete, currentPrice = 0, pa
           </div>
 
           {/* Exchange Rate Field - Only show when ARS is selected */}
-          {currency === 'ARS' && (
-            <div>
-              <label className="block text-sm font-medium text-dark-200 mb-2">
-                Exchange Rate (ARS to USD)
-              </label>
-              <input
-                type="number"
-                value={exchangeRate}
-                onChange={(e) => setExchangeRate(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-700 border border-white/20 rounded-lg text-dark-100 focus:border-blue-500 focus:outline-none"
-                placeholder="e.g., 1000 (1 USD = 1000 ARS)"
-                step="0.01"
-                min="0"
-              />
-              <p className="text-xs text-dark-400 mt-1">
-                Enter the current exchange rate (how many ARS = 1 USD)
-              </p>
-            </div>
-          )}
 
           {/* Total Price Preview */}
           <div className="bg-dark-700/50 rounded-lg p-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-dark-200">Total Sale Price (USD):</span>
+              <span className="text-sm font-medium text-dark-200">Total Sale Price ({saleCurrency}):</span>
               <span className="text-lg font-bold text-green-400">
-                USD {(usdPrice * passengerCount).toFixed(2)}
+                {currency} {(price * passengerCount).toFixed(2)}
               </span>
             </div>
             <div className="text-xs text-dark-400 mt-1">
-              {passengerCount} passenger{passengerCount !== 1 ? 's' : ''} × USD {usdPrice.toFixed(2)}
-              {currency === 'ARS' && exchangeRate && (
-                <div className="mt-1">
-                  ({currency} {price.toFixed(2)} ÷ {exchangeRate} = USD {usdPrice.toFixed(2)})
-                </div>
-              )}
+              {passengerCount} passenger{passengerCount !== 1 ? 's' : ''} × {currency} {price.toFixed(2)}
             </div>
           </div>
 
@@ -139,7 +98,7 @@ const PassengerPriceModal = ({ isOpen, onClose, onComplete, currentPrice = 0, pa
             </button>
             <button
               onClick={handleComplete}
-              disabled={price <= 0 || (currency === 'ARS' && (!exchangeRate || parseFloat(exchangeRate) <= 0))}
+              disabled={price <= 0}
               className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
             >
               Complete

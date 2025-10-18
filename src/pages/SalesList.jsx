@@ -96,6 +96,7 @@ const SalesList = () => {
     currency: ''
   });
   const [viewMode, setViewMode] = useState('comprehensive'); // 'comprehensive', 'monthly', 'financial', 'traditional'
+  const [selectedCurrency, setSelectedCurrency] = useState('USD'); // Default to USD to match currency summary
   const [debouncedFilters, setDebouncedFilters] = useState({
     status: '',
     minProfit: '',
@@ -323,16 +324,25 @@ const SalesList = () => {
     }
   };
 
-  const formatCurrency = (amount) => {
+  const formatCurrency = (amount, currency = 'USD') => {
     // Handle null, undefined, NaN, or invalid numbers
     if (amount === null || amount === undefined || isNaN(amount)) {
-      return 'U$0.00';
+      return currency === 'ARS' ? 'AR$0.00' : 'U$0.00';
     }
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      currencyDisplay: 'symbol'
-    }).format(amount).replace('$', 'U$');
+    
+    if (currency === 'ARS') {
+      return new Intl.NumberFormat('es-AR', {
+        style: 'currency',
+        currency: 'ARS',
+        currencyDisplay: 'symbol'
+      }).format(amount).replace('$', 'AR$');
+    } else {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        currencyDisplay: 'symbol'
+      }).format(amount).replace('$', 'U$');
+    }
   };
 
   const formatDate = (dateString) => {
@@ -433,13 +443,12 @@ const SalesList = () => {
                   {t('currency')}
                 </label>
                 <select
-                  value={filters.currency}
-                  onChange={(e) => handleFilterChange('currency', e.target.value)}
+                  value={selectedCurrency}
+                  onChange={(e) => setSelectedCurrency(e.target.value)}
                   className="input-field"
                 >
-                  <option value="">{t('allCurrencies')}</option>
-                  <option value="USD">{t('usd')}</option>
-                  <option value="ARS">{t('ars')}</option>
+                  <option value="ARS">ARS (AR$)</option>
+                  <option value="USD">USD (U$)</option>
                 </select>
               </div>
 
@@ -562,13 +571,17 @@ const SalesList = () => {
                 </select>
               </div>
 
+
               <div className="flex-1 filter-dropdown-container"
               >
                 <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
                   &nbsp;
                 </label>
                 <button
-                  onClick={clearFilters}
+                  onClick={() => {
+                    clearFilters();
+                    setSelectedCurrency('USD');
+                  }}
                   className="w-full px-4 py-3 text-sm font-medium text-white bg-dark-600 hover:bg-dark-500 border border-white/20 rounded-md h-12"
                 >
                   {t('clearFilters')}
@@ -646,6 +659,7 @@ const SalesList = () => {
             sales={sales}
             onSaleClick={(sale) => navigate(`/sales/${sale.id || sale._id}`)}
             loading={loading}
+            selectedCurrency={selectedCurrency}
           />
         )}
 
@@ -653,6 +667,7 @@ const SalesList = () => {
         {viewMode === 'monthly' && (
           <MonthlyProfitabilityChart
             sales={sales}
+            selectedCurrency={selectedCurrency}
             onMonthClick={(month) => {
               // Filter sales by month and show in comprehensive view
               const monthSales = sales.filter(sale => {
@@ -669,6 +684,7 @@ const SalesList = () => {
         {viewMode === 'financial' && (
           <FinancialSummary
             sales={sales}
+            selectedCurrency={selectedCurrency}
             period="all"
           />
         )}
@@ -737,7 +753,14 @@ const SalesList = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
-                    {clients.map((client) => (
+                    {clients.filter(client => {
+                      // Filter clients that have sales in the selected currency
+                      return client.sales && client.sales.some(sale => sale.saleCurrency === selectedCurrency);
+                    }).map((client) => {
+                      // Filter sales by selected currency
+                      const filteredSales = client.sales.filter(sale => sale.saleCurrency === selectedCurrency);
+                      
+                      return (
                       <tr key={client._id} className="table-row cursor-pointer">
                         <td className="px-6 py-4">
                           <div className="flex items-center">
@@ -767,13 +790,19 @@ const SalesList = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100 text-center">
-                          {client.salesCount}
+                          {filteredSales.length}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-dark-100 text-right">
-                          {formatCurrency(client.totalSales)}
+                          {(() => {
+                            const totalSales = filteredSales.reduce((sum, sale) => sum + (sale.totalSalePrice || 0), 0);
+                            return formatCurrency(totalSales, selectedCurrency);
+                          })()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-dark-100 text-right">
-                          {formatCurrency(client.totalProfit)}
+                          {(() => {
+                            const totalProfit = filteredSales.reduce((sum, sale) => sum + (sale.profit || 0), 0);
+                            return formatCurrency(totalProfit, selectedCurrency);
+                          })()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-400 text-center">
                           {client.latestSale ? formatDate(client.latestSale.createdAt) : 'No sales'}
@@ -822,7 +851,8 @@ const SalesList = () => {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -955,7 +985,7 @@ const SalesList = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
-                    {sales.map((sale) => {
+                    {sales.filter(sale => sale.saleCurrency === selectedCurrency).map((sale) => {
                       const earliestStartDate = getEarliestStartDate(sale);
                       const latestEndDate = getLatestEndDate(sale);
                       
@@ -987,19 +1017,19 @@ const SalesList = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-dark-100">
-                            {formatCurrency(sale.totalSalePrice)}
+                            {formatCurrency(sale.totalSalePrice, selectedCurrency)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-dark-100">
-                            {formatCurrency(sale.totalCost)}
+                            {formatCurrency(sale.totalCost, selectedCurrency)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className={`text-sm font-medium ${
                             sale.profit >= 0 ? 'text-green-400' : 'text-red-400'
                           }`}>
-                            {formatCurrency(sale.profit)}
+                            {formatCurrency(sale.profit, selectedCurrency)}
                           </div>
                           <div className="text-xs text-dark-400">
                             {sale.totalSalePrice > 0 ? Math.round((sale.profit / sale.totalSalePrice) * 100) : 0}% margin

@@ -1,11 +1,18 @@
 import React from 'react';
-import { formatCurrencyCompact, formatWithWarning } from '../utils/formatNumbers';
+import { formatCurrencyCompact, formatWithWarning, formatCurrencyFull } from '../utils/formatNumbers';
 
 const ProfitChart = ({ sale }) => {
-  // Calculate chart data
+  // Calculate chart data dynamically
   const totalSalePrice = sale.totalSalePrice || 0;
-  const totalCost = sale.totalCost || 0;
-  const profit = sale.profit || 0;
+  
+  const totalCost = sale.services?.reduce((total, service) => {
+    const costProvider = service.costProvider !== null && service.costProvider !== undefined 
+      ? service.costProvider 
+      : (service.priceClient || 0);
+    return total + (parseFloat(costProvider) || 0);
+  }, 0) || 0;
+  
+  const profit = totalSalePrice - totalCost;
   const totalClientPayments = sale.totalClientPayments || 0;
   const totalProviderPayments = sale.totalProviderPayments || 0;
 
@@ -16,12 +23,12 @@ const ProfitChart = ({ sale }) => {
   const clientPaymentsPercent = maxValue > 0 ? (totalClientPayments / maxValue) * 100 : 0;
   const providerPaymentsPercent = maxValue > 0 ? (totalProviderPayments / maxValue) * 100 : 0;
 
-  // Format values with warnings for suspiciously large numbers
-  const formattedSalePrice = formatWithWarning(totalSalePrice);
-  const formattedCost = formatWithWarning(totalCost);
-  const formattedClientPayments = formatWithWarning(totalClientPayments);
-  const formattedProviderPayments = formatWithWarning(totalProviderPayments);
-  const formattedProfit = formatWithWarning(profit);
+  // Format values with warnings for suspiciously large numbers (using full number format)
+  const formattedSalePrice = { value: formatCurrencyFull(totalSalePrice, sale.saleCurrency), warning: false };
+  const formattedCost = { value: formatCurrencyFull(totalCost, sale.saleCurrency), warning: false };
+  const formattedClientPayments = { value: formatCurrencyFull(totalClientPayments, sale.saleCurrency), warning: false };
+  const formattedProviderPayments = { value: formatCurrencyFull(totalProviderPayments, sale.saleCurrency), warning: false };
+  const formattedProfit = { value: formatCurrencyFull(profit, sale.saleCurrency), warning: false };
 
   return (
     <div className="card p-6">
@@ -136,18 +143,20 @@ const ProfitChart = ({ sale }) => {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <div className="text-sm text-dark-400">Passenger Balance</div>
-            <div className={`text-lg font-semibold ${
-              sale.clientBalance <= 0 ? 'text-success-400' : 'text-error-400'
-            }`}>
-              {formatCurrencyCompact(sale.clientBalance)}
+            <div className={`text-lg font-semibold ${(() => {
+              const balance = totalSalePrice - totalClientPayments;
+              return balance <= 0 ? 'text-success-400' : 'text-error-400';
+            })()}`}>
+              {formatCurrencyFull(totalSalePrice - totalClientPayments, sale.saleCurrency)}
             </div>
           </div>
           <div>
             <div className="text-sm text-dark-400">Provider Balance</div>
-            <div className={`text-lg font-semibold ${
-              sale.providerBalance >= 0 ? 'text-success-400' : 'text-error-400'
-            }`}>
-              {formatCurrencyCompact(sale.providerBalance)}
+            <div className={`text-lg font-semibold ${(() => {
+              const balance = totalCost - totalProviderPayments;
+              return balance >= 0 ? 'text-success-400' : 'text-error-400';
+            })()}`}>
+              {formatCurrencyFull(totalCost - totalProviderPayments, sale.saleCurrency)}
             </div>
           </div>
         </div>

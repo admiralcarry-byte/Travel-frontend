@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import ServiceEntryModal from './ServiceEntryModal';
 
 const NewSaleWizardSteps = ({
   currentStep,
@@ -12,8 +13,6 @@ const NewSaleWizardSteps = ({
   currentServiceDates,
   currentServiceCost,
   currentServiceCurrency,
-  currentServiceExchangeRate,
-  setCurrentServiceExchangeRate,
   currentServiceProvider,
   currentServiceProviders,
   addProviderToCurrentService,
@@ -81,6 +80,11 @@ const NewSaleWizardSteps = ({
   showAddServiceTemplateModal,
   setShowAddServiceTemplateModal,
   onServiceTemplateAdded,
+  // Service Type Modal
+  showAddServiceTypeModal,
+  setShowAddServiceTypeModal,
+  onServiceTypeAdded,
+  serviceTypes,
   // Service Template Search
   serviceTemplateSearch,
   setServiceTemplateSearch,
@@ -97,12 +101,68 @@ const NewSaleWizardSteps = ({
   setPricePerPassenger,
   passengerCurrency,
   setPassengerCurrency,
-  passengerExchangeRate,
-  setPassengerExchangeRate,
   passengerConvertedAmount,
+  // Currency Consistency
+  globalCurrency,
+  currencyLocked,
+  handleCurrencyChange,
   // Provider Search
-  setProviderSearch
+  setProviderSearch,
+  // Provider Cost Management
+  updateProviderCost,
+  updateProviderCurrency,
+  // Cupo Context
+  cupoContext,
+  isCupoReservation
 }) => {
+  // State for service entry modal and service cards
+  const [showServiceEntryModal, setShowServiceEntryModal] = useState(false);
+  const [selectedServiceType, setSelectedServiceType] = useState(null);
+  const [serviceCards, setServiceCards] = useState([]);
+
+  // Function to handle service type selection
+  const selectServiceType = (serviceType) => {
+    // Open service entry modal instead of directly adding
+    setSelectedServiceType(serviceType);
+    setShowServiceEntryModal(true);
+  };
+
+  // Function to handle service added from modal
+  const handleServiceAdded = (serviceCard) => {
+    // Add service card to the list
+    setServiceCards(prev => [...prev, serviceCard]);
+    
+    // Also add to service template instances for compatibility
+    const serviceInstance = {
+      id: serviceCard.id,
+      serviceTypeId: serviceCard.serviceTypeId,
+      serviceTypeName: serviceCard.serviceTypeName,
+      serviceInfo: serviceCard.serviceDescription,
+      checkIn: currentServiceDates.checkIn || '',
+      checkOut: currentServiceDates.checkOut || '',
+      cost: 0,
+      currency: 'USD',
+      provider: null,
+      providers: [],
+      destination: { 
+        city: destination.city || '', 
+        country: destination.country || '' 
+      },
+      isServiceTypeOnly: true
+    };
+    
+    addServiceInstance(serviceInstance);
+    
+    console.log('✅ Service added:', serviceCard);
+  };
+
+  // Function to remove service card
+  const removeServiceCard = (serviceId) => {
+    setServiceCards(prev => prev.filter(card => card.id !== serviceId));
+    // Also remove from service template instances
+    removeServiceInstance(serviceId);
+  };
+
   return (
     <>
       {/* Step 1: Select Passengers & Companions */}
@@ -377,60 +437,33 @@ const NewSaleWizardSteps = ({
               </label>
               <select
                 value={passengerCurrency}
-                onChange={(e) => setPassengerCurrency(e.target.value)}
+                onChange={(e) => handleCurrencyChange(e.target.value)}
                 className="input-field"
+                disabled={isCupoReservation ? currencyLocked : (currencyLocked && currentStep > 2)}
+                style={{ 
+                  opacity: (isCupoReservation ? currencyLocked : (currencyLocked && currentStep > 2)) ? 0.5 : 1,
+                  cursor: (isCupoReservation ? currencyLocked : (currencyLocked && currentStep > 2)) ? 'not-allowed' : 'pointer'
+                }}
               >
                 <option value="USD">USD - US Dollar</option>
                 <option value="ARS">ARS - Argentine Peso</option>
               </select>
               <p className="text-xs text-dark-400 mt-1">
-                Select the currency for the price
+                {isCupoReservation && currencyLocked
+                  ? `Currency locked to ${globalCurrency} from cupo - cannot be changed`
+                  : currencyLocked && currentStep > 2
+                    ? `Currency locked to ${globalCurrency} for this sale`
+                    : 'Select the currency for the price'
+                }
+                {/* Debug info */}
+                {/* <br /> */}
+                {/* <span className="text-xs text-gray-500">
+                  Debug: currencyLocked={currencyLocked.toString()}, currentStep={currentStep}, disabled={currencyLocked && currentStep > 2}
+                </span> */}
               </p>
             </div>
           </div>
 
-          {/* Currency Conversion Section */}
-          {passengerCurrency === 'ARS' && (
-            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-              <div className="flex items-center mb-3">
-                <svg className="w-5 h-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h4 className="font-medium text-green-300">Currency Conversion</h4>
-              </div>
-              <p className="text-sm text-green-200 mb-4">
-                Since you selected ARS, please provide the exchange rate to convert to USD. The amount will be stored in USD in the database for consistency.
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-green-200 mb-2">
-                    Exchange Rate (1 USD = ? ARS) *
-                  </label>
-                  <input
-                    type="number"
-                    value={passengerExchangeRate}
-                    onChange={(e) => setPassengerExchangeRate(e.target.value)}
-                    className="input-field"
-                    placeholder="e.g., 6"
-                    min="0.01"
-                    step="0.01"
-                    required={passengerCurrency === 'ARS'}
-                  />
-                </div>
-                  <div>
-                    <label className="block text-sm font-medium text-green-200 mb-2">
-                      Converted Amount (USD)
-                    </label>
-                  <input
-                    type="text"
-                    value={passengerConvertedAmount ? `U$${passengerConvertedAmount.toFixed(2)} USD` : 'U$0.00 USD'}
-                    className="input-field bg-dark-700 text-green-100"
-                    readOnly
-              />
-            </div>
-                    </div>
-                  </div>
-                )}
 
           {/* Summary */}
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
@@ -440,18 +473,23 @@ const NewSaleWizardSteps = ({
               </svg>
               <p className="text-sm text-blue-300">
                 <strong>Total for {selectedPassengers.length + selectedCompanions.length} passenger{(selectedPassengers.length + selectedCompanions.length) > 1 ? 's' : ''}:</strong> {passengerCurrency} {pricePerPassenger || '0'} × {selectedPassengers.length + selectedCompanions.length} = {passengerCurrency} {((parseFloat(pricePerPassenger) || 0) * (selectedPassengers.length + selectedCompanions.length)).toFixed(2)}
-                {passengerConvertedAmount && (
-                  <span className="ml-2">(U${(passengerConvertedAmount * (selectedPassengers.length + selectedCompanions.length)).toFixed(2)} USD)</span>
-                )}
                 <br />
                 <span className="text-xs text-blue-200">
                   ({selectedPassengers.length} main passenger{selectedPassengers.length !== 1 ? 's' : ''} + {selectedCompanions.length} companion{selectedCompanions.length !== 1 ? 's' : ''})
                 </span>
+                {currencyLocked && currentStep > 2 && (
+                  <>
+                    <br />
+                    <span className="text-xs text-yellow-300">
+                      🔒 Currency locked to {globalCurrency} for this sale
+                    </span>
+                  </>
+                )}
               </p>
             </div>
-              </div>
-            </div>
-          )}
+          </div>
+        </div>
+      )}
 
       {/* Step 3: Select Service Template */}
       {currentStep === 3 && (
@@ -459,80 +497,42 @@ const NewSaleWizardSteps = ({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-medium text-dark-100">Select Service Template</h3>
-              <p className="text-sm text-dark-400">Review and manage service templates for your sale</p>
+              <p className="text-sm text-dark-400">Review and manage service types for your sale</p>
             </div>
             <button
-              onClick={() => setShowAddServiceTemplateModal(true)}
+              onClick={() => setShowAddServiceTypeModal(true)}
               className="text-xs text-primary-400 hover:text-primary-300 underline whitespace-nowrap"
             >
-              + Add New Service Template
+              + Add New Service Type
             </button>
           </div>
 
-          {/* Selected Templates Section */}
-          {serviceTemplateInstances.length > 0 && (
-            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-              <h4 className="font-medium text-dark-100 mb-3 flex items-center">
-                <svg className="w-5 h-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Selected Templates ({serviceTemplateInstances.length})
-              </h4>
-              <div className="space-y-2">
-                {(() => {
-                  // Group instances by template
-                  const groupedInstances = {};
-                  serviceTemplateInstances.forEach(instance => {
-                    const templateId = instance.templateId;
-                    if (!groupedInstances[templateId]) {
-                      groupedInstances[templateId] = {
-                        templateName: instance.templateName,
-                        templateCategory: instance.templateCategory,
-                        instances: []
-                      };
-                    }
-                    groupedInstances[templateId].instances.push(instance);
-                  });
-                  
-                  return Object.entries(groupedInstances).map(([templateId, group]) => (
-                    <div key={templateId} className="bg-dark-700/30 rounded p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center">
-                          <span className="text-green-400 font-medium mr-2">
-                            {group.templateName}
-                          </span>
-                          <span className="text-xs px-2 py-1 bg-primary-500/20 text-primary-400 rounded">
-                            {group.templateCategory || 'Template'}
-                          </span>
-                          <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded ml-2">
-                            {group.instances.length} selected
-                          </span>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        {group.instances.map((instance, index) => (
-                          <div key={instance.id} className="flex items-center justify-between text-sm text-dark-300 bg-dark-600/30 rounded p-2">
-                            <div className="flex items-center">
-                              <span className="text-green-300 font-medium mr-2">{index + 1}.</span>
-                              {instance.destination?.city && (
-                                <span className="text-dark-400">({instance.destination.city})</span>
-                              )}
-                              {instance.isTemplateOnly && (
-                                <span className="text-xs text-yellow-400 ml-2">(Template Only)</span>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => removeServiceInstance(instance.id)}
-                              className="text-red-400 hover:text-red-300 text-xs"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
-                      </div>
+
+          {/* Service Cards Section */}
+          {serviceCards.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-md font-medium text-dark-100">Added Services</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {serviceCards.map((serviceCard) => (
+                  <div key={serviceCard.id} className="p-4 border rounded-lg bg-primary-500/10 border-primary-500/30">
+                    <div className="flex items-center justify-between mb-2">
+                      <h5 className="font-medium text-dark-100">{serviceCard.serviceTypeName}</h5>
+                      <button
+                        onClick={() => removeServiceCard(serviceCard.id)}
+                        className="text-red-400 hover:text-red-300 text-sm"
+                        title="Remove service"
+                      >
+                        ✕
+                      </button>
                     </div>
-                  ));
-                })()}
+                    <p className="text-sm text-dark-300 line-clamp-2">{serviceCard.serviceDescription}</p>
+                    <div className="mt-2">
+                      <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded">
+                        Service
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -540,12 +540,12 @@ const NewSaleWizardSteps = ({
           {/* Search Section */}
           <div className="space-y-3">
             <h4 className="text-md font-medium text-dark-100">
-              Search and select service templates from the database
+              Search and select service types from the database
             </h4>
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search service templates by name, category, or description..."
+                placeholder="Search service types by name..."
                 value={serviceTemplateSearch || ''}
                 onChange={(e) => setServiceTemplateSearch(e.target.value)}
                 className="input-field w-full pl-10"
@@ -558,53 +558,57 @@ const NewSaleWizardSteps = ({
             </div>
           </div>
 
-          {/* Available Templates Section */}
+          {/* Available Service Types Section */}
           <div className="space-y-3">
             <h4 className="text-md font-medium text-dark-100">
-              Available Templates {serviceLoading && <span className="text-sm text-dark-400">(Loading...)</span>}
+              Available Service Types {serviceLoading && <span className="text-sm text-dark-400">(Loading...)</span>}
             </h4>
             
             {(() => {
-              // Filter templates based on search term only (no longer filter by selection status)
-              const filteredTemplates = availableServiceTemplates.filter(template => {
+              // Use serviceTypes instead of availableServiceTemplates
+              const availableServiceTypes = serviceTypes || [];
+              
+              // Filter service types based on search term
+              const filteredServiceTypes = availableServiceTypes.filter(serviceType => {
                 if (serviceTemplateSearch && serviceTemplateSearch.trim()) {
                   const searchTerm = serviceTemplateSearch.toLowerCase().trim();
-                  const matchesName = template.name?.toLowerCase().includes(searchTerm);
-                  const matchesCategory = template.category?.toLowerCase().includes(searchTerm);
-                  const matchesDescription = template.description?.toLowerCase().includes(searchTerm);
+                  const matchesName = serviceType.name?.toLowerCase().includes(searchTerm);
                   
-                  return matchesName || matchesCategory || matchesDescription;
+                  return matchesName;
                 }
                 
-                return true; // Show all available templates
+                return true; // Show all available service types
               });
               
-              return filteredTemplates.length === 0 && !serviceLoading ? (
+              return filteredServiceTypes.length === 0 && !serviceLoading ? (
                 <div className="text-center py-8 text-dark-400">
                   {serviceTemplateSearch && serviceTemplateSearch.trim() ? (
                     <div>
-                      <p>No service templates found matching "{serviceTemplateSearch}"</p>
-                      <p className="text-sm mt-2">Try adjusting your search or add a new service template.</p>
+                      <p>No service types found matching "{serviceTemplateSearch}"</p>
+                      <p className="text-sm mt-2">Try adjusting your search or add a new service type.</p>
                     </div>
                   ) : (
-                    <p>No service templates available. Add a new service template to get started.</p>
+                    <p>No service types available. Add a new service type to get started.</p>
                   )}
                 </div>
               ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
-                {filteredTemplates.map((template) => {
-                  // Count how many times this template has been selected
-                  const selectionCount = serviceTemplateInstances.filter(instance => instance.templateId === template._id).length;
+                {filteredServiceTypes.map((serviceType) => {
+                  // Count how many times this service type has been selected
+                  const selectionCount = serviceTemplateInstances.filter(instance => 
+                    instance.serviceTypeId === serviceType._id || 
+                    (instance.isServiceTypeOnly && instance.serviceTypeName === serviceType.name)
+                  ).length;
                   const canSelectMore = selectionCount < 7;
                   
                   return (
-                    <div key={template._id} className={`p-4 border rounded-lg bg-dark-700/50 border-white/10 ${canSelectMore ? 'hover:bg-dark-600/50 hover:border-primary-500/30 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
+                    <div key={serviceType._id} className={`p-4 border rounded-lg bg-dark-700/50 border-white/10 ${canSelectMore ? 'hover:bg-dark-600/50 hover:border-primary-500/30 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
                       <div className="flex items-center justify-between mb-2">
                         <div 
-                          onClick={() => canSelectMore && selectServiceTemplate(template)}
+                          onClick={() => canSelectMore && selectServiceType(serviceType)}
                           className="flex-1"
                         >
-                          <h5 className="font-medium text-dark-100">{template.name}</h5>
+                          <h5 className="font-medium text-dark-100">{serviceType.name}</h5>
                           {selectionCount > 0 && (
                             <div className="flex items-center space-x-2 mt-1">
                               <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded">
@@ -613,25 +617,10 @@ const NewSaleWizardSteps = ({
                             </div>
                           )}
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingTemplate(template);
-                          }}
-                          className="text-primary-400 hover:text-primary-300 p-1 rounded hover:bg-primary-500/10"
-                          title="Edit template"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
                       </div>
-                      {template.description && (
-                        <p className="text-sm text-dark-300 line-clamp-2">{template.description}</p>
-                      )}
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-xs text-dark-400 px-2 py-1 bg-dark-600/50 rounded">
-                          {template.category || 'General'}
+                          Service Type
                         </span>
                         {!canSelectMore && (
                           <span className="text-xs text-red-400 bg-red-500/20 px-2 py-1 rounded">
@@ -729,18 +718,23 @@ const NewSaleWizardSteps = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
                   <label className="block text-sm font-medium text-dark-200 mb-2">
-                    Cost *
+                    Total Service Cost
                   </label>
-                  <input
-                    type="number"
-                    value={service.cost || ''}
-                    onChange={(e) => updateServiceInstance(service._id || service.id, { cost: parseFloat(e.target.value) || 0 })}
-                    className="input-field"
-                    placeholder="0.00"
-                    step="0.01"
-                    min="0"
-                    required
-                  />
+                  <div className="input-field bg-dark-700/50 text-dark-100 flex items-center">
+                    <span className="text-lg font-semibold">
+                      {(() => {
+                        const selectedProviders = service.providers || (service.provider ? [service.provider] : []);
+                        const totalCost = selectedProviders.reduce((sum, provider) => {
+                          return sum + (parseFloat(provider.costProvider) || 0);
+                        }, 0);
+                        return `${globalCurrency} ${totalCost.toFixed(2)}`;
+                      })()}
+                    </span>
+                    <span className="ml-2 text-sm text-dark-400">(Auto-calculated)</span>
+                  </div>
+                  <p className="text-xs text-dark-400 mt-1">
+                    Total cost automatically calculated from individual provider costs
+                  </p>
                 </div>
 
                 <div>
@@ -748,60 +742,29 @@ const NewSaleWizardSteps = ({
                     Currency
                   </label>
                   <select
-                    value={service.currency || 'USD'}
+                    value={globalCurrency}
                     onChange={(e) => updateServiceInstance(service._id || service.id, { currency: e.target.value })}
                     className="input-field"
+                    disabled={isCupoReservation ? currencyLocked : (currencyLocked && currentStep > 2)}
+                    style={{ 
+                      opacity: (isCupoReservation ? currencyLocked : (currencyLocked && currentStep > 2)) ? 0.5 : 1,
+                      cursor: (isCupoReservation ? currencyLocked : (currencyLocked && currentStep > 2)) ? 'not-allowed' : 'pointer'
+                    }}
                   >
                     <option value="USD">USD - US Dollar</option>
                     <option value="ARS">ARS - Argentine Peso</option>
                   </select>
+                  <p className="text-xs text-dark-400 mt-1">
+                    {isCupoReservation && currencyLocked
+                      ? `Currency locked to ${globalCurrency} from cupo - cannot be changed`
+                      : currencyLocked && currentStep > 2
+                        ? `Currency locked to ${globalCurrency} for this sale`
+                        : 'Select the currency for this service'
+                    }
+                  </p>
                 </div>
               </div>
 
-              {/* Exchange Rate Input for ARS (per service) */}
-              {service.currency === 'ARS' && (
-                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-6">
-                  <div className="flex items-center mb-3">
-                    <svg className="w-5 h-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <h4 className="text-lg font-semibold text-green-300">Currency Conversion</h4>
-                  </div>
-                  <p className="text-sm text-green-200 mb-4">
-                    Since you selected ARS, please provide the exchange rate to convert to USD. 
-                    The amount will be stored in USD in the database for consistency.
-                  </p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-green-200 mb-2">
-                        Exchange Rate (1 USD = ? ARS) *
-                      </label>
-                      <input
-                        type="number"
-                        value={service.exchangeRate || ''}
-                        onChange={(e) => updateServiceInstance(service._id || service.id, { exchangeRate: parseFloat(e.target.value) || 0 })}
-                        className="input-field"
-                        placeholder="e.g., 1000"
-                        step="0.01"
-                        min="0"
-                        required
-                      />
-                    </div>
-
-                    {service.cost && service.exchangeRate && (
-                      <div>
-                        <label className="block text-sm font-medium text-green-200 mb-2">
-                          Converted Amount (USD)
-                        </label>
-                        <div className="input-field bg-dark-700 text-dark-100 cursor-not-allowed">
-                          U${(parseFloat(service.cost) / parseFloat(service.exchangeRate)).toFixed(2)} USD
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
 
               {/* Service Provider Selection for this service */}
               <div className="border-t border-white/10 pt-6">
@@ -852,6 +815,41 @@ const NewSaleWizardSteps = ({
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                               </svg>
                             </button>
+                          </div>
+                          
+                          {/* Individual Provider Cost Input */}
+                          <div className="border-t border-white/10 pt-3 mb-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-dark-200 mb-2">
+                                  Provider Cost *
+                                </label>
+                                <input
+                                  type="number"
+                                  value={provider.costProvider || ''}
+                                  onChange={(e) => updateProviderCost(service._id || service.id, provider._id, index, parseFloat(e.target.value) || 0)}
+                                  className="input-field"
+                                  placeholder="0.00"
+                                  step="0.01"
+                                  min="0"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-dark-200 mb-2">
+                                  Currency
+                                </label>
+                                <select
+                                  value={provider.currency || globalCurrency}
+                                  onChange={(e) => updateProviderCurrency(service._id || service.id, provider._id, index, e.target.value)}
+                                  className="input-field"
+                                  disabled={currencyLocked && currentStep > 2}
+                                >
+                                  <option value="USD">USD - US Dollar</option>
+                                  <option value="ARS">ARS - Argentine Peso</option>
+                                </select>
+                              </div>
+                            </div>
                           </div>
                           
                           {/* File Upload Section for Selected Provider */}
@@ -1038,7 +1036,7 @@ const NewSaleWizardSteps = ({
                   <div key={instance.id} className="text-sm text-dark-300 bg-dark-700/30 rounded p-2">
                     <span className="text-green-400 font-medium">•</span> {index + 1}. {instance.templateName}
                     <span className="text-dark-400 ml-2">({instance.serviceInfo})</span>
-                    <span className="text-dark-400 ml-2">- {instance.currency || 'USD'} {parseFloat(instance.cost || 0).toFixed(2)}</span>
+                    <span className="text-dark-400 ml-2">- {globalCurrency} {parseFloat(instance.cost || 0).toFixed(2)}</span>
                 </div>
               ))}
             </div>
@@ -1066,7 +1064,6 @@ const NewSaleWizardSteps = ({
                 setCurrentServiceDates({ checkIn: '', checkOut: '' });
                 setCurrentServiceCost('');
                 setCurrentServiceCurrency('USD');
-                setCurrentServiceExchangeRate('');
                 setCurrentServiceProvider(null);
                 setCurrentServiceProviders([]);
                 setDestination({ city: '', country: '' });
@@ -1121,7 +1118,7 @@ const NewSaleWizardSteps = ({
                     <div className="text-xs text-dark-400 space-y-1">
                       <div><span className="text-primary-400">Dates:</span> {instance.checkIn && instance.checkOut ? `${instance.checkIn} to ${instance.checkOut}` : 'Not specified'}</div>
                       <div><span className="text-primary-400">Destination:</span> {instance.destination?.city || instance.destination?.name || 'Not specified'}</div>
-                      <div><span className="text-primary-400">Cost:</span> {instance.currency || 'USD'} {parseFloat(instance.cost || 0).toFixed(2)}</div>
+                      <div><span className="text-primary-400">Cost:</span> {globalCurrency} {parseFloat(instance.cost || 0).toFixed(2)}</div>
                       <div><span className="text-primary-400">Providers:</span> {(() => {
                         console.log(`🔍 Service ${instance.templateName} providers:`, instance.providers);
                         console.log(`🔍 Service ${instance.templateName} provider:`, instance.provider);
@@ -1185,7 +1182,7 @@ const NewSaleWizardSteps = ({
                       <div className="text-sm text-dark-300 space-y-1">
                         <div><span className="text-primary-400">Dates:</span> {instance.checkIn} to {instance.checkOut}</div>
                         <div><span className="text-primary-400">Destination:</span> {instance.destination.city}</div>
-                        <div><span className="text-primary-400">Cost:</span> {instance.currency || 'USD'} {parseFloat(instance.cost || 0).toFixed(2)}</div>
+                        <div><span className="text-primary-400">Cost:</span> {globalCurrency} {parseFloat(instance.cost || 0).toFixed(2)}</div>
                         <div><span className="text-primary-400">Provider(s):</span> {(() => {
                           if (instance.providers && instance.providers.length > 0) {
                             // Group providers by name and count occurrences
@@ -1224,6 +1221,19 @@ const NewSaleWizardSteps = ({
                 </div>
                 <h4 className="text-lg font-semibold text-blue-200">Passengers ({selectedPassengers.length + selectedCompanions.length})</h4>
               </div>
+              {(() => {
+                const totalPassengers = selectedPassengers.length + selectedCompanions.length;
+                const passengerPrice = parseFloat(pricePerPassenger) || 0;
+                const totalPassengerCost = passengerPrice * totalPassengers;
+                
+                return (
+                  <div className="text-right">
+                    <div className="text-sm text-blue-300 font-medium">
+                      ({passengerCurrency} {passengerPrice.toFixed(2)} × {totalPassengers}: {passengerCurrency} {totalPassengerCost.toFixed(2)})
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
             
             <div className="space-y-3">
@@ -1252,6 +1262,13 @@ const NewSaleWizardSteps = ({
       )}
 
 
+      {/* Service Entry Modal */}
+      <ServiceEntryModal
+        isOpen={showServiceEntryModal}
+        onClose={() => setShowServiceEntryModal(false)}
+        serviceType={selectedServiceType}
+        onServiceAdded={handleServiceAdded}
+      />
     </>
   );
 };
