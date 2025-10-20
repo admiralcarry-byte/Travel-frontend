@@ -398,7 +398,7 @@ const InventoryDashboard = () => {
                           {cupo.serviceId?.providerId?.name}
                         </p>
                         <p className="text-sm text-dark-400">
-                          {cupo.serviceId?.type} • {cupo.formattedDate}
+                          {cupo.serviceId?.typeId?.name || cupo.serviceId?.type} • {cupo.formattedDate}
                         </p>
                         {cupo.metadata.completionDate && (
                           <p className="text-sm text-dark-400">
@@ -471,7 +471,7 @@ const InventoryDashboard = () => {
                     )}
                     {cupo.metadata.value && (
                       <div className="text-sm text-dark-300 mb-2">
-                        <span className="font-medium">Value:</span> {cupo.metadata.currency} {cupo.metadata.value.toLocaleString()}
+                        <span className="font-medium">Value:</span> {cupo.metadata.currency === 'USD' ? 'U$' : cupo.metadata.currency === 'ARS' ? 'AR$' : cupo.metadata.currency} {cupo.metadata.value.toLocaleString()}
                       </div>
                     )}
                     {cupo.metadata.providerRef && (

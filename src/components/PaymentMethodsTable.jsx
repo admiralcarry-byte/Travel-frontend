@@ -124,14 +124,14 @@ const PaymentMethodsTable = ({ data, currency = 'USD' }) => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                      {detail._id.currency}
+                      {detail._id.currency === 'USD' ? 'U$' : detail._id.currency === 'ARS' ? 'AR$' : detail._id.currency}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
                     {detail.count.toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                    {detail.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {detail._id.currency}
+                    {detail.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {detail._id.currency === 'USD' ? 'U$' : detail._id.currency === 'ARS' ? 'AR$' : detail._id.currency}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
                     {currency === 'ARS' ? 'AR$' : 'U$'}{detail.totalAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

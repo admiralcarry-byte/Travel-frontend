@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
+import { getCurrencySymbol } from '../utils/formatNumbers';
 
 const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServiceTemplateIds = [] }) => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -452,7 +453,7 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
                 <div><span className="text-primary-400">Details:</span> {serviceInfo}</div>
                 <div><span className="text-primary-400">Dates:</span> {serviceDates.checkIn} to {serviceDates.checkOut}</div>
                 <div><span className="text-primary-400">Destination:</span> {destination.city}, {destination.country}</div>
-                <div><span className="text-primary-400">Cost:</span> {serviceCurrency} {serviceCost}</div>
+                <div><span className="text-primary-400">Cost:</span> {getCurrencySymbol(serviceCurrency)} {serviceCost}</div>
                 <div><span className="text-primary-400">Provider(s):</span> {selectedProviders.map(p => p.name).join(', ')}</div>
               </div>
             </div>

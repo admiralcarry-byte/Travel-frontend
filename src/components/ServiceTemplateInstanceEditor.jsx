@@ -26,7 +26,7 @@ const ServiceTemplateInstanceEditor = ({
     checkIn: instance.checkIn,
     checkOut: instance.checkOut
   });
-  const [tempCurrency, setTempCurrency] = useState(instance.currency);
+  const [tempCurrency, setTempCurrency] = useState(saleCurrency || instance.currency);
   const [exchangeRate, setExchangeRate] = useState('');
   const [convertedAmount, setConvertedAmount] = useState(null);
   
@@ -36,8 +36,6 @@ const ServiceTemplateInstanceEditor = ({
   // Local search state for the modal
   const [localProviderSearch, setLocalProviderSearch] = useState('');
   
-  // Provider cost states
-  const [providerCosts, setProviderCosts] = useState({});
 
   
   // Initialize selected providers when modal opens
@@ -76,15 +74,6 @@ const ServiceTemplateInstanceEditor = ({
       setSelectedProviders(currentProviders);
       // Reset search when modal opens
       setLocalProviderSearch('');
-      
-      // Initialize provider costs from existing data
-      const initialCosts = {};
-      currentProviders.forEach((provider, index) => {
-        const costKey = `${provider._id}_${index}`;
-        initialCosts[costKey] = provider.costProvider || '';
-        initialCosts[`${costKey}_currency`] = saleCurrency; // Use sale currency
-      });
-      setProviderCosts(initialCosts);
     }
   }, [showProviderModal, instance.provider, instance.providers, getGlobalProviderCount]);
 
@@ -94,7 +83,7 @@ const ServiceTemplateInstanceEditor = ({
       setEditValue(currentValue?.city || '');
     } else if (field === 'cost') {
       setEditValue(currentValue || '');
-      setTempCurrency(instance.currency); // Initialize with current currency
+      setTempCurrency(saleCurrency || instance.currency); // Initialize with sale currency or current currency
       setExchangeRate(''); // Clear exchange rate
       setConvertedAmount(null); // Clear converted amount
     } else {
@@ -108,7 +97,7 @@ const ServiceTemplateInstanceEditor = ({
     setEditingField(null);
     setEditValue('');
     setError('');
-    setTempCurrency(instance.currency); // Reset to original currency
+    setTempCurrency(saleCurrency || instance.currency); // Reset to sale currency or original currency
     setExchangeRate(''); // Clear exchange rate
     setConvertedAmount(null); // Clear converted amount
     if (onEditCancel) onEditCancel();
@@ -128,10 +117,18 @@ const ServiceTemplateInstanceEditor = ({
         [field]: value
       };
 
-      // Handle special field mappings
-      if (field === 'serviceInfo') {
-        updateData.serviceInfo = value; // Keep consistent with display field
-        updateData.serviceName = value; // Also update the backend field
+       // Handle special field mappings
+       if (field === 'serviceInfo') {
+         // Extract just the description part from the value (remove any category prefix)
+         let cleanDescription = value;
+         cleanDescription = cleanDescription.replace(/^Service: undefined - /, '');
+         cleanDescription = cleanDescription.replace(/^Service: [^-]+ - /, '');
+         cleanDescription = cleanDescription.replace(/^[^-]+ - /, ''); // Remove any category prefix
+         
+         updateData.serviceInfo = value; // Keep the original value for display field
+         // Don't update serviceName - only update notes field
+         updateData.serviceDescription = cleanDescription; // Update with clean description
+         updateData.notes = cleanDescription; // Update the notes field in sales table
       } else if (field === 'serviceDescription') {
         updateData.serviceDescription = value; // Keep consistent with display field
         updateData.notes = value; // Also update the backend field
@@ -139,7 +136,7 @@ const ServiceTemplateInstanceEditor = ({
         updateData.cost = parseFloat(value); // Keep consistent with display field
         updateData.priceClient = parseFloat(value);
         updateData.costProvider = parseFloat(value); // Update costProvider directly
-        updateData.currency = tempCurrency; // Include the selected currency
+        updateData.currency = saleCurrency || tempCurrency; // Use sale currency if available, otherwise selected currency
         
         // Update the providers array to reflect the new costProvider value
         if (instance.providers && instance.providers.length > 0) {
@@ -169,6 +166,35 @@ const ServiceTemplateInstanceEditor = ({
         ...updateData
       };
 
+      // If updating serviceInfo, also update the Service table's description field
+      if (field === 'serviceInfo' && instance.templateId) {
+        try {
+          // Extract just the description part from the value (remove any category prefix)
+          let cleanDescription = value;
+          cleanDescription = cleanDescription.replace(/^Service: undefined - /, '');
+          cleanDescription = cleanDescription.replace(/^Service: [^-]+ - /, '');
+          cleanDescription = cleanDescription.replace(/^[^-]+ - /, ''); // Remove any category prefix
+          
+          await api.put(`/api/services/${instance.templateId}`, {
+            description: cleanDescription
+          });
+        } catch (error) {
+          console.error('Error updating service description:', error);
+          // Don't fail the entire operation if service update fails
+        }
+      }
+
+      // If updating cost, also update the Service table's sellingPrice field
+      if (field === 'cost' && instance.templateId) {
+        try {
+          await api.put(`/api/services/${instance.templateId}`, {
+            sellingPrice: parseFloat(value)
+          });
+        } catch (error) {
+          console.error('Error updating service sellingPrice:', error);
+          // Don't fail the entire operation if service update fails
+        }
+      }
 
       onUpdate(updatedInstance);
       cancelEditing();
@@ -238,59 +264,21 @@ const ServiceTemplateInstanceEditor = ({
       return;
     }
     
-    // Calculate total cost from provider costs
-    let totalCost = 0;
-    
-    // Group providers by ID to match the UI structure
-    const providerGroups = {};
-    selectedProviders.forEach((provider, index) => {
-      if (!providerGroups[provider._id]) {
-        providerGroups[provider._id] = {
-          provider,
-          indices: []
-        };
-      }
-      providerGroups[provider._id].indices.push(index);
-    });
-    
-    // Calculate costs using the same key structure as the UI
-    const providersWithCosts = [];
-    Object.values(providerGroups).forEach(({ provider, indices }) => {
-      indices.forEach((originalIndex, i) => {
-        const costKey = `${provider._id}_${i}`;
-        const providerCost = parseFloat(providerCosts[costKey]) || 0;
-        
-        totalCost += providerCost;
-        
-        providersWithCosts.push({
-          ...provider,
-          costProvider: providerCost,
-          currency: saleCurrency
-        });
-      });
-    });
-    
-    // Save providers array with costs
+    // Save providers array without cost calculation
     const updatedInstance = {
       ...instance,
-      providers: providersWithCosts,
-      provider: providersWithCosts[0], // Keep first provider for backward compatibility
-      cost: totalCost, // Update total cost
-      costProvider: totalCost, // Update costProvider to match calculated total
-      currency: saleCurrency // Use sale currency
+      providers: selectedProviders,
+      provider: selectedProviders[0], // Keep first provider for backward compatibility
     };
     
-    console.log('🔧 ServiceTemplateInstanceEditor - Saving providers with costs:', {
+    console.log('🔧 ServiceTemplateInstanceEditor - Saving providers:', {
       selectedProviders,
-      providersWithCosts,
-      totalCost,
-      updatedInstance,
-      providerCosts
+      updatedInstance
     });
     
     onUpdate(updatedInstance);
     setShowProviderModal(false);
-    toast.success(`${selectedProviders.length} provider(s) selected with costs`);
+    toast.success(`${selectedProviders.length} provider(s) selected`);
   };
 
   const handleDateSave = () => {
@@ -299,7 +287,7 @@ const ServiceTemplateInstanceEditor = ({
     setShowDateModal(false);
   };
 
-  const renderFieldEditor = (field, label, currentValue, type = 'text') => {
+  const renderFieldEditor = (field, label, currentValue, type = 'text', currency = null) => {
     if (editingField !== field) {
       return (
         <div className="flex items-center justify-between group">
@@ -328,7 +316,7 @@ const ServiceTemplateInstanceEditor = ({
                field === 'cost' ? (
                  <div>
                    <div className="text-dark-100 font-medium">
-                     {instance.currency} {currentValue || (instance.cost !== null && instance.cost !== undefined ? instance.cost : (instance.costProvider !== null && instance.costProvider !== undefined ? instance.costProvider : 0))}
+                     {(currency || instance.currency) === 'USD' ? 'U$' : (currency || instance.currency) === 'ARS' ? 'AR$' : (currency || instance.currency)} {currentValue || (instance.cost !== null && instance.cost !== undefined ? instance.cost : (instance.costProvider !== null && instance.costProvider !== undefined ? instance.costProvider : 0))}
                    </div>
                  </div>
                ) :
@@ -429,14 +417,17 @@ const ServiceTemplateInstanceEditor = ({
                   autoFocus
                 />
                 <select
-                  value={tempCurrency}
+                  value={saleCurrency || tempCurrency}
                   onChange={(e) => {
-                    setTempCurrency(e.target.value);
+                    if (!saleCurrency) {
+                      setTempCurrency(e.target.value);
+                    }
                   }}
                   className="input-field text-sm w-20"
+                  disabled={saleCurrency ? true : false}
                 >
-                  <option value="USD">USD</option>
-                  <option value="ARS">ARS</option>
+                  <option value="USD">U$</option>
+                  <option value="ARS">AR$</option>
                 </select>
               </div>
               
@@ -479,7 +470,7 @@ const ServiceTemplateInstanceEditor = ({
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <h4 className="font-medium text-dark-100 mb-1">
-            {instance.templateName} - {instance.serviceInfo}
+            {instance.templateName || 'Service'}
           </h4>
           <div className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded inline-block">
             {instance.templateCategory}
@@ -500,57 +491,29 @@ const ServiceTemplateInstanceEditor = ({
 
       {/* Editable Fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Service Info */}
-        {renderFieldEditor('serviceInfo', 'Service Details', instance.serviceInfo)}
+        {/* Service Info - Hidden as requested */}
+        {/* {renderFieldEditor('serviceInfo', 'Service Details', (() => {
+          // Clean up any "Service: undefined -" text from serviceDescription
+          let cleanDescription = instance.serviceDescription || 'No description';
+          cleanDescription = cleanDescription.replace(/^Service: undefined - /, '');
+          cleanDescription = cleanDescription.replace(/^Service: [^-]+ - /, '');
+          // Show only the clean description, not the formatted string with category
+          return cleanDescription;
+        })())} */}
         
         
-        {/* Cost - Show actual provider cost, not client price */}
-        <div className="flex items-center justify-between group">
-          <div className="flex-1">
-            <span className="text-sm text-dark-400">Cost:</span>
-            <div className="text-dark-100 font-medium">
-              {instance.currency} {(() => {
-                // First priority: Use the calculated cost from providers (updated by modal)
-                if (instance.cost !== null && instance.cost !== undefined) {
-                  return instance.cost;
-                }
-                // Second priority: Display costProvider field directly from the service
-                if (instance.costProvider !== null && instance.costProvider !== undefined) {
-                  return instance.costProvider;
-                }
-                // Fallback: Calculate from providers array if neither cost nor costProvider is available
-                if (instance.providers && instance.providers.length > 0) {
-                  return instance.providers.reduce((total, provider) => {
-                    return total + (parseFloat(provider.costProvider) || 0);
-                  }, 0);
-                }
-                return 0;
-              })()}
-            </div>
-            <div className="text-xs text-dark-400 mt-1">
-              Total provider costs
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              const currentCost = (() => {
-                if (instance.providers && instance.providers.length > 0) {
-                  return instance.providers.reduce((total, provider) => {
-                    return total + (parseFloat(provider.costProvider) || 0);
-                  }, 0);
-                }
-                return 0;
-              })();
-              startEditing('cost', currentCost);
-            }}
-            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-primary-400 hover:text-primary-300"
-            title="Edit cost"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </button>
-        </div>
+        {/* Cost - Show stored cost value, not calculated value */}
+        {renderFieldEditor('cost', 'Cost', (() => {
+          // Use the stored cost value directly from the database
+          if (instance.cost !== null && instance.cost !== undefined) {
+            return instance.cost;
+          }
+          // Fallback to costProvider if cost is not available
+          if (instance.costProvider !== null && instance.costProvider !== undefined) {
+            return instance.costProvider;
+          }
+          return 0;
+        })(), 'number', saleCurrency || instance.currency)}
         
         {/* Dates */}
         <div className="space-y-2">
@@ -650,47 +613,6 @@ const ServiceTemplateInstanceEditor = ({
                           </div>
                         </div>
                         
-                        {/* Cost Entry Section for each provider instance */}
-                        <div className="space-y-2">
-                          {indices.map((index, i) => {
-                            const costKey = `${provider._id}_${i}`;
-                            const currentCost = providerCosts[costKey] || '';
-                            const currentCurrency = providerCosts[`${costKey}_currency`] || instance.currency || 'USD';
-                            
-                            return (
-                              <div key={i} className="bg-dark-800/50 rounded-lg p-3">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-xs text-dark-400">Instance {i + 1} Cost:</span>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <input
-                                    type="number"
-                                    value={currentCost}
-                                    onChange={(e) => setProviderCosts(prev => ({
-                                      ...prev,
-                                      [costKey]: e.target.value
-                                    }))}
-                                    className="flex-1 px-3 py-2 bg-dark-700 border border-white/20 rounded-lg text-dark-100 focus:border-blue-500 focus:outline-none text-sm"
-                                    placeholder="0.00"
-                                    step="0.01"
-                                    min="0"
-                                  />
-                                  <select
-                                    value={currentCurrency}
-                                    onChange={(e) => setProviderCosts(prev => ({
-                                      ...prev,
-                                      [`${costKey}_currency`]: e.target.value
-                                    }))}
-                                    className="px-3 py-2 bg-dark-700 border border-white/20 rounded-lg text-dark-100 focus:border-blue-500 focus:outline-none text-sm"
-                                    disabled
-                                  >
-                                    <option value={saleCurrency}>{saleCurrency}</option>
-                                  </select>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
                       </div>
                     ));
                   })()}

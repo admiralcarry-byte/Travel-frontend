@@ -42,8 +42,8 @@ const translations = {
     showPassengers: 'Show Passengers',
     
     // Currency options
-    usd: 'USD - US Dollar',
-    ars: 'ARS - Argentine Peso',
+    usd: 'U$',
+    ars: 'AR$',
     
     // Placeholders
     searchPlaceholder: 'Search by name, DNI/CUIT, email, or passport...',

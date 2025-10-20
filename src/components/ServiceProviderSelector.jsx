@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
+import { getCurrencySymbol } from '../utils/formatNumbers';
 
 const ServiceProviderSelector = ({ 
   service, 
@@ -144,7 +145,7 @@ const ServiceProviderSelector = ({
                 
                 <div className="text-right">
                   <div className="text-sm font-medium text-dark-100">
-                    {serviceProvider.currency} {serviceProvider.costProvider.toFixed(2)}
+                    {getCurrencySymbol(serviceProvider.currency)} {serviceProvider.costProvider.toFixed(2)}
                   </div>
                   <div className="text-xs text-dark-400">Base Cost</div>
                 </div>

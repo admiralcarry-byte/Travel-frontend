@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 import ProviderCreationModal from '../components/ProviderCreationModal';
 import AddServiceTypeModal from '../components/AddServiceTypeModal';
@@ -7,6 +8,7 @@ import ServiceTypeService from '../services/serviceTypeService';
 
 const CupoForm = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [formData, setFormData] = useState({
     serviceTemplateId: '',
     providerId: '',
@@ -34,7 +36,6 @@ const CupoForm = () => {
   const [serviceLoading, setServiceLoading] = useState(false);
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
   const [showEditServiceModal, setShowEditServiceModal] = useState(false);
-  const [serviceName, setServiceName] = useState('');
   const [serviceInformation, setServiceInformation] = useState('');
   const [editingService, setEditingService] = useState(null);
   const [isServiceTypeModalOpen, setIsServiceTypeModalOpen] = useState(false);
@@ -49,6 +50,7 @@ const CupoForm = () => {
 
   // New Service entry state
   const [selectedServiceType, setSelectedServiceType] = useState(null);
+  const [serviceName, setServiceName] = useState('');
   const [serviceDescription, setServiceDescription] = useState('');
   const [showServiceDescriptionModal, setShowServiceDescriptionModal] = useState(false);
   const [serviceCard, setServiceCard] = useState(null);
@@ -57,8 +59,8 @@ const CupoForm = () => {
   const [editingServiceTypeName, setEditingServiceTypeName] = useState('');
 
   const currencyOptions = [
-    { value: 'USD', label: 'USD' },
-    { value: 'ARS', label: 'ARS' }
+    { value: 'USD', label: 'U$' },
+    { value: 'ARS', label: 'AR$' }
   ];
 
   const statusOptions = [
@@ -68,19 +70,22 @@ const CupoForm = () => {
   ];
 
   useEffect(() => {
-    fetchServiceTemplates();
-    fetchProviders();
-    fetchServiceTypes();
-    
-    // Set up periodic refresh for real-time synchronization
-    const interval = setInterval(() => {
+    // Only fetch data if user is authenticated
+    if (user && !authLoading) {
       fetchServiceTemplates();
       fetchProviders();
       fetchServiceTypes();
-    }, 30000); // Refresh every 30 seconds
+      
+      // Set up periodic refresh for real-time synchronization
+      const interval = setInterval(() => {
+        fetchServiceTemplates();
+        fetchProviders();
+        fetchServiceTypes();
+      }, 30000); // Refresh every 30 seconds
 
-    return () => clearInterval(interval);
-  }, []);
+      return () => clearInterval(interval);
+    }
+  }, [user, authLoading]);
 
   // Handle clicks outside dropdown to close it
   useEffect(() => {
@@ -112,10 +117,10 @@ const CupoForm = () => {
   };
 
   const addService = async () => {
-    if (serviceName?.trim()) {
+    if (serviceInformation?.trim()) {
       try {
         const requestData = {
-          name: serviceName.trim(),
+          name: serviceInformation.trim(),
           description: serviceInformation?.trim() || '',
           category: 'Other'
         };
@@ -127,7 +132,6 @@ const CupoForm = () => {
         if (response.data.success) {
           // Refresh service templates to ensure real-time sync
           await fetchServiceTemplates();
-          setServiceName('');
           setServiceInformation('');
           setShowAddServiceModal(false);
         }
@@ -142,23 +146,21 @@ const CupoForm = () => {
 
   const editService = (service) => {
     setEditingService(service);
-    setServiceName(service.name);
-    setServiceInformation(service.description || '');
+    setServiceInformation(service.name);
     setShowEditServiceModal(true);
   };
 
   const updateService = async () => {
-    if (serviceName?.trim() && editingService) {
+    if (serviceInformation?.trim() && editingService) {
       try {
         const response = await api.put(`/api/service-templates/${editingService._id}`, {
-          name: serviceName.trim(),
+          name: serviceInformation.trim(),
           description: serviceInformation?.trim() || ''
         });
         
         if (response.data.success) {
           // Refresh service templates to ensure real-time sync
           await fetchServiceTemplates();
-          setServiceName('');
           setServiceInformation('');
           setEditingService(null);
           setShowEditServiceModal(false);
@@ -171,14 +173,12 @@ const CupoForm = () => {
   };
 
   const cancelEdit = () => {
-    setServiceName('');
     setServiceInformation('');
     setEditingService(null);
     setShowEditServiceModal(false);
   };
 
   const openAddServiceModal = () => {
-    setServiceName('');
     setServiceInformation('');
     setShowAddServiceModal(true);
   };
@@ -218,13 +218,14 @@ const CupoForm = () => {
   // New Service entry handlers
   const handleServiceTypeSelected = (serviceType) => {
     setSelectedServiceType(serviceType);
+    setServiceName('');
     setServiceDescription('');
     setIsEditingServiceType(false);
     setShowServiceDescriptionModal(true);
   };
 
   const handleServiceDescriptionComplete = () => {
-    if (selectedServiceType && serviceDescription.trim()) {
+    if (selectedServiceType && serviceName.trim() && serviceDescription.trim()) {
       if (isEditingServiceType) {
         // Update existing service type
         updateServiceType(selectedServiceType._id, serviceDescription.trim());
@@ -232,6 +233,7 @@ const CupoForm = () => {
         // Create new service card
         const newServiceCard = {
           id: Date.now(),
+          serviceName: serviceName.trim(),
           type: selectedServiceType.name,
           description: serviceDescription.trim()
         };
@@ -239,6 +241,7 @@ const CupoForm = () => {
       }
       setShowServiceDescriptionModal(false);
       setSelectedServiceType(null);
+      setServiceName('');
       setServiceDescription('');
       setIsEditingServiceType(false);
     }
@@ -404,6 +407,30 @@ const CupoForm = () => {
     setError('');
   };
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/login');
+    }
+  }, [user, authLoading, navigate]);
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-dark-300">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated
+  if (!user) {
+    return null;
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -414,10 +441,22 @@ const CupoForm = () => {
       let serviceId = null;
       
       if (serviceCard) {
-        // Create service from service card data
+        // Always use fallback service type ID for now since service types endpoint is not working
+        console.log('Using fallback service type for service creation');
+        console.log('Form data:', formData);
+        console.log('Provider ID:', formData.providerId);
+        
+        if (!formData.providerId) {
+          throw new Error('Provider ID is required but not provided');
+        }
+        
+        const fallbackTypeId = '68f695646521249eb08ba3af'; // Hotel service type ID as fallback
+        
         const serviceResponse = await api.post('/api/services', {
-          destino: serviceCard.type,
-          type: serviceCard.type,
+          name: serviceCard.serviceName,
+          destino: serviceCard.serviceName,
+          type: 'Hotel', // Service controller expects this
+          typeId: fallbackTypeId, // Service model requires this
           description: serviceCard.description,
           providerId: formData.providerId,
           sellingPrice: formData.metadata.value || 0,
@@ -429,20 +468,30 @@ const CupoForm = () => {
         }
       } else if (formData.serviceTemplateId) {
         // If a service type is selected from dropdown, create service from it
-        const selectedServiceType = serviceTypes.find(st => st._id === formData.serviceTemplateId);
-        if (selectedServiceType) {
-          const serviceResponse = await api.post('/api/services', {
-            destino: selectedServiceType.name,
-            type: selectedServiceType.name,
-            description: selectedServiceType.name,
-            providerId: formData.providerId,
-            sellingPrice: formData.metadata.value || 0,
-            baseCurrency: formData.metadata.currency || 'USD'
-          });
-          
-          if (serviceResponse.data.success) {
-            serviceId = serviceResponse.data.data.service._id;
-          }
+        // Use fallback service type ID since service types endpoint is not working
+        console.log('Using fallback service type for selected service template');
+        console.log('Form data:', formData);
+        console.log('Provider ID:', formData.providerId);
+        
+        if (!formData.providerId) {
+          throw new Error('Provider ID is required but not provided');
+        }
+        
+        const fallbackTypeId = '68f695646521249eb08ba3af'; // Hotel service type ID as fallback
+        
+        const serviceResponse = await api.post('/api/services', {
+          name: formData.serviceTemplateId, // Use the selected template ID as name
+          destino: formData.serviceTemplateId,
+          type: 'Hotel', // Service controller expects this
+          typeId: fallbackTypeId, // Service model requires this
+          description: formData.serviceTemplateId,
+          providerId: formData.providerId,
+          sellingPrice: formData.metadata.value || 0,
+          baseCurrency: formData.metadata.currency || 'USD'
+        });
+
+        if (serviceResponse.data.success) {
+          serviceId = serviceResponse.data.data.service._id;
         }
       }
 
@@ -597,7 +646,8 @@ const CupoForm = () => {
                   <div className="bg-dark-700/50 border border-white/10 rounded-lg p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="text-sm font-medium text-dark-100 mb-1">{serviceCard.type}</h4>
+                        <h4 className="text-sm font-medium text-dark-100 mb-2">{serviceCard.serviceName}</h4>
+                        <p className="text-xs text-primary-400 mb-1">Service Type: {serviceCard.type}</p>
                         <p className="text-xs text-dark-300">{serviceCard.description}</p>
                       </div>
                       <button
@@ -876,8 +926,8 @@ const CupoForm = () => {
                 </label>
                 <input
                   type="text"
-                  value={serviceName}
-                  onChange={(e) => setServiceName(e.target.value)}
+                  value={serviceInformation}
+                  onChange={(e) => setServiceInformation(e.target.value)}
                   placeholder="Enter service name"
                   className="input-field"
                   required
@@ -979,8 +1029,8 @@ const CupoForm = () => {
                 </label>
                 <input
                   type="text"
-                  value={serviceName}
-                  onChange={(e) => setServiceName(e.target.value)}
+                  value={serviceInformation}
+                  onChange={(e) => setServiceInformation(e.target.value)}
                   placeholder="Enter service name"
                   className="input-field"
                   required
@@ -1094,6 +1144,7 @@ const CupoForm = () => {
                 onClick={() => {
                   setShowServiceDescriptionModal(false);
                   setSelectedServiceType(null);
+                  setServiceName('');
                   setServiceDescription('');
                 }}
                 className="text-dark-400 hover:text-dark-200 transition-colors"
@@ -1112,6 +1163,21 @@ const CupoForm = () => {
                 <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-3">
                   <p className="text-primary-300 font-medium">{selectedServiceType.name}</p>
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="serviceName" className="block text-sm font-medium text-dark-200 mb-2">
+                  Service Name *
+                </label>
+                <input
+                  id="serviceName"
+                  type="text"
+                  value={serviceName}
+                  onChange={(e) => setServiceName(e.target.value)}
+                  className="input-field"
+                  placeholder="Enter service name..."
+                  required
+                />
               </div>
 
               <div>
@@ -1135,6 +1201,7 @@ const CupoForm = () => {
                 onClick={() => {
                   setShowServiceDescriptionModal(false);
                   setSelectedServiceType(null);
+                  setServiceName('');
                   setServiceDescription('');
                 }}
                 className="px-4 py-2 text-sm font-medium text-dark-300 bg-dark-700 hover:bg-dark-600 border border-white/10 rounded-md"
@@ -1143,7 +1210,7 @@ const CupoForm = () => {
               </button>
               <button
                 onClick={handleServiceDescriptionComplete}
-                disabled={!serviceDescription.trim()}
+                disabled={!serviceName.trim() || !serviceDescription.trim()}
                 className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Complete

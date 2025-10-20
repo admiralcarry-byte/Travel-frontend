@@ -405,11 +405,11 @@ const ComprehensiveSalesOverview = ({ sales, onSaleClick, loading = false, selec
                 <th className="px-6 py-3 text-center text-xs font-semibold text-dark-300 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
-                  Sale ID
-                </th>
                 <th className="px-6 py-3 text-center text-xs font-semibold text-dark-300 uppercase tracking-wider">
                   Actions
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                  Sale ID
                 </th>
               </tr>
             </thead>
@@ -461,9 +461,6 @@ const ComprehensiveSalesOverview = ({ sales, onSaleClick, loading = false, selec
                         {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-dark-100">
-                      #{(sale.id || sale._id).toString().slice(-8)}
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <button
                         onClick={(e) => {
@@ -474,6 +471,9 @@ const ComprehensiveSalesOverview = ({ sales, onSaleClick, loading = false, selec
                       >
                         View Details
                       </button>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-dark-100">
+                      #{(sale.id || sale._id).toString().slice(-8)}
                     </td>
                   </tr>
                 );

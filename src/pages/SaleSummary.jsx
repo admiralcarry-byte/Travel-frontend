@@ -848,6 +848,8 @@ const SaleSummary = () => {
                       
                       // Handle service data extraction based on actual schema
                       let serviceName = 'Unknown Service';
+                      let serviceType = 'Unknown Type';
+                      let serviceDescription = '';
                       let serviceCost = null;
                       let serviceCurrency = serviceSale.currency || sale.saleCurrency;
                       let startDate = null;
@@ -858,6 +860,28 @@ const SaleSummary = () => {
                         serviceName = serviceSale.serviceName;
                       } else if (serviceSale.serviceId && typeof serviceSale.serviceId === 'object') {
                         serviceName = serviceSale.serviceId.destino || serviceSale.serviceId.title || 'Unknown Service';
+                      }
+                      
+                      // Extract service type
+                      if (serviceSale.serviceTypeName) {
+                        serviceType = serviceSale.serviceTypeName;
+                      } else if (serviceSale.serviceId && typeof serviceSale.serviceId === 'object') {
+                        serviceType = serviceSale.serviceId.typeId?.name || serviceSale.serviceId.category || serviceSale.serviceId.type || 'Unknown Type';
+                      }
+                      
+                      // Extract service description
+                      if (serviceSale.serviceInfo) {
+                        serviceDescription = serviceSale.serviceInfo;
+                      } else if (serviceSale.serviceId && typeof serviceSale.serviceId === 'object') {
+                        serviceDescription = serviceSale.serviceId.description || serviceSale.serviceId.destino || '';
+                      }
+                      
+                      // Clean up any "undefined" values and remove "undefined -" prefix
+                      if (serviceDescription && serviceDescription.includes('undefined -')) {
+                        serviceDescription = serviceDescription.replace('undefined -', '').trim();
+                      }
+                      if (serviceDescription === 'undefined' || serviceDescription === 'undefined -') {
+                        serviceDescription = '';
                       }
                       
                       
@@ -881,6 +905,8 @@ const SaleSummary = () => {
                       // Debug: Log the extracted values
                       console.log('Extracted values:', {
                         serviceName,
+                        serviceType,
+                        serviceDescription,
                         serviceCost,
                         serviceCurrency,
                         startDate,
@@ -889,23 +915,39 @@ const SaleSummary = () => {
 
                       return (
                         <div key={index} className="bg-green-600/20 border border-green-500/30 rounded-lg p-4">
-                          <div className="flex justify-between items-start mb-3">
+                          {/* Service Name - Top Left */}
+                          <div className="mb-3">
+                            <h3 className="text-lg font-semibold text-green-300">
+                              {serviceName}
+                            </h3>
+                          </div>
+                          
+                          {/* Service Type (Left) and Price (Right) - Second Row */}
+                          <div className="flex justify-between items-center mb-3">
                             <div>
-                              <h3 className="text-lg font-semibold text-green-300 mb-1">
-                                {serviceName}
-                              </h3>
+                              <span className="text-sm text-green-200">Type: {serviceType}</span>
                             </div>
                             {serviceCost && (
                               <div className="text-right">
                                 <p className="text-lg font-semibold text-green-300">
-                                  {parseFloat(serviceCost).toFixed(2)} {serviceCurrency}
+                                  {parseFloat(serviceCost).toFixed(2)} {getCurrencySymbol(serviceCurrency)}
                                 </p>
                               </div>
                             )}
                           </div>
                           
+                          {/* Service Description - Third Row */}
+                          {serviceDescription && (
+                            <div className="mb-3">
+                              <p className="text-sm text-green-100 line-clamp-2">
+                                {serviceDescription}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Start and End Dates - Fourth Row */}
                           {(startDate || endDate) && (
-                            <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-green-500/20">
+                            <div className="grid grid-cols-2 gap-4 pt-3 border-t border-green-500/20">
                               {startDate && (
                                 <div>
                                   <label className="block text-xs font-medium text-green-200">Start Date</label>

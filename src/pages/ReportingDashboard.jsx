@@ -321,8 +321,8 @@ const ReportingDashboard = () => {
                 className="input-field"
               >
                 <option value="">All Currencies</option>
-                <option value="USD">USD - US Dollar</option>
-                <option value="ARS">ARS - Argentine Peso</option>
+                <option value="USD">U$</option>
+                <option value="ARS">AR$</option>
               </select>
             </div>
 

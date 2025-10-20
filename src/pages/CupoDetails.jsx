@@ -167,7 +167,7 @@ const CupoDetails = () => {
                     }
                   </div> */}
                   <div className="text-sm text-dark-400">
-                    {cupo.serviceId?.type?.charAt(0).toUpperCase() + cupo.serviceId?.type?.slice(1) || 'Service'}
+                    {(cupo.serviceId?.typeId?.name || cupo.serviceId?.type)?.charAt(0).toUpperCase() + (cupo.serviceId?.typeId?.name || cupo.serviceId?.type)?.slice(1) || 'Service'}
                   </div>
                 </div>
               </div>

@@ -607,8 +607,8 @@ const AdminInsightsDashboard = () => {
                   className="input-field"
                   style={{ wordWrap: 'break-word' }}
                 >
-                  <option value="ARS">ARS - Argentine Peso</option>
-                  <option value="USD">USD - US Dollar</option>
+                  <option value="ARS">AR$</option>
+                  <option value="USD">U$</option>
                 </select>
               </div>
 

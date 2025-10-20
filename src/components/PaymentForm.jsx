@@ -67,8 +67,8 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel, saleCurren
       if (response.data.success) {
         // Only use USD and ARS currencies
         const defaultCurrencies = [
-          { _id: 'usd-default', code: 'USD', name: 'US Dollar' },
-          { _id: 'ars-default', code: 'ARS', name: 'Argentine Peso' }
+          { _id: 'usd-default', code: 'USD', name: 'U$' },
+          { _id: 'ars-default', code: 'ARS', name: 'AR$' }
         ];
         
         setCurrencyTypes(defaultCurrencies);
@@ -78,8 +78,8 @@ const PaymentForm = ({ saleId, paymentType, onPaymentAdded, onCancel, saleCurren
       console.error('Failed to fetch currencies:', error);
       // Set default currencies even if API fails
       setCurrencyTypes([
-        { _id: 'usd-default', code: 'USD', name: 'US Dollar' },
-        { _id: 'ars-default', code: 'ARS', name: 'Argentine Peso' }
+        { _id: 'usd-default', code: 'USD', name: 'U$' },
+        { _id: 'ars-default', code: 'ARS', name: 'AR$' }
       ]);
       setPaymentMethods([]);
     }

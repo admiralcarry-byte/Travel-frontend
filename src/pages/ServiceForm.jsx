@@ -341,8 +341,8 @@ const ServiceForm = () => {
                     onChange={handleChange}
                     className="mt-1 block w-full px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-dark-100 bg-dark-800/50"
                   >
-                    <option value="USD">USD - US Dollar</option>
-                    <option value="ARS">ARS - Argentine Peso</option>
+                    <option value="USD">U$</option>
+                    <option value="ARS">AR$</option>
                   </select>
                 </div>
               </div>

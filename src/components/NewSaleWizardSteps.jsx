@@ -137,6 +137,7 @@ const NewSaleWizardSteps = ({
       id: serviceCard.id,
       serviceTypeId: serviceCard.serviceTypeId,
       serviceTypeName: serviceCard.serviceTypeName,
+      serviceName: serviceCard.serviceName,
       serviceInfo: serviceCard.serviceDescription,
       checkIn: currentServiceDates.checkIn || '',
       checkOut: currentServiceDates.checkOut || '',
@@ -445,8 +446,8 @@ const NewSaleWizardSteps = ({
                   cursor: (isCupoReservation ? currencyLocked : (currencyLocked && currentStep > 2)) ? 'not-allowed' : 'pointer'
                 }}
               >
-                <option value="USD">USD - US Dollar</option>
-                <option value="ARS">ARS - Argentine Peso</option>
+                <option value="USD">U$</option>
+                <option value="ARS">AR$</option>
               </select>
               <p className="text-xs text-dark-400 mt-1">
                 {isCupoReservation && currencyLocked
@@ -472,7 +473,7 @@ const NewSaleWizardSteps = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-sm text-blue-300">
-                <strong>Total for {selectedPassengers.length + selectedCompanions.length} passenger{(selectedPassengers.length + selectedCompanions.length) > 1 ? 's' : ''}:</strong> {passengerCurrency} {pricePerPassenger || '0'} × {selectedPassengers.length + selectedCompanions.length} = {passengerCurrency} {((parseFloat(pricePerPassenger) || 0) * (selectedPassengers.length + selectedCompanions.length)).toFixed(2)}
+                <strong>Total for {selectedPassengers.length + selectedCompanions.length} passenger{(selectedPassengers.length + selectedCompanions.length) > 1 ? 's' : ''}:</strong> {passengerCurrency === 'USD' ? 'U$' : 'AR$'} {pricePerPassenger || '0'} × {selectedPassengers.length + selectedCompanions.length} = {passengerCurrency === 'USD' ? 'U$' : 'AR$'} {((parseFloat(pricePerPassenger) || 0) * (selectedPassengers.length + selectedCompanions.length)).toFixed(2)}
                 <br />
                 <span className="text-xs text-blue-200">
                   ({selectedPassengers.length} main passenger{selectedPassengers.length !== 1 ? 's' : ''} + {selectedCompanions.length} companion{selectedCompanions.length !== 1 ? 's' : ''})
@@ -516,7 +517,7 @@ const NewSaleWizardSteps = ({
                 {serviceCards.map((serviceCard) => (
                   <div key={serviceCard.id} className="p-4 border rounded-lg bg-primary-500/10 border-primary-500/30">
                     <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-medium text-dark-100">{serviceCard.serviceTypeName}</h5>
+                      <h5 className="font-medium text-dark-100">{serviceCard.serviceName}</h5>
                       <button
                         onClick={() => removeServiceCard(serviceCard.id)}
                         className="text-red-400 hover:text-red-300 text-sm"
@@ -525,6 +526,7 @@ const NewSaleWizardSteps = ({
                         ✕
                       </button>
                     </div>
+                    <p className="text-xs text-primary-400 mb-2">Type: {serviceCard.serviceTypeName}</p>
                     <p className="text-sm text-dark-300 line-clamp-2">{serviceCard.serviceDescription}</p>
                     <div className="mt-2">
                       <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded">
@@ -701,7 +703,7 @@ const NewSaleWizardSteps = ({
             <div key={service._id || service.id || index} className="bg-dark-800/50 border border-white/10 rounded-lg p-6">
               <div className="flex items-center justify-between mb-4">
                 <h4 className="text-lg font-medium text-dark-100">
-                  {index + 1}. {service.serviceInfo || service.name || 'Service'}
+                  {index + 1}. {service.serviceName || service.serviceInfo || service.name || 'Service'}
                 </h4>
                 <button
                   onClick={() => editServiceInstance(service)}
@@ -718,22 +720,20 @@ const NewSaleWizardSteps = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
                   <label className="block text-sm font-medium text-dark-200 mb-2">
-                    Total Service Cost
+                    Total Service Cost *
                   </label>
-                  <div className="input-field bg-dark-700/50 text-dark-100 flex items-center">
-                    <span className="text-lg font-semibold">
-                      {(() => {
-                        const selectedProviders = service.providers || (service.provider ? [service.provider] : []);
-                        const totalCost = selectedProviders.reduce((sum, provider) => {
-                          return sum + (parseFloat(provider.costProvider) || 0);
-                        }, 0);
-                        return `${globalCurrency} ${totalCost.toFixed(2)}`;
-                      })()}
-                    </span>
-                    <span className="ml-2 text-sm text-dark-400">(Auto-calculated)</span>
-                  </div>
+                  <input
+                    type="number"
+                    value={service.cost || ''}
+                    onChange={(e) => updateServiceInstance(service._id || service.id, { cost: parseFloat(e.target.value) || 0 })}
+                    className="input-field"
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    required
+                  />
                   <p className="text-xs text-dark-400 mt-1">
-                    Total cost automatically calculated from individual provider costs
+                    Enter the total cost for this service
                   </p>
                 </div>
 
@@ -751,8 +751,8 @@ const NewSaleWizardSteps = ({
                       cursor: (isCupoReservation ? currencyLocked : (currencyLocked && currentStep > 2)) ? 'not-allowed' : 'pointer'
                     }}
                   >
-                    <option value="USD">USD - US Dollar</option>
-                    <option value="ARS">ARS - Argentine Peso</option>
+                    <option value="USD">U$</option>
+                    <option value="ARS">AR$</option>
                   </select>
                   <p className="text-xs text-dark-400 mt-1">
                     {isCupoReservation && currencyLocked
@@ -817,44 +817,9 @@ const NewSaleWizardSteps = ({
                             </button>
                           </div>
                           
-                          {/* Individual Provider Cost Input */}
-                          <div className="border-t border-white/10 pt-3 mb-3">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-dark-200 mb-2">
-                                  Provider Cost *
-                                </label>
-                                <input
-                                  type="number"
-                                  value={provider.costProvider || ''}
-                                  onChange={(e) => updateProviderCost(service._id || service.id, provider._id, index, parseFloat(e.target.value) || 0)}
-                                  className="input-field"
-                                  placeholder="0.00"
-                                  step="0.01"
-                                  min="0"
-                                  required
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-dark-200 mb-2">
-                                  Currency
-                                </label>
-                                <select
-                                  value={provider.currency || globalCurrency}
-                                  onChange={(e) => updateProviderCurrency(service._id || service.id, provider._id, index, e.target.value)}
-                                  className="input-field"
-                                  disabled={currencyLocked && currentStep > 2}
-                                >
-                                  <option value="USD">USD - US Dollar</option>
-                                  <option value="ARS">ARS - Argentine Peso</option>
-                                </select>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* File Upload Section for Selected Provider */}
+                          {/* File Upload Buttons */}
                           <div className="border-t border-white/10 pt-3">
-                            <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center justify-between">
                               <h6 className="text-sm font-medium text-dark-200">Files for {provider.name}</h6>
                               <div className="flex items-center space-x-2">
                                 <button
@@ -877,18 +842,6 @@ const NewSaleWizardSteps = ({
                                   <span>View</span>
                                 </button>
                               </div>
-                            </div>
-                            
-                            {/* File Upload Area */}
-                            <div
-                              onClick={() => handleProviderFileUpload(provider._id)}
-                              className="border-2 border-dashed border-primary-500/30 rounded-lg p-4 text-center cursor-pointer hover:border-primary-500/50 transition-colors"
-                            >
-                              <svg className="w-8 h-8 text-primary-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                              </svg>
-                              <p className="text-sm text-dark-300">Click to upload files for {provider.name}</p>
-                              <p className="text-xs text-dark-400 mt-1">PDF, DOC, DOCX, JPG, PNG (Max 10MB each)</p>
                             </div>
                           </div>
                         </div>
@@ -1034,9 +987,9 @@ const NewSaleWizardSteps = ({
             <div className="space-y-2">
                 {serviceTemplateInstances.map((instance, index) => (
                   <div key={instance.id} className="text-sm text-dark-300 bg-dark-700/30 rounded p-2">
-                    <span className="text-green-400 font-medium">•</span> {index + 1}. {instance.templateName}
+                    <span className="text-green-400 font-medium">•</span> {index + 1}. {instance.serviceName || instance.templateName}
                     <span className="text-dark-400 ml-2">({instance.serviceInfo})</span>
-                    <span className="text-dark-400 ml-2">- {globalCurrency} {parseFloat(instance.cost || 0).toFixed(2)}</span>
+                    <span className="text-dark-400 ml-2">- {globalCurrency === 'USD' ? 'U$' : 'AR$'} {parseFloat(instance.cost || 0).toFixed(2)}</span>
                 </div>
               ))}
             </div>
@@ -1089,7 +1042,7 @@ const NewSaleWizardSteps = ({
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <h5 className="font-medium text-dark-100 mb-1">
-                          {index + 1}. {instance.templateName}
+                          {index + 1}. {instance.serviceName || instance.templateName}
               </h5>
                         <p className="text-sm text-dark-300">{instance.serviceInfo}</p>
                 </div>
@@ -1118,7 +1071,7 @@ const NewSaleWizardSteps = ({
                     <div className="text-xs text-dark-400 space-y-1">
                       <div><span className="text-primary-400">Dates:</span> {instance.checkIn && instance.checkOut ? `${instance.checkIn} to ${instance.checkOut}` : 'Not specified'}</div>
                       <div><span className="text-primary-400">Destination:</span> {instance.destination?.city || instance.destination?.name || 'Not specified'}</div>
-                      <div><span className="text-primary-400">Cost:</span> {globalCurrency} {parseFloat(instance.cost || 0).toFixed(2)}</div>
+                      <div><span className="text-primary-400">Cost:</span> {globalCurrency === 'USD' ? 'U$' : 'AR$'} {parseFloat(instance.cost || 0).toFixed(2)}</div>
                       <div><span className="text-primary-400">Providers:</span> {(() => {
                         console.log(`🔍 Service ${instance.templateName} providers:`, instance.providers);
                         console.log(`🔍 Service ${instance.templateName} provider:`, instance.provider);
@@ -1177,12 +1130,12 @@ const NewSaleWizardSteps = ({
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h5 className="font-medium text-dark-100 mb-2">
-                        {index + 1}. {instance.templateName} - {instance.serviceInfo}
+                        {index + 1}. {instance.serviceName || instance.templateName} - {instance.serviceInfo}
                       </h5>
                       <div className="text-sm text-dark-300 space-y-1">
                         <div><span className="text-primary-400">Dates:</span> {instance.checkIn} to {instance.checkOut}</div>
                         <div><span className="text-primary-400">Destination:</span> {instance.destination.city}</div>
-                        <div><span className="text-primary-400">Cost:</span> {globalCurrency} {parseFloat(instance.cost || 0).toFixed(2)}</div>
+                        <div><span className="text-primary-400">Cost:</span> {globalCurrency === 'USD' ? 'U$' : 'AR$'} {parseFloat(instance.cost || 0).toFixed(2)}</div>
                         <div><span className="text-primary-400">Provider(s):</span> {(() => {
                           if (instance.providers && instance.providers.length > 0) {
                             // Group providers by name and count occurrences
@@ -1229,7 +1182,7 @@ const NewSaleWizardSteps = ({
                 return (
                   <div className="text-right">
                     <div className="text-sm text-blue-300 font-medium">
-                      ({passengerCurrency} {passengerPrice.toFixed(2)} × {totalPassengers}: {passengerCurrency} {totalPassengerCost.toFixed(2)})
+                      ({passengerCurrency === 'USD' ? 'U$' : 'AR$'} {passengerPrice.toFixed(2)} × {totalPassengers}: {passengerCurrency === 'USD' ? 'U$' : 'AR$'} {totalPassengerCost.toFixed(2)})
                     </div>
                   </div>
                 );

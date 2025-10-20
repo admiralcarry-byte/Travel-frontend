@@ -61,8 +61,8 @@ const ServiceManagement = () => {
   ];
 
   const currencies = [
-    { value: 'USD', label: 'USD - US Dollar' },
-    { value: 'ARS', label: 'ARS - Argentine Peso' }
+    { value: 'USD', label: 'U$' },
+    { value: 'ARS', label: 'AR$' }
   ];
 
   useEffect(() => {

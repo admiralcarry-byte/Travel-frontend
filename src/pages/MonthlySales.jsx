@@ -208,7 +208,7 @@ const MonthlySales = () => {
                     >
                       <div className="flex items-center space-x-2">
                         <span className="font-medium">U$</span>
-                        <span className="text-xs text-dark-300">US Dollar</span>
+                        <span className="text-xs text-dark-300">U$</span>
                       </div>
                     </button>
                   </div>

@@ -723,7 +723,7 @@ const SaleWizard = () => {
               serviceName: serviceSale.serviceName || serviceSale.serviceId?.destino || 'Unknown Service', // Ensure serviceName is set
               description: serviceSale.serviceId?.description || serviceSale.notes || '',
               destino: serviceSale.serviceId?.destino || serviceSale.serviceName || 'Unknown Service',
-              type: serviceSale.serviceId?.type || 'Unknown Type',
+              type: serviceSale.serviceId?.typeId?.name || serviceSale.serviceId?.type || 'Unknown Type',
               providerId: serviceSale.providerId,
               serviceId: serviceSale.serviceId?._id || serviceSale.serviceId,
               providers: serviceSale.providers || (serviceSale.providerId ? [serviceSale.providerId] : [])
@@ -1071,8 +1071,8 @@ const SaleWizard = () => {
 
 
   const convertProviderAmountToUSD = (providerId, amount, currency) => {
-    const rate = providerExchangeRates[providerId] || 1;
-    return amount ? (parseFloat(amount) * rate).toFixed(2) : 0;
+    // Simply return the amount as entered by the provider (no automatic conversion)
+    return amount ? parseFloat(amount).toFixed(2) : 0;
   };
 
   // Service Template Management Functions
@@ -1189,7 +1189,7 @@ const SaleWizard = () => {
       console.log('📋 Available service templates:', serviceTemplates);
       console.log('🔍 Cupo service data:', {
         destino: cupo.serviceId?.destino,
-        type: cupo.serviceId?.type,
+        type: cupo.serviceId?.typeId?.name || cupo.serviceId?.type,
         name: cupo.serviceId?.name
       });
       
@@ -1210,10 +1210,11 @@ const SaleWizard = () => {
       }
       
       // If still no match, try category matching (only if there's a unique category match)
-      if (!matchingTemplate && cupo.serviceId?.type) {
-        console.log('🔍 Trying category matching for type:', cupo.serviceId.type);
+      if (!matchingTemplate && (cupo.serviceId?.typeId?.name || cupo.serviceId?.type)) {
+        const serviceType = cupo.serviceId?.typeId?.name || cupo.serviceId?.type;
+        console.log('🔍 Trying category matching for type:', serviceType);
         const categoryMatches = serviceTemplates.filter(template => 
-          template.category.toLowerCase() === cupo.serviceId.type.toLowerCase()
+          template.category.toLowerCase() === serviceType.toLowerCase()
         );
         // Only use category match if there's exactly one template with this category
         if (categoryMatches.length === 1) {
@@ -1229,7 +1230,7 @@ const SaleWizard = () => {
         console.error('❌ Could not find matching template for cupo service');
         console.error('Cupo service data:', {
           destino: cupo.serviceId?.destino,
-          type: cupo.serviceId?.type,
+          type: cupo.serviceId?.typeId?.name || cupo.serviceId?.type,
           name: cupo.serviceId?.name
         });
         // Don't auto-select - let user choose manually
@@ -2074,6 +2075,9 @@ const SaleWizard = () => {
           templateId: service.templateId,
           templateName: service.templateName,
           templateCategory: service.templateCategory,
+          serviceTypeId: service.serviceTypeId, // Required for Service model validation
+          serviceTypeName: service.serviceTypeName,
+          serviceName: service.serviceName,
           serviceInfo: service.serviceInfo,
           checkIn: service.checkIn,
           checkOut: service.checkOut,
@@ -2264,7 +2268,7 @@ const SaleWizard = () => {
       
       if (currentStep === 5) {
         // Validate that all service instances have valid costs and providers
-        console.log('🔍 Step 6 validation - Service instances:', serviceTemplateInstances);
+        console.log('🔍 Step 5 validation - Service instances:', serviceTemplateInstances);
         
         const invalidServices = serviceTemplateInstances.filter(service => {
           const hasValidCost = service.cost && parseFloat(service.cost) > 0;

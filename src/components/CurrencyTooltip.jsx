@@ -42,13 +42,13 @@ const CurrencyTooltip = ({ children, currency, data }) => {
     switch (currency) {
       case 'USD':
         return {
-          name: 'US Dollar',
+          name: 'U$',
           symbol: '$',
           description: 'United States Dollar - Primary currency for international transactions'
         };
       case 'ARS':
         return {
-          name: 'Argentine Peso',
+          name: 'AR$',
           symbol: '$',
           description: 'Argentine Peso - Local currency for Argentina operations'
         };

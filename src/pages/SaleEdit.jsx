@@ -120,6 +120,9 @@ const SaleEdit = () => {
         console.log('🔍 SaleEdit - Sale passengers from backend:', saleData.passengers);
         const instances = saleData.services.map((service, index) => {
           console.log(`🔍 SaleEdit - Processing service ${index}:`, service);
+          console.log(`🔍 SaleEdit - Service serviceId:`, service.serviceId);
+          console.log(`🔍 SaleEdit - Service serviceId.name:`, service.serviceId?.name);
+          console.log(`🔍 SaleEdit - Service serviceName:`, service.serviceName);
           console.log(`🔍 SaleEdit - Service providers:`, service.providers);
           console.log(`🔍 SaleEdit - Service costProvider:`, service.costProvider);
           console.log(`🔍 SaleEdit - Service priceClient:`, service.priceClient);
@@ -152,37 +155,23 @@ const SaleEdit = () => {
           return {
             id: service._id || service.serviceId?._id || `instance_${index}`, // Use actual database ID
             templateId: service.serviceTemplateId || service.serviceId,
-            templateName: service.serviceName || 'Unknown Service',
-            templateCategory: service.serviceId?.type || 'General',
+            templateName: service.serviceId?.name || service.serviceName || service.serviceId?.destino || 'Unknown Service',
+            templateCategory: service.serviceId?.typeId?.name || service.serviceId?.type || 'General',
             serviceInfo: service.serviceName || 'Unknown Service',
             serviceDescription: service.notes || service.serviceId?.description || '',
             checkIn: service.serviceDates?.startDate ? new Date(service.serviceDates.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
             checkOut: service.serviceDates?.endDate ? new Date(service.serviceDates.endDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
             cost: (() => {
-              // Calculate cost from providers array if available
-              if (service.providers && service.providers.length > 0) {
-                const calculatedCost = service.providers.reduce((total, provider) => {
-                  return total + (parseFloat(provider.costProvider) || 0);
-                }, 0);
-                console.log(`🔍 SaleEdit - Calculated cost from providers for service ${index}:`, calculatedCost);
-                return calculatedCost;
-              }
-              // Fallback to service.costProvider or service.priceClient
-              const fallbackCost = service.costProvider !== null && service.costProvider !== undefined ? service.costProvider : (service.priceClient || 0);
-              console.log(`🔍 SaleEdit - Using fallback cost for service ${index}:`, fallbackCost);
-              return fallbackCost;
+              // Use the stored costProvider value directly from the database
+              const storedCost = service.costProvider !== null && service.costProvider !== undefined ? service.costProvider : 0;
+              console.log(`🔍 SaleEdit - Using stored cost for service ${index}:`, storedCost);
+              return storedCost;
             })(),
             costProvider: (() => {
-              // Calculate costProvider from providers array if available
-              if (service.providers && service.providers.length > 0) {
-                return service.providers.reduce((total, provider) => {
-                  return total + (parseFloat(provider.costProvider) || 0);
-                }, 0);
-              }
-              // Fallback to service.costProvider
+              // Use the stored costProvider value directly from the database
               return service.costProvider !== null && service.costProvider !== undefined ? service.costProvider : 0;
             })(),
-            currency: service.currency || 'USD',
+            currency: saleData.saleCurrency || service.currency || 'USD',
             provider: service.providerId || null, // Backend populates this with full provider object
             providers: providers, // Extract provider objects with documents preserved
             providersData: service.providers || [], // Store original provider data structure from backend
@@ -294,15 +283,7 @@ const SaleEdit = () => {
         serviceId: updatedInstance.templateId,
         serviceName: updatedInstance.serviceInfo,
         priceClient: updatedInstance.cost,
-        costProvider: (() => {
-          // Calculate actual costProvider from providers array
-          if (updatedInstance.providers && updatedInstance.providers.length > 0) {
-            return updatedInstance.providers.reduce((total, provider) => {
-              return total + (parseFloat(provider.costProvider) || 0);
-            }, 0);
-          }
-          return updatedInstance.cost; // Fallback to instance cost if no providers
-        })(),
+        costProvider: updatedInstance.cost, // Use the stored cost value directly
         currency: updatedInstance.currency,
         quantity: 1,
         serviceDates: {
@@ -310,7 +291,7 @@ const SaleEdit = () => {
           endDate: new Date(updatedInstance.checkOut)
         },
         providerId: updatedInstance.provider?._id,
-        notes: `Service: ${updatedInstance.templateName} - ${updatedInstance.serviceInfo}`
+        notes: updatedInstance.serviceDescription || `${updatedInstance.templateName || 'Service'} - ${updatedInstance.serviceInfo}`
       };
       
       // If destination was updated, update the sale-level destination
@@ -396,15 +377,7 @@ const SaleEdit = () => {
       const updatePayload = {
         serviceName: updatedInstance.serviceInfo,
         priceClient: updatedInstance.cost,
-        costProvider: (() => {
-          // Calculate actual costProvider from providers array
-          if (updatedInstance.providers && updatedInstance.providers.length > 0) {
-            return updatedInstance.providers.reduce((total, provider) => {
-              return total + (parseFloat(provider.costProvider) || 0);
-            }, 0);
-          }
-          return updatedInstance.cost; // Fallback to instance cost if no providers
-        })(),
+        costProvider: updatedInstance.cost, // Use the stored cost value directly
         currency: updatedInstance.currency,
         serviceDates: {
           startDate: new Date(updatedInstance.checkIn),
@@ -491,15 +464,7 @@ const SaleEdit = () => {
           serviceId: instance.templateId,
           serviceName: instance.serviceInfo,
           priceClient: instance.cost,
-          costProvider: (() => {
-                // Calculate actual costProvider from providers array
-                if (instance.providers && instance.providers.length > 0) {
-                  return instance.providers.reduce((total, provider) => {
-                    return total + (parseFloat(provider.costProvider) || 0);
-                  }, 0);
-                }
-                return instance.cost; // Fallback to instance cost if no providers
-              })(),
+          costProvider: instance.cost, // Use the stored cost value directly
           currency: instance.currency,
           quantity: 1,
           serviceDates: {
@@ -508,7 +473,7 @@ const SaleEdit = () => {
           },
           providerId: instance.provider?._id,
           providers: formattedProviders, // Include properly formatted providers array
-          notes: instance.serviceDescription || `Service: ${instance.templateName} - ${instance.serviceInfo}`
+          notes: instance.serviceDescription || `${instance.templateName || 'Service'} - ${instance.serviceInfo}`
         };
       });
       
@@ -585,16 +550,11 @@ const SaleEdit = () => {
           });
         }
         
-        // Calculate costProvider from providers array
-        const calculatedCostProvider = formattedProviders.reduce((total, provider) => {
-          return total + (parseFloat(provider.costProvider) || 0);
-        }, 0);
-
         return {
           serviceId: instance.templateId,
           serviceName: instance.serviceInfo,
           priceClient: instance.cost,
-          costProvider: calculatedCostProvider, // Calculate from providers array
+          costProvider: instance.cost, // Use the stored cost value directly
           currency: instance.currency,
           quantity: 1,
           serviceDates: {
@@ -603,7 +563,7 @@ const SaleEdit = () => {
           },
           providerId: instance.provider?._id,
           providers: formattedProviders, // Include properly formatted providers array
-          notes: instance.serviceDescription || `Service: ${instance.templateName} - ${instance.serviceInfo}`
+          notes: instance.serviceDescription || `${instance.templateName || 'Service'} - ${instance.serviceInfo}`
         };
       });
       

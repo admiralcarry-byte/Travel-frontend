@@ -967,6 +967,9 @@ const SalesList = () => {
                       <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
                         Status
                       </th>
+                      <th className="w-32 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
+                        Actions
+                      </th>
                       <th className="w-32 px-4 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
                         Start Date
                       </th>
@@ -978,9 +981,6 @@ const SalesList = () => {
                       </th>
                       <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
                         Created
-                      </th>
-                      <th className="w-32 px-6 py-3 text-left text-xs font-semibold text-dark-300 uppercase tracking-wider">
-                        Actions
                       </th>
                     </tr>
                   </thead>
@@ -1042,6 +1042,14 @@ const SalesList = () => {
                             </span>
                           </div>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => navigate(`/sales/${sale.id || sale._id}`)}
+                            className="text-primary-400 hover:text-primary-300"
+                          >
+                            View Details
+                          </button>
+                        </td>
                         <td className="px-4 py-4">
                           <div className="text-sm text-dark-100">
                             {earliestStartDate ? earliestStartDate.toLocaleDateString() : 'N/A'}
@@ -1070,14 +1078,6 @@ const SalesList = () => {
                             className="text-sm text-dark-400"
                             title={new Date(sale.createdAt).toLocaleDateString()}
                           />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => navigate(`/sales/${sale.id || sale._id}`)}
-                            className="text-primary-400 hover:text-primary-300"
-                          >
-                            View Details
-                          </button>
                         </td>
                       </tr>
                       );
