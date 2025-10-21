@@ -604,12 +604,13 @@ const NewSaleWizardSteps = ({
                   const canSelectMore = selectionCount < 7;
                   
                   return (
-                    <div key={serviceType._id} className={`p-4 border rounded-lg bg-dark-700/50 border-white/10 ${canSelectMore ? 'hover:bg-dark-600/50 hover:border-primary-500/30 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
+                    <div 
+                      key={serviceType._id} 
+                      onClick={() => canSelectMore && selectServiceType(serviceType)}
+                      className={`p-4 border rounded-lg bg-dark-700/50 border-white/10 ${canSelectMore ? 'hover:bg-dark-600/50 hover:border-primary-500/30 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+                    >
                       <div className="flex items-center justify-between mb-2">
-                        <div 
-                          onClick={() => canSelectMore && selectServiceType(serviceType)}
-                          className="flex-1"
-                        >
+                        <div className="flex-1">
                           <h5 className="font-medium text-dark-100">{serviceType.name}</h5>
                           {selectionCount > 0 && (
                             <div className="flex items-center space-x-2 mt-1">
