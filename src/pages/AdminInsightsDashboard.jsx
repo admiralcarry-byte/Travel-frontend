@@ -636,7 +636,7 @@ const AdminInsightsDashboard = () => {
                 icon="money"
                 color="blue"
                 valueType="currency"
-                useFullNumber={true}
+                useFullNumber={false}
                 currency={filters.currency || 'ARS'}
               />
               <KPICard
@@ -646,7 +646,7 @@ const AdminInsightsDashboard = () => {
                 icon="chart"
                 color="green"
                 valueType="currency"
-                useFullNumber={true}
+                useFullNumber={false}
                 currency={filters.currency || 'ARS'}
               />
               <KPICard
@@ -664,7 +664,7 @@ const AdminInsightsDashboard = () => {
                 icon="dollar"
                 color="purple"
                 valueType="currency"
-                useFullNumber={true}
+                useFullNumber={false}
                 currency={filters.currency || 'ARS'}
               />
             </div>
