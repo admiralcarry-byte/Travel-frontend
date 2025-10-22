@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
-import { formatCurrencyCompact, formatCurrency } from '../utils/formatNumbers';
+import { formatCurrencyCompact, formatCurrency, formatCurrencyEllipsis } from '../utils/formatNumbers';
 
 const SellerDashboard = () => {
   const navigate = useNavigate();
@@ -158,7 +158,7 @@ const SellerDashboard = () => {
             </div>
             
             <h3 className="text-2xl font-bold text-dark-100 mb-3 notranslate">Sales in USD</h3>
-            <p className="text-5xl font-bold text-success-400 mb-3 notranslate">{formatCurrency(stats.usdSales, 'USD')}</p>
+            <p className="text-5xl font-bold text-success-400 mb-3 notranslate">{formatCurrencyEllipsis(stats.usdSales, 'USD')}</p>
             <p className="text-sm text-success-300 notranslate">USD transactions</p>
           </div>
 
@@ -177,7 +177,7 @@ const SellerDashboard = () => {
             </div>
             
             <h3 className="text-2xl font-bold text-dark-100 mb-3 notranslate">Sales in ARS</h3>
-            <p className="text-5xl font-bold text-warning-400 mb-3 notranslate">{formatCurrency(stats.arsSales, 'ARS')}</p>
+            <p className="text-5xl font-bold text-warning-400 mb-3 notranslate">{formatCurrencyEllipsis(stats.arsSales, 'ARS')}</p>
             <p className="text-sm text-warning-300 notranslate">ARS transactions</p>
           </div>
         </div>

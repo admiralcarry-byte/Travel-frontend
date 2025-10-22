@@ -83,10 +83,8 @@ const ServiceCostProviderModal = ({
   };
 
   const handleSave = () => {
-    if (!serviceCost || serviceCost <= 0) {
-      setError('Please enter a valid service cost');
-      return;
-    }
+    // Service cost is now optional - default to 0 if not provided
+    const finalServiceCost = serviceCost || 0;
 
     if (selectedProviders.length === 0) {
       setError('Please select at least one provider');
@@ -117,7 +115,7 @@ const ServiceCostProviderModal = ({
 
       const updatedService = {
         ...service,
-        cost: parseFloat(serviceCost),
+        cost: finalServiceCost,
         currency: serviceCurrency,
         providers: providersWithFiles,
         provider: providersWithFiles[0] // Keep first provider for backward compatibility
@@ -298,7 +296,7 @@ const ServiceCostProviderModal = ({
             
             <div>
               <label className="block text-sm font-medium text-dark-200 mb-2">
-                Total Service Cost *
+                Total Service Cost
               </label>
               <input
                 type="number"
@@ -308,10 +306,9 @@ const ServiceCostProviderModal = ({
                 placeholder="0.00"
                 step="0.01"
                 min="0"
-                required
               />
               <p className="text-xs text-dark-400 mt-1">
-                Enter the total cost for this service
+                Enter the total cost for this service (optional - defaults to 0)
               </p>
             </div>
 
@@ -533,7 +530,7 @@ const ServiceCostProviderModal = ({
           </button>
           <button
             onClick={handleSave}
-            disabled={loading || !serviceCost || selectedProviders.length === 0}
+            disabled={loading || selectedProviders.length === 0}
             className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? 'Saving...' : 'Complete'}

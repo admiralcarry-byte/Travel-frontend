@@ -540,7 +540,7 @@ const NewSaleWizardSteps = ({
                 {serviceCards.map((serviceCard) => (
                   <div key={serviceCard.id} className="p-4 border rounded-lg bg-primary-500/10 border-primary-500/30">
                     <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-medium text-dark-100">{serviceCard.serviceName}</h5>
+                      <h5 className="font-medium text-dark-100 notranslate">{serviceCard.serviceName}</h5>
                       <button
                         onClick={() => removeServiceCard(serviceCard.id)}
                         className="text-red-400 hover:text-red-300 text-sm"
@@ -549,10 +549,10 @@ const NewSaleWizardSteps = ({
                         ✕
                       </button>
                     </div>
-                    <p className="text-xs text-primary-400 mb-2">Type: {serviceCard.serviceTypeName}</p>
-                    <p className="text-sm text-dark-300 line-clamp-2">{serviceCard.serviceDescription}</p>
+                    <p className="text-xs text-primary-400 mb-2 notranslate">Type: {serviceCard.serviceTypeName}</p>
+                    <p className="text-sm text-dark-300 line-clamp-2 notranslate">{serviceCard.serviceDescription}</p>
                     <div className="mt-2">
-                      <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded">
+                      <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded notranslate">
                         Service
                       </span>
                     </div>

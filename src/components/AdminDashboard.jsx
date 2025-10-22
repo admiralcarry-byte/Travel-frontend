@@ -449,7 +449,7 @@ const AdminDashboard = () => {
                 {loading ? (
                   <div className="animate-pulse bg-success-400/20 h-8 w-32 rounded"></div>
                 ) : (
-                  formatCurrencyJSX(businessStats.usdSales, 'USD', 'en-US', '')
+                  formatCurrencyJSX(businessStats.usdSales, 'USD', 'en-US', '...')
                 )}
               </p>
               <p className="text-sm text-dark-400 mt-2"><CurrencyDisplay>{t('usdSymbol')}</CurrencyDisplay> <CurrencyDisplay>transactions</CurrencyDisplay></p>
@@ -470,7 +470,7 @@ const AdminDashboard = () => {
                 {loading ? (
                   <div className="animate-pulse bg-warning-400/20 h-8 w-32 rounded"></div>
                 ) : (
-                  formatCurrencyJSX(businessStats.arsSales, 'ARS', 'en-US', '')
+                  formatCurrencyJSX(businessStats.arsSales, 'ARS', 'en-US', '...')
                 )}
               </p>
               <p className="text-sm text-dark-400 mt-2"><CurrencyDisplay>{t('arsSymbol')}</CurrencyDisplay> <CurrencyDisplay>transactions</CurrencyDisplay></p>

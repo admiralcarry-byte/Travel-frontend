@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
-import { formatCurrency, getCurrencySymbol } from '../utils/formatNumbers';
+import { formatCurrency, getCurrencySymbol, formatCurrencyEllipsis } from '../utils/formatNumbers';
 
 const MonthlySales = () => {
   const navigate = useNavigate();
@@ -87,8 +87,8 @@ const MonthlySales = () => {
   };
 
   const formatCurrencyValue = (amount) => {
-    // Use exact formatting to show precise values instead of abbreviations
-    return formatCurrency(amount, selectedCurrency);
+    // Use ellipsis formatting to show values like "10..." instead of "10.00"
+    return formatCurrencyEllipsis(amount, selectedCurrency);
   };
 
   const formatDate = (dateString) => {

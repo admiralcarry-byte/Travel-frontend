@@ -171,6 +171,30 @@ export const formatCurrencyFull = (amount, currency = 'USD') => {
 };
 
 /**
+ * Format currency with ellipsis style (e.g., "10..." instead of "10.00")
+ * @param {number} amount - The amount to format
+ * @param {string} currency - Currency code (default: 'USD')
+ * @returns {string} Formatted currency string with ellipsis style
+ */
+export const formatCurrencyEllipsis = (amount, currency = 'USD') => {
+  if (amount === null || amount === undefined || isNaN(amount)) {
+    amount = 0;
+  }
+
+  const absAmount = Math.abs(amount);
+  const sign = amount < 0 ? '-' : '';
+  const symbol = getCurrencySymbol(currency);
+  
+  // Round to nearest integer
+  const roundedAmount = Math.round(absAmount);
+  
+  // Format with commas for thousands
+  const formattedAmount = roundedAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  
+  return `${sign}${symbol}${formattedAmount}...`;
+};
+
+/**
  * Format balance with appropriate color coding
  * @param {number} balance - The balance amount
  * @param {string} currency - Currency symbol (default: 'U$')
