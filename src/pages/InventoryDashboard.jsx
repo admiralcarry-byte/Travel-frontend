@@ -272,87 +272,93 @@ const InventoryDashboard = () => {
 
         {/* Filters */}
         <div className="card-glass p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-dark-200 mb-4">
-                Service
-              </label>
-              <select
-                value={filters.serviceId}
-                onChange={(e) => handleFilterChange('serviceId', e.target.value)}
-                className="input-field"
-              >
-                <option value="">All Services</option>
-                {services.map((service, index) => (
-                  <option key={service._id || service.id || `service-${index}`} value={service._id || service.id}>
-                        {service.destino}
-                  </option>
-                ))}
-              </select>
+          <div className="space-y-4">
+            {/* First Row: Service, Status, Min Available Seats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-dark-200 mb-2">
+                  Service
+                </label>
+                <select
+                  value={filters.serviceId}
+                  onChange={(e) => handleFilterChange('serviceId', e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">All Services</option>
+                  {services.map((service, index) => (
+                    <option key={service._id || service.id || `service-${index}`} value={service._id || service.id}>
+                          {service.destino}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-dark-200 mb-2">
+                  Status
+                </label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => handleFilterChange('status', e.target.value)}
+                  className="input-field"
+                >
+                  {statusOptions.map((option, index) => (
+                    <option key={option.value || `status-${index}`} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-dark-200 mb-2">
+                  Min Available Seats
+                </label>
+                <input
+                  type="number"
+                  value={filters.minAvailableSeats}
+                  onChange={(e) => handleFilterChange('minAvailableSeats', e.target.value)}
+                  placeholder="0"
+                  className="input-field"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-dark-200 mb-4">
-                Status
-              </label>
-              <select
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-                className="input-field"
-              >
-                {statusOptions.map((option, index) => (
-                  <option key={option.value || `status-${index}`} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Second Row: Start Date, Completion Date, Clear Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-dark-200 mb-2">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={filters.date}
+                  onChange={(e) => handleFilterChange('date', e.target.value)}
+                  className="input-field"
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-dark-200 mb-4">
-                Min Available Seats
-              </label>
-              <input
-                type="number"
-                value={filters.minAvailableSeats}
-                onChange={(e) => handleFilterChange('minAvailableSeats', e.target.value)}
-                placeholder="0"
-                className="input-field"
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-semibold text-dark-200 mb-2">
+                  Completion Date
+                </label>
+                <input
+                  type="date"
+                  value={filters.completionDate}
+                  onChange={(e) => handleFilterChange('completionDate', e.target.value)}
+                  className="input-field"
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-dark-200 mb-4">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={filters.date}
-                onChange={(e) => handleFilterChange('date', e.target.value)}
-                className="input-field"
-              />
+              <div className="flex items-end">
+                <button
+                  onClick={clearFilters}
+                  className="w-full px-4 py-2 text-sm font-medium text-dark-300 bg-dark-700/50 hover:bg-dark-700 border border-white/10 rounded-md transition-colors"
+                >
+                  Clear Filters
+                </button>
+              </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-dark-200 mb-4">
-                Completion Date
-              </label>
-              <input
-                type="date"
-                value={filters.completionDate}
-                onChange={(e) => handleFilterChange('completionDate', e.target.value)}
-                className="input-field"
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 flex justify-end">
-            <button
-              onClick={clearFilters}
-              className="px-4 py-2 text-sm font-medium text-dark-300 bg-dark-700/50 hover:bg-dark-700 border border-white/10 rounded-md"
-            >
-              Clear Filters
-            </button>
           </div>
         </div>
 
