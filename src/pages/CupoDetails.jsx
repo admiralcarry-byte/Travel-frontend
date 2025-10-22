@@ -178,12 +178,6 @@ const CupoDetails = () => {
                   <h3 className="text-lg font-semibold text-dark-100 mb-4">Service Information</h3>
                   <div className="space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-dark-300">Service ID:</span>
-                      <span className="text-dark-100 font-mono text-sm">
-                        {cupo.serviceId?._id || cupo.serviceId?.id || 'N/A'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
                       <span className="text-dark-300">Provider:</span>
                       <span className="text-dark-100">
                         {cupo.serviceId?.providerId?.name || 'Unknown Provider'}
@@ -334,12 +328,6 @@ const CupoDetails = () => {
             <div className="card-glass p-6">
               <h3 className="text-lg font-semibold text-dark-100 mb-4">System Information</h3>
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-dark-300">Cupo ID:</span>
-                  <span className="text-dark-100 font-mono text-xs">
-                    {cupo._id || cupo.id}
-                  </span>
-                </div>
                 <div className="flex justify-between">
                   <span className="text-dark-300">Created:</span>
                   <span className="text-dark-100">
