@@ -80,8 +80,9 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
     // Validate current step before proceeding
     if (currentStep === 5) {
       // Service Cost step validation
-      if (!serviceCost || parseFloat(serviceCost) <= 0) {
-        setError('Please enter a valid service cost');
+      // Allow cost of 0 as valid - cost is optional and defaults to 0
+      if (serviceCost === undefined || serviceCost === null || serviceCost === '' || isNaN(parseFloat(serviceCost)) || parseFloat(serviceCost) < 0) {
+        setError('Please enter a valid service cost (0 or greater)');
         return;
       }
       
@@ -120,8 +121,14 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
   };
 
   const handleSubmit = async () => {
-    if (!currentServiceTemplate || !serviceInfo || !serviceDates.checkIn || !serviceDates.checkOut || !serviceCost || selectedProviders.length === 0) {
+    if (!currentServiceTemplate || !serviceInfo || !serviceDates.checkIn || !serviceDates.checkOut || selectedProviders.length === 0) {
       setError('Please complete all required fields, including selecting at least one provider');
+      return;
+    }
+    
+    // Validate service cost (allow 0 as valid)
+    if (serviceCost === undefined || serviceCost === null || serviceCost === '' || isNaN(parseFloat(serviceCost)) || parseFloat(serviceCost) < 0) {
+      setError('Please enter a valid service cost (0 or greater)');
       return;
     }
 

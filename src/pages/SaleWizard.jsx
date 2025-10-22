@@ -2316,7 +2316,8 @@ const SaleWizard = () => {
         console.log('🔍 Step 5 validation - Service instances:', serviceTemplateInstances);
         
         const invalidServices = serviceTemplateInstances.filter(service => {
-          const hasValidCost = service.cost && parseFloat(service.cost) > 0;
+          // Allow cost of 0 as valid - cost is optional and defaults to 0
+          const hasValidCost = service.cost !== undefined && service.cost !== null && !isNaN(parseFloat(service.cost)) && parseFloat(service.cost) >= 0;
           const hasProviders = service.providers && service.providers.length > 0;
           console.log(`🔍 Service ${service.serviceInfo || service.templateName}: cost=${service.cost}, providers=${service.providers?.length || 0}, hasValidCost=${hasValidCost}, hasProviders=${hasProviders}`);
           return !hasValidCost || !hasProviders;
