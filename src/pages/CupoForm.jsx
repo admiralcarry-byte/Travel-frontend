@@ -643,7 +643,7 @@ const CupoForm = () => {
                 
                 {/* Service Card Display */}
                 {serviceCard && (
-                  <div className="bg-dark-700/50 border border-white/10 rounded-lg p-4">
+                  <div className="bg-dark-700/50 border border-white/10 rounded-lg p-4 notranslate">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h4 className="text-sm font-medium text-dark-100 mb-2">{serviceCard.serviceName}</h4>

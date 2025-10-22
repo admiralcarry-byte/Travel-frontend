@@ -242,7 +242,7 @@ const InventoryDashboard = () => {
             onClick={() => navigate('/cupos/new')}
             className="btn-primary"
           >
-            Add New <CurrencyDisplay>Cupo</CurrencyDisplay>
+            Add New Cupo
           </button>
         </div>
 
@@ -376,14 +376,14 @@ const InventoryDashboard = () => {
               </div>
               <div className="text-center">
                 <p className="text-dark-400 text-sm mb-6">
-                  {Object.values(filters).some(f => f) ? 'Try adjusting your filter criteria' : 'Get started by adding your first <CurrencyDisplay>cupo</CurrencyDisplay>'}
+                  {Object.values(filters).some(f => f) ? 'Try adjusting your filter criteria' : 'Get started by adding your first cupo'}
                 </p>
                 {!Object.values(filters).some(f => f) && (
                   <button
                     onClick={() => navigate('/cupos/new')}
                     className="btn-primary"
                   >
-                    Add First <CurrencyDisplay>Cupo</CurrencyDisplay>
+                    Add First Cupo
                   </button>
                 )}
               </div>
