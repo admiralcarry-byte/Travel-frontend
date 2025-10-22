@@ -1,6 +1,23 @@
 import React, { useState } from 'react';
 import ServiceEntryModal from './ServiceEntryModal';
 
+// Helper function to format providers display with quantities
+const formatProvidersDisplay = (providers) => {
+  if (!providers || providers.length === 0) return '';
+  
+  // Group providers by name and count occurrences
+  const providerGroups = {};
+  providers.forEach(provider => {
+    const providerName = provider.name || provider.providerId?.name || 'Unknown Provider';
+    providerGroups[providerName] = (providerGroups[providerName] || 0) + 1;
+  });
+  
+  // Format as "Provider 1, Provider 2 * 2, Provider 3"
+  return Object.entries(providerGroups)
+    .map(([name, count]) => count > 1 ? `${name} * ${count}` : name)
+    .join(', ');
+};
+
 const NewSaleWizardSteps = ({
   currentStep,
   // Service Template Data
@@ -113,12 +130,17 @@ const NewSaleWizardSteps = ({
   updateProviderCurrency,
   // Cupo Context
   cupoContext,
-  isCupoReservation
+  isCupoReservation,
+  // Service Cost & Provider Modal
+  openServiceCostProviderModal,
+  closeServiceCostProviderModal,
+  saveServiceCostAndProviders
 }) => {
   // State for service entry modal and service cards
   const [showServiceEntryModal, setShowServiceEntryModal] = useState(false);
   const [selectedServiceType, setSelectedServiceType] = useState(null);
   const [serviceCards, setServiceCards] = useState([]);
+  
 
   // Function to handle service type selection
   const selectServiceType = (serviceType) => {
@@ -163,6 +185,7 @@ const NewSaleWizardSteps = ({
     // Also remove from service template instances
     removeServiceInstance(serviceId);
   };
+
 
   return (
     <>
@@ -700,271 +723,62 @@ const NewSaleWizardSteps = ({
           <p className="text-sm text-dark-400">Set the cost and select providers for each service</p>
           
           {/* Multiple Services Configuration */}
-          {serviceTemplateInstances.map((service, index) => (
+          {serviceTemplateInstances.map((service, index) => {
+            console.log(`🔄 Rendering service ${index}:`, {
+              id: service.id,
+              _id: service._id,
+              serviceId: service.serviceId,
+              serviceName: service.serviceName,
+              serviceInfo: service.serviceInfo,
+              name: service.name,
+              cost: service.cost,
+              providers: service.providers?.length || 0
+            });
+            return (
             <div key={service._id || service.id || index} className="bg-dark-800/50 border border-white/10 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-medium text-dark-100">
-                  {index + 1}. {service.serviceName || service.serviceInfo || service.name || 'Service'}
-                </h4>
-                <button
-                  onClick={() => editServiceInstance(service)}
-                  className="text-primary-400 hover:text-primary-300 transition-colors"
-                  title="Edit service details"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div 
+                className="flex items-center justify-between cursor-pointer hover:bg-dark-700/30 rounded-lg p-4 transition-colors"
+                onClick={() => openServiceCostProviderModal(service)}
+              >
+                <div className="flex-1">
+                  <h4 className="text-lg font-medium text-dark-100">
+                    {index + 1}. {service.serviceName || service.serviceInfo || service.name || 'Service'}
+                  </h4>
+                  <div className="mt-2 flex items-center space-x-4">
+                    {/* Display cost if set and greater than 0 */}
+                    {service.cost > 0 && (
+                      <div className="text-sm text-primary-400">
+                        Cost: {service.currency === 'USD' ? 'U$' : service.currency === 'ARS' ? 'AR$' : service.currency} {service.cost}
+                      </div>
+                    )}
+                    {/* Display providers with quantities if providers selected */}
+                    {service.providers && service.providers.length > 0 && (
+                      <div className="text-sm text-primary-400">
+                        Providers: {formatProvidersDisplay(service.providers)}
+                      </div>
+                    )}
+                    {service.provider && !service.providers && (
+                      <div className="text-sm text-primary-400">
+                        Provider: {service.provider.name}
+                      </div>
+                    )}
+                    {/* Show status if no cost or providers set */}
+                    {(!service.cost || service.cost <= 0) && (!service.providers || service.providers.length === 0) && !service.provider && (
+                      <div className="text-sm text-dark-400">
+                        Click to set cost and select providers
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <svg className="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
-                </button>
-              </div>
-              
-              {/* Cost and Currency for this service */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <label className="block text-sm font-medium text-dark-200 mb-2">
-                    Total Service Cost *
-                  </label>
-                  <input
-                    type="number"
-                    value={service.cost || ''}
-                    onChange={(e) => updateServiceInstance(service._id || service.id, { cost: parseFloat(e.target.value) || 0 })}
-                    className="input-field"
-                    placeholder="0.00"
-                    step="0.01"
-                    min="0"
-                    required
-                  />
-                  <p className="text-xs text-dark-400 mt-1">
-                    Enter the total cost for this service
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-dark-200 mb-2">
-                    Currency
-                  </label>
-                  <select
-                    value={globalCurrency}
-                    onChange={(e) => updateServiceInstance(service._id || service.id, { currency: e.target.value })}
-                    className="input-field"
-                    disabled={isCupoReservation ? currencyLocked : (currencyLocked && currentStep > 2)}
-                    style={{ 
-                      opacity: (isCupoReservation ? currencyLocked : (currencyLocked && currentStep > 2)) ? 0.5 : 1,
-                      cursor: (isCupoReservation ? currencyLocked : (currencyLocked && currentStep > 2)) ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    <option value="USD">U$</option>
-                    <option value="ARS">AR$</option>
-                  </select>
-                  <p className="text-xs text-dark-400 mt-1">
-                    {isCupoReservation && currencyLocked
-                      ? `Currency locked to ${globalCurrency} from cupo - cannot be changed`
-                      : currencyLocked && currentStep > 2
-                        ? `Currency locked to ${globalCurrency} for this sale`
-                        : 'Select the currency for this service'
-                    }
-                  </p>
-                </div>
-              </div>
-
-
-              {/* Service Provider Selection for this service */}
-              <div className="border-t border-white/10 pt-6">
-                <h4 className="text-lg font-medium text-dark-100 mb-2">Service Provider</h4>
-                <p className="text-sm text-dark-400 mb-4">Select providers for this service</p>
-                
-                {/* Selected Providers - Display at top */}
-                {(() => {
-                  const selectedProviders = service.providers || (service.provider ? [service.provider] : []);
-                  return selectedProviders.length > 0 && (
-                    <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-4 mb-6">
-                      <h4 className="font-medium text-dark-100 mb-3">
-                        Selected Providers ({selectedProviders.length})
-                      </h4>
-                      <div className="space-y-3">
-                        {selectedProviders.map((provider, index) => (
-                        <div key={`${provider._id}-${index}`} className="bg-dark-700/50 rounded-lg p-4">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <h5 className="font-medium text-dark-100 mb-1">{provider.name}</h5>
-                              <div className="text-sm text-dark-300 space-y-1">
-                                {provider.type && (
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-primary-400">Type:</span>
-                                    <span>{provider.type}</span>
-                                  </div>
-                                )}
-                                {provider.phone && (
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-primary-400">Phone:</span>
-                                    <span>{provider.phone}</span>
-                                  </div>
-                                )}
-                                {provider.email && (
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-primary-400">Email:</span>
-                                    <span>{provider.email}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => removeProviderFromService(service._id || service.id, provider._id, index)}
-                              className="text-red-400 hover:text-red-300 ml-2"
-                              title="Remove provider"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
-                          
-                          {/* File Upload Buttons */}
-                          <div className="border-t border-white/10 pt-3">
-                            <div className="flex items-center justify-between">
-                              <h6 className="text-sm font-medium text-dark-200">Files for {provider.name}</h6>
-                              <div className="flex items-center space-x-2">
-                                <button
-                                  onClick={() => handleProviderFileUpload(provider._id)}
-                                  className="text-green-400 hover:text-green-300 text-sm flex items-center space-x-1 px-3 py-1 border border-green-400/30 rounded hover:bg-green-400/10 transition-colors"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                  </svg>
-                                  <span>Upload</span>
-                                </button>
-                                <button
-                                  onClick={() => openFileModal(provider._id)}
-                                  className="text-blue-400 hover:text-blue-300 text-sm flex items-center space-x-1 px-3 py-1 border border-blue-400/30 rounded hover:bg-blue-400/10 transition-colors"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                  </svg>
-                                  <span>View</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-                })()}
-
-                {/* Provider Search */}
-                <div className="relative mb-6">
-                  <input
-                    type="text"
-                    placeholder="Search providers..."
-                    value={providerSearch}
-                    onChange={(e) => setProviderSearch(e.target.value)}
-                    className="input-field w-full pl-10"
-                  />
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Available Providers */}
-                <div className="space-y-3">
-                  <h4 className="text-md font-medium text-dark-100">
-                    Available Providers {providerLoading && <span className="text-sm text-dark-400">(Loading...)</span>}
-                  </h4>
-                  
-                  {availableProviders.length === 0 && !providerLoading ? (
-                    <div className="text-center py-8 text-dark-400">
-                      <p>No providers found. Try adjusting your search.</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
-                      {availableProviders
-                        .filter(provider => {
-                          // Apply search filter if search term exists
-                          if (providerSearch && providerSearch.trim()) {
-                            const searchTerm = providerSearch.toLowerCase().trim();
-                            const matchesName = provider.name?.toLowerCase().includes(searchTerm);
-                            const matchesEmail = provider.email?.toLowerCase().includes(searchTerm);
-                            const matchesType = provider.type?.toLowerCase().includes(searchTerm);
-                            
-                            return matchesName || matchesEmail || matchesType;
-                          }
-                          
-                          return true;
-                        })
-                        .map((provider) => {
-                          // Count how many times this provider has been selected globally across all services
-                          const globalProviderSelectionCount = serviceTemplateInstances.reduce((total, serviceInstance) => {
-                            const serviceProviders = serviceInstance.providers || (serviceInstance.provider ? [serviceInstance.provider] : []);
-                            const serviceProviderCount = serviceProviders.filter(p => p._id === provider._id).length;
-                            return total + serviceProviderCount;
-                          }, 0);
-                          const maxSelections = 7;
-                          const canSelectMore = globalProviderSelectionCount < maxSelections;
-                          
-                          return (
-                            <div
-                              key={provider._id}
-                              onClick={() => canSelectMore && addProviderToService(service._id || service.id, provider)}
-                              className={`rounded-lg p-4 transition-colors ${canSelectMore ? 'cursor-pointer bg-dark-700/50 border border-white/10 hover:bg-dark-600/50 hover:border-primary-500/30' : 'opacity-50 cursor-not-allowed bg-dark-700/30 border border-white/5'}`}
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <h5 className="font-medium text-dark-100">{provider.name}</h5>
-                                    {globalProviderSelectionCount > 0 && (
-                                      <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded">
-                                        Selected: {globalProviderSelectionCount}/{maxSelections}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="text-sm space-y-1 text-dark-300">
-                                    {provider.type && (
-                                      <div className="flex items-center space-x-2">
-                                        <span className="text-primary-400">Type:</span>
-                                        <span>{provider.type}</span>
-                                      </div>
-                                    )}
-                                    {provider.phone && (
-                                      <div className="flex items-center space-x-2">
-                                        <span className="text-primary-400">Phone:</span>
-                                        <span>{provider.phone}</span>
-                                      </div>
-                                    )}
-                                    {provider.email && (
-                                      <div className="flex items-center space-x-2">
-                                        <span className="text-primary-400">Email:</span>
-                                        <span>{provider.email}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                  {!canSelectMore && (
-                                    <div className="mt-2">
-                                      <span className="text-xs text-red-400 bg-red-500/20 px-2 py-1 rounded">
-                                        Max reached ({globalProviderSelectionCount}/{maxSelections})
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="ml-2">
-                                  {canSelectMore && (
-                                    <svg className="w-5 h-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                    </svg>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -990,7 +804,9 @@ const NewSaleWizardSteps = ({
                   <div key={instance.id} className="text-sm text-dark-300 bg-dark-700/30 rounded p-2">
                     <span className="text-green-400 font-medium">•</span> {index + 1}. {instance.serviceName || instance.templateName}
                     <span className="text-dark-400 ml-2">({instance.serviceInfo})</span>
-                    <span className="text-dark-400 ml-2">- {globalCurrency === 'USD' ? 'U$' : 'AR$'} {parseFloat(instance.cost || 0).toFixed(2)}</span>
+                    {instance.cost && instance.cost > 0 && (
+                      <span className="text-dark-400 ml-2">- {globalCurrency === 'USD' ? 'U$' : 'AR$'} {parseFloat(instance.cost).toFixed(2)}</span>
+                    )}
                 </div>
               ))}
             </div>
@@ -1072,7 +888,9 @@ const NewSaleWizardSteps = ({
                     <div className="text-xs text-dark-400 space-y-1">
                       <div><span className="text-primary-400">Dates:</span> {instance.checkIn && instance.checkOut ? `${instance.checkIn} to ${instance.checkOut}` : 'Not specified'}</div>
                       <div><span className="text-primary-400">Destination:</span> {instance.destination?.city || instance.destination?.name || 'Not specified'}</div>
-                      <div><span className="text-primary-400">Cost:</span> {globalCurrency === 'USD' ? 'U$' : 'AR$'} {parseFloat(instance.cost || 0).toFixed(2)}</div>
+                      {instance.cost && instance.cost > 0 && (
+                        <div><span className="text-primary-400">Cost:</span> {globalCurrency === 'USD' ? 'U$' : 'AR$'} {parseFloat(instance.cost).toFixed(2)}</div>
+                      )}
                       <div><span className="text-primary-400">Providers:</span> {(() => {
                         console.log(`🔍 Service ${instance.templateName} providers:`, instance.providers);
                         console.log(`🔍 Service ${instance.templateName} provider:`, instance.provider);
@@ -1136,7 +954,9 @@ const NewSaleWizardSteps = ({
                       <div className="text-sm text-dark-300 space-y-1">
                         <div><span className="text-primary-400">Dates:</span> {instance.checkIn} to {instance.checkOut}</div>
                         <div><span className="text-primary-400">Destination:</span> {instance.destination.city}</div>
-                        <div><span className="text-primary-400">Cost:</span> {globalCurrency === 'USD' ? 'U$' : 'AR$'} {parseFloat(instance.cost || 0).toFixed(2)}</div>
+                        {instance.cost && instance.cost > 0 && (
+                        <div><span className="text-primary-400">Cost:</span> {globalCurrency === 'USD' ? 'U$' : 'AR$'} {parseFloat(instance.cost).toFixed(2)}</div>
+                      )}
                         <div><span className="text-primary-400">Provider(s):</span> {(() => {
                           if (instance.providers && instance.providers.length > 0) {
                             // Group providers by name and count occurrences
@@ -1223,6 +1043,7 @@ const NewSaleWizardSteps = ({
         serviceType={selectedServiceType}
         onServiceAdded={handleServiceAdded}
       />
+
     </>
   );
 };

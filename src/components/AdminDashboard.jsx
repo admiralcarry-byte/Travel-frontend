@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useSystemStats } from '../contexts/SystemStatsContext';
-import { formatCurrency, formatCurrencyCompact } from '../utils/formatNumbers';
+import { formatCurrencyCompact } from '../utils/formatNumbers';
+import { t, getCurrentLanguage } from '../utils/i18n';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
+import CurrencyDisplay from './CurrencyDisplay';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { systemStats, businessStats, fetchSystemStats, fetchBusinessStats, refreshStats } = useSystemStats();
+  const { formatCurrency, formatCurrencyJSX } = useCurrencyFormat();
 
   // User Management State
   const [users, setUsers] = useState([]);
@@ -34,8 +38,21 @@ const AdminDashboard = () => {
   const [systemMessage, setSystemMessage] = useState('');
   const [systemMessageType, setSystemMessageType] = useState('');
 
+  // Language state
+  const [currentLanguage, setCurrentLanguage] = useState(getCurrentLanguage());
+
   useEffect(() => {
     fetchAllData();
+  }, []);
+
+  // Listen for language changes
+  useEffect(() => {
+    const handleLanguageChange = () => {
+      setCurrentLanguage(getCurrentLanguage());
+    };
+
+    window.addEventListener('languageChanged', handleLanguageChange);
+    return () => window.removeEventListener('languageChanged', handleLanguageChange);
   }, []);
 
   // Effect for activity pagination
@@ -332,10 +349,10 @@ const AdminDashboard = () => {
         {/* Header */}
         <div className="text-center">
           <h1 className="text-5xl sm:text-6xl font-bold gradient-text mb-6 font-poppins">
-            Admin Dashboard
+            <CurrencyDisplay>Admin Dashboard</CurrencyDisplay>
           </h1>
           <p className="text-xl text-dark-300 max-w-3xl mx-auto mb-8">
-            Comprehensive business management and system administration
+            <CurrencyDisplay>Comprehensive business management and system administration</CurrencyDisplay>
           </p>
         </div>
 
@@ -400,7 +417,7 @@ const AdminDashboard = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
-              Business Overview
+              <CurrencyDisplay>Business Overview</CurrencyDisplay>
             </h3>
             <button
               onClick={async () => {
@@ -425,17 +442,17 @@ const AdminDashboard = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                   </svg>
                 </div>
-                <span className="text-success-400 text-sm font-medium">USD</span>
+                <span className="text-success-400 text-sm font-medium"><CurrencyDisplay>{t('usdSymbol')}</CurrencyDisplay></span>
               </div>
-              <h4 className="text-lg font-semibold text-dark-100 mb-2">Sales in USD</h4>
+              <h4 className="text-lg font-semibold text-dark-100 mb-2"><CurrencyDisplay>Sales in</CurrencyDisplay> <CurrencyDisplay>{t('usdSymbol')}</CurrencyDisplay></h4>
               <p className="text-3xl font-bold text-success-400">
                 {loading ? (
                   <div className="animate-pulse bg-success-400/20 h-8 w-32 rounded"></div>
                 ) : (
-                  formatCurrency(businessStats.usdSales, 'USD')
+                  formatCurrencyJSX(businessStats.usdSales, 'USD', 'en-US', '')
                 )}
               </p>
-              <p className="text-sm text-dark-400 mt-2">USD transactions</p>
+              <p className="text-sm text-dark-400 mt-2"><CurrencyDisplay>{t('usdSymbol')}</CurrencyDisplay> <CurrencyDisplay>transactions</CurrencyDisplay></p>
             </div>
 
             {/* ARS Sales */}
@@ -446,17 +463,17 @@ const AdminDashboard = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                   </svg>
                 </div>
-                <span className="text-warning-400 text-sm font-medium">ARS</span>
+                <span className="text-warning-400 text-sm font-medium"><CurrencyDisplay>{t('arsSymbol')}</CurrencyDisplay></span>
               </div>
-              <h4 className="text-lg font-semibold text-dark-100 mb-2">Sales in ARS</h4>
+              <h4 className="text-lg font-semibold text-dark-100 mb-2"><CurrencyDisplay>Sales in</CurrencyDisplay> <CurrencyDisplay>{t('arsSymbol')}</CurrencyDisplay></h4>
               <p className="text-3xl font-bold text-warning-400">
                 {loading ? (
                   <div className="animate-pulse bg-warning-400/20 h-8 w-32 rounded"></div>
                 ) : (
-                  formatCurrency(businessStats.arsSales, 'ARS')
+                  formatCurrencyJSX(businessStats.arsSales, 'ARS', 'en-US', '')
                 )}
               </p>
-              <p className="text-sm text-dark-400 mt-2">ARS transactions</p>
+              <p className="text-sm text-dark-400 mt-2"><CurrencyDisplay>{t('arsSymbol')}</CurrencyDisplay> <CurrencyDisplay>transactions</CurrencyDisplay></p>
             </div>
 
             {/* Total Sales */}
@@ -469,7 +486,7 @@ const AdminDashboard = () => {
                 </div>
                 <span className="text-primary-400 text-sm font-medium">Active</span>
               </div>
-              <h4 className="text-lg font-semibold text-dark-100 mb-2">Total Sales</h4>
+              <h4 className="text-lg font-semibold text-dark-100 mb-2"><CurrencyDisplay>Total Sales</CurrencyDisplay></h4>
               <p className="text-3xl font-bold text-primary-400">
                 {loading ? (
                   <div className="animate-pulse bg-primary-400/20 h-8 w-16 rounded"></div>
@@ -490,7 +507,7 @@ const AdminDashboard = () => {
                 </div>
                 <span className="text-accent-400 text-sm font-medium">Growing</span>
               </div>
-              <h4 className="text-lg font-semibold text-dark-100 mb-2">Total Passengers</h4>
+              <h4 className="text-lg font-semibold text-dark-100 mb-2"><CurrencyDisplay>Total Passengers</CurrencyDisplay></h4>
               <p className="text-3xl font-bold text-accent-400">
                 {loading ? (
                   <div className="animate-pulse bg-accent-400/20 h-8 w-16 rounded"></div>
@@ -498,7 +515,7 @@ const AdminDashboard = () => {
                   businessStats.totalClients
                 )}
               </p>
-              <p className="text-sm text-dark-400 mt-2">Registered passengers</p>
+              <p className="text-sm text-dark-400 mt-2"><CurrencyDisplay>Registered passengers</CurrencyDisplay></p>
             </div>
           </div>
 
@@ -518,7 +535,7 @@ const AdminDashboard = () => {
 
           {/* Quick Actions */}
           <div className="card-glass p-6">
-            <h4 className="text-xl font-semibold text-dark-100 mb-6">Quick Actions</h4>
+            <h4 className="text-xl font-semibold text-dark-100 mb-6"><CurrencyDisplay>Quick Actions</CurrencyDisplay></h4>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <button
                 onClick={() => navigate('/clients')}
@@ -531,8 +548,8 @@ const AdminDashboard = () => {
                     </svg>
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-dark-100 group-hover:text-accent-400 transition-colors">Manage Passengers</div>
-                    <div className="text-xs text-dark-400">Passenger database</div>
+                    <div className="text-sm font-semibold text-dark-100 group-hover:text-accent-400 transition-colors"><CurrencyDisplay>Manage Passengers</CurrencyDisplay></div>
+                    <div className="text-xs text-dark-400"><CurrencyDisplay>Passenger database</CurrencyDisplay></div>
                   </div>
                 </div>
               </button>
@@ -548,8 +565,8 @@ const AdminDashboard = () => {
                     </svg>
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-dark-100 group-hover:text-success-400 transition-colors">Admin Insights</div>
-                    <div className="text-xs text-dark-400">Analytics & reports</div>
+                    <div className="text-sm font-semibold text-dark-100 group-hover:text-success-400 transition-colors"><CurrencyDisplay>Admin Insights</CurrencyDisplay></div>
+                    <div className="text-xs text-dark-400"><CurrencyDisplay>Analytics & reports</CurrencyDisplay></div>
                   </div>
                 </div>
               </button>
@@ -582,7 +599,7 @@ const AdminDashboard = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </div>
-            System Analytics
+            <CurrencyDisplay>System Analytics</CurrencyDisplay>
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -596,9 +613,9 @@ const AdminDashboard = () => {
                 </div>
                 <span className="text-success-400 text-sm font-medium">Healthy</span>
               </div>
-              <h4 className="text-lg font-semibold text-dark-100 mb-2">System Uptime</h4>
+              <h4 className="text-lg font-semibold text-dark-100 mb-2"><CurrencyDisplay>System Uptime</CurrencyDisplay></h4>
               <p className="text-3xl font-bold text-success-400">{systemStats.systemUptime}</p>
-              <p className="text-sm text-dark-400 mt-2">Last 30 days</p>
+              <p className="text-sm text-dark-400 mt-2"><CurrencyDisplay>Last 30 days</CurrencyDisplay></p>
             </div>
 
             {/* Total Users */}
@@ -611,9 +628,9 @@ const AdminDashboard = () => {
                 </div>
                 <span className="text-primary-400 text-sm font-medium">Active</span>
               </div>
-              <h4 className="text-lg font-semibold text-dark-100 mb-2">Total Users</h4>
+              <h4 className="text-lg font-semibold text-dark-100 mb-2"><CurrencyDisplay>Total Users</CurrencyDisplay></h4>
               <p className="text-3xl font-bold text-primary-400">{systemStats.totalUsers}</p>
-              <p className="text-sm text-dark-400 mt-2">Registered users</p>
+              <p className="text-sm text-dark-400 mt-2"><CurrencyDisplay>Registered users</CurrencyDisplay></p>
             </div>
 
             {/* Total Providers */}
@@ -626,9 +643,9 @@ const AdminDashboard = () => {
                 </div>
                 <span className="text-accent-400 text-sm font-medium">Partners</span>
               </div>
-              <h4 className="text-lg font-semibold text-dark-100 mb-2">Total Providers</h4>
+              <h4 className="text-lg font-semibold text-dark-100 mb-2"><CurrencyDisplay>Total Providers</CurrencyDisplay></h4>
               <p className="text-3xl font-bold text-accent-400">{systemStats.totalProviders}</p>
-              <p className="text-sm text-dark-400 mt-2">Service providers</p>
+              <p className="text-sm text-dark-400 mt-2"><CurrencyDisplay>Service providers</CurrencyDisplay></p>
             </div>
           </div>
         </div>
@@ -641,12 +658,12 @@ const AdminDashboard = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            Recent Activity
+            <CurrencyDisplay>Recent Activity</CurrencyDisplay>
           </h3>
 
           <div className="card overflow-hidden">
             <div className="px-6 py-4 border-b border-white/10">
-              <h4 className="text-lg font-medium text-dark-100">System Activity Log</h4>
+              <h4 className="text-lg font-medium text-dark-100"><CurrencyDisplay>System Activity Log</CurrencyDisplay></h4>
             </div>
             <div className="divide-y divide-white/10">
               {recentActivity.map((activity) => (
@@ -732,7 +749,7 @@ const AdminDashboard = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            System Settings
+            <CurrencyDisplay>System Settings</CurrencyDisplay>
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -745,8 +762,8 @@ const AdminDashboard = () => {
                   </svg>
                 </div>
                 <div>
-                  <h4 className="text-lg font-semibold text-dark-100">Database Management</h4>
-                  <p className="text-sm text-dark-300">Manage database operations</p>
+                  <h4 className="text-lg font-semibold text-dark-100"><CurrencyDisplay>Database Management</CurrencyDisplay></h4>
+                  <p className="text-sm text-dark-300"><CurrencyDisplay>Manage database operations</CurrencyDisplay></p>
                 </div>
               </div>
               <div className="space-y-3">

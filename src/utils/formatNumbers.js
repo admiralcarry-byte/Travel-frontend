@@ -1,6 +1,51 @@
 /**
  * Utility functions for formatting numbers in a readable way
  */
+import { t } from './i18n';
+
+/**
+ * Format number with commas as thousand separators, independent of browser locale
+ * @param {number} num - The number to format
+ * @param {number} decimals - Number of decimal places
+ * @returns {string} Formatted number string
+ */
+const formatNumberWithCommas = (num, decimals = 2) => {
+  if (num === null || num === undefined || isNaN(num)) {
+    num = 0;
+  }
+  
+  
+  // Use Math.round to avoid any locale-dependent formatting
+  const multiplier = Math.pow(10, decimals);
+  const rounded = Math.round(num * multiplier) / multiplier;
+  
+  // Convert to string and ensure we have the right number of decimal places
+  let str = rounded.toString();
+  
+  // Handle decimal places
+  if (decimals > 0) {
+    const dotIndex = str.indexOf('.');
+    if (dotIndex === -1) {
+      str += '.';
+    }
+    const currentDecimals = str.length - str.indexOf('.') - 1;
+    for (let i = currentDecimals; i < decimals; i++) {
+      str += '0';
+    }
+  }
+  
+  // Split into integer and decimal parts
+  const parts = str.split('.');
+  const integerPart = parts[0];
+  const decimalPart = parts[1] || '';
+  
+  // Add commas to integer part
+  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  
+  // Combine parts
+  const result = decimals > 0 && decimalPart ? formattedInteger + '.' + decimalPart : formattedInteger;
+  return result;
+};
 
 /**
  * Format large numbers with appropriate suffixes (K, M, B)
@@ -9,22 +54,23 @@
  * @param {string} currency - Currency symbol (default: 'U$')
  * @returns {string} Formatted number string
  */
-export const formatLargeNumber = (num, decimals = 1, currency = 'U$') => {
+export const formatLargeNumber = (num, decimals = 1, currency = 'USD') => {
   if (num === null || num === undefined || isNaN(num)) {
-    return `${currency}0`;
+    return `${getCurrencySymbol(currency)}0`;
   }
 
   const absNum = Math.abs(num);
   const sign = num < 0 ? '-' : '';
+  const symbol = getCurrencySymbol(currency);
 
   if (absNum >= 1e9) {
-    return `${sign}${currency}${(absNum / 1e9).toFixed(decimals)}B`;
+    return `${sign}${symbol}${(absNum / 1e9).toFixed(decimals)}B`;
   } else if (absNum >= 1e6) {
-    return `${sign}${currency}${(absNum / 1e6).toFixed(decimals)}M`;
+    return `${sign}${symbol}${(absNum / 1e6).toFixed(decimals)}M`;
   } else if (absNum >= 1e3) {
-    return `${sign}${currency}${(absNum / 1e3).toFixed(decimals)}K`;
+    return `${sign}${symbol}${(absNum / 1e3).toFixed(decimals)}K`;
   } else {
-    return `${sign}${currency}${absNum.toFixed(decimals)}`;
+    return `${sign}${symbol}${absNum.toFixed(decimals)}`;
   }
 };
 
@@ -40,14 +86,17 @@ export const formatCurrency = (amount, currency = 'USD', locale = 'en-US') => {
     amount = 0;
   }
 
+
   // Handle ARS currency specially since it's not a standard ISO currency code
   if (currency.toUpperCase() === 'ARS') {
-    return `AR$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const result = `${t('arsSymbol')}${formatNumberWithCommas(amount, 2)}`;
+    return result;
   }
 
   // Handle USD currency
   if (currency.toUpperCase() === 'USD') {
-    return `U$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const result = `${t('usdSymbol')}${formatNumberWithCommas(amount, 2)}`;
+    return result;
   }
 
   // For other currencies, use Intl.NumberFormat
@@ -81,11 +130,11 @@ export const formatCurrencyCompact = (amount, currency = 'USD', decimals = 1) =>
  */
 export const getCurrencySymbol = (currency) => {
   const symbols = {
-    'USD': 'U$',
-    'ARS': 'AR$'
+    'USD': t('usdSymbol'),
+    'ARS': t('arsSymbol')
   };
   
-  return symbols[currency?.toUpperCase()] || 'U$';
+  return symbols[currency?.toUpperCase()] || t('usdSymbol');
 };
 
 
@@ -118,7 +167,7 @@ export const formatCurrencyFull = (amount, currency = 'USD') => {
   const sign = amount < 0 ? '-' : '';
   
   // Display full number with proper formatting (no decimal places)
-  return `${sign}${getCurrencySymbol(currency)}${absAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  return `${sign}${getCurrencySymbol(currency)}${formatNumberWithCommas(absAmount, 0)}`;
 };
 
 /**
@@ -128,7 +177,7 @@ export const formatCurrencyFull = (amount, currency = 'USD') => {
  * @param {number} decimals - Number of decimal places (default: 2)
  * @returns {object} Object with formatted value and color class
  */
-export const formatBalance = (balance, currency = 'U$', decimals = 2) => {
+export const formatBalance = (balance, currency = 'USD', decimals = 2) => {
   const formatted = formatCurrencyCompact(balance, currency, decimals);
   const colorClass = balance >= 0 ? 'text-green-600' : 'text-red-600';
   
@@ -155,7 +204,7 @@ export const isSuspiciouslyLarge = (num, threshold = 1e6) => {
  * @param {number} decimals - Number of decimal places (default: 1)
  * @returns {object} Object with formatted value and warning flag
  */
-export const formatWithWarning = (num, currency = 'U$', decimals = 1) => {
+export const formatWithWarning = (num, currency = 'USD', decimals = 1) => {
   const formatted = formatLargeNumber(num, decimals, currency);
   const warning = isSuspiciouslyLarge(num);
   

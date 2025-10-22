@@ -1,6 +1,55 @@
 import React from 'react';
+import { t } from '../utils/i18n';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
+
+/**
+ * Format number with commas as thousand separators, independent of browser locale
+ * @param {number} num - The number to format
+ * @param {number} decimals - Number of decimal places
+ * @returns {string} Formatted number string
+ */
+const formatNumberWithCommas = (num, decimals = 2) => {
+  if (num === null || num === undefined || isNaN(num)) {
+    num = 0;
+  }
+  
+  // Use Math.round to avoid any locale-dependent formatting
+  const multiplier = Math.pow(10, decimals);
+  const rounded = Math.round(num * multiplier) / multiplier;
+  
+  // Convert to string and ensure we have the right number of decimal places
+  let str = rounded.toString();
+  
+  // Handle decimal places
+  if (decimals > 0) {
+    const dotIndex = str.indexOf('.');
+    if (dotIndex === -1) {
+      str += '.';
+    }
+    const currentDecimals = str.length - str.indexOf('.') - 1;
+    for (let i = currentDecimals; i < decimals; i++) {
+      str += '0';
+    }
+  }
+  
+  // Split into integer and decimal parts
+  const parts = str.split('.');
+  const integerPart = parts[0];
+  const decimalPart = parts[1] || '';
+  
+  // Add commas to integer part
+  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  
+  // Combine parts
+  if (decimals > 0 && decimalPart) {
+    return formattedInteger + '.' + decimalPart;
+  } else {
+    return formattedInteger;
+  }
+};
 
 const KPICard = ({ title, value, subtitle, icon, color = 'blue', trend, trendValue, delay = 0, valueType = 'currency', useFullNumber = false, currency = 'USD' }) => {
+  const { formatCurrencyJSX, formatLargeNumberJSX, getCurrencySymbolJSX } = useCurrencyFormat();
   // Icon mapping for modern SVG icons
   const iconComponents = {
     'money': (
@@ -38,32 +87,25 @@ const KPICard = ({ title, value, subtitle, icon, color = 'blue', trend, trendVal
 
   const formatValue = (val) => {
     if (typeof val === 'number') {
-      const absVal = Math.abs(val);
-      const isNegative = val < 0;
-      const sign = isNegative ? '-' : '';
-      
       if (valueType === 'currency') {
-        // Get currency symbol
-        const currencySymbol = currency === 'ARS' ? 'AR$' : 'U$';
-        
         if (useFullNumber) {
           // Display full number with proper formatting (no decimal places)
-          return `${sign}${currencySymbol}${absVal.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+          return formatCurrencyJSX(val, currency, 'en-US', '');
         } else {
           // Use abbreviated format (original behavior)
-          if (absVal >= 1000000) {
-            return `${sign}${currencySymbol}${(absVal / 1000000).toFixed(1)}M`;
-          } else if (absVal >= 1000) {
-            return `${sign}${currencySymbol}${(absVal / 1000).toFixed(1)}K`;
-          } else {
-            return `${sign}${currencySymbol}${absVal.toFixed(2)}`;
-          }
+          return formatLargeNumberJSX(val, 1, currency, '');
         }
       } else if (valueType === 'number') {
         // Format as plain number with commas
-        return `${sign}${absVal.toLocaleString()}`;
+        const absVal = Math.abs(val);
+        const isNegative = val < 0;
+        const sign = isNegative ? '-' : '';
+        return `${sign}${formatNumberWithCommas(absVal, 0)}`;
       } else if (valueType === 'decimal') {
         // Format as decimal number
+        const absVal = Math.abs(val);
+        const isNegative = val < 0;
+        const sign = isNegative ? '-' : '';
         return `${sign}${absVal.toFixed(2)}`;
       }
     }

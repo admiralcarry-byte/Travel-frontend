@@ -152,14 +152,14 @@ const SellerDashboard = () => {
                 </svg>
               </div>
               <div className="text-right">
-                <div className="text-sm font-medium text-success-300">USD Sales</div>
+                <div className="text-sm font-medium text-success-300 notranslate">USD Sales</div>
                 <div className="text-xs text-success-400">All time</div>
               </div>
             </div>
             
-            <h3 className="text-2xl font-bold text-dark-100 mb-3">Sales in USD</h3>
-            <p className="text-5xl font-bold text-success-400 mb-3">{formatCurrency(stats.usdSales, 'USD')}</p>
-            <p className="text-sm text-success-300">USD transactions</p>
+            <h3 className="text-2xl font-bold text-dark-100 mb-3 notranslate">Sales in USD</h3>
+            <p className="text-5xl font-bold text-success-400 mb-3 notranslate">{formatCurrency(stats.usdSales, 'USD')}</p>
+            <p className="text-sm text-success-300 notranslate">USD transactions</p>
           </div>
 
           {/* ARS Sales Card */}
@@ -171,14 +171,14 @@ const SellerDashboard = () => {
                 </svg>
               </div>
               <div className="text-right">
-                <div className="text-sm font-medium text-warning-300">ARS Sales</div>
+                <div className="text-sm font-medium text-warning-300 notranslate">ARS Sales</div>
                 <div className="text-xs text-warning-400">All time</div>
               </div>
             </div>
             
-            <h3 className="text-2xl font-bold text-dark-100 mb-3">Sales in ARS</h3>
-            <p className="text-5xl font-bold text-warning-400 mb-3">{formatCurrency(stats.arsSales, 'ARS')}</p>
-            <p className="text-sm text-warning-300">ARS transactions</p>
+            <h3 className="text-2xl font-bold text-dark-100 mb-3 notranslate">Sales in ARS</h3>
+            <p className="text-5xl font-bold text-warning-400 mb-3 notranslate">{formatCurrency(stats.arsSales, 'ARS')}</p>
+            <p className="text-sm text-warning-300 notranslate">ARS transactions</p>
           </div>
         </div>
 
@@ -308,7 +308,7 @@ const SellerDashboard = () => {
                   
                   <div className="flex items-center space-x-6">
                     <div className="text-right">
-                      <div className="text-3xl font-bold text-dark-100 mb-3">
+                      <div className="text-3xl font-bold text-dark-100 mb-3 notranslate">
                         {formatCurrencyCompact(sale.amount)}
                       </div>
                     </div>

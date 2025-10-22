@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import CurrencyDisplay from './CurrencyDisplay';
 
 const PassengerPriceModal = ({ isOpen, onClose, onComplete, currentPrice = 0, passengerCount = 0, saleCurrency = 'USD' }) => {
   const [price, setPrice] = useState(currentPrice);
@@ -66,7 +67,7 @@ const PassengerPriceModal = ({ isOpen, onClose, onComplete, currentPrice = 0, pa
                 className="px-3 py-2 bg-dark-700 border border-white/20 rounded-lg text-dark-100 focus:border-blue-500 focus:outline-none"
                 disabled
               >
-                <option value={saleCurrency}>{saleCurrency === 'USD' ? 'U$' : saleCurrency === 'ARS' ? 'AR$' : saleCurrency}</option>
+                <option value={saleCurrency}><CurrencyDisplay>{saleCurrency === 'USD' ? 'U$' : saleCurrency === 'ARS' ? 'AR$' : saleCurrency}</CurrencyDisplay></option>
               </select>
             </div>
             <p className="text-xs text-dark-400 mt-1">
@@ -79,13 +80,13 @@ const PassengerPriceModal = ({ isOpen, onClose, onComplete, currentPrice = 0, pa
           {/* Total Price Preview */}
           <div className="bg-dark-700/50 rounded-lg p-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-dark-200">Total Sale Price ({saleCurrency === 'USD' ? 'U$' : saleCurrency === 'ARS' ? 'AR$' : saleCurrency}):</span>
+              <span className="text-sm font-medium text-dark-200">Total Sale Price (<CurrencyDisplay>{saleCurrency === 'USD' ? 'U$' : saleCurrency === 'ARS' ? 'AR$' : saleCurrency}</CurrencyDisplay>):</span>
               <span className="text-lg font-bold text-green-400">
-                {currency === 'USD' ? 'U$' : currency === 'ARS' ? 'AR$' : currency} {(price * passengerCount).toFixed(2)}
+                <CurrencyDisplay>{currency === 'USD' ? 'U$' : currency === 'ARS' ? 'AR$' : currency} {(price * passengerCount).toFixed(2)}</CurrencyDisplay>
               </span>
             </div>
             <div className="text-xs text-dark-400 mt-1">
-              {passengerCount} passenger{passengerCount !== 1 ? 's' : ''} × {currency === 'USD' ? 'U$' : currency === 'ARS' ? 'AR$' : currency} {price.toFixed(2)}
+              {passengerCount} passenger{passengerCount !== 1 ? 's' : ''} × <CurrencyDisplay>{currency === 'USD' ? 'U$' : currency === 'ARS' ? 'AR$' : currency} {price.toFixed(2)}</CurrencyDisplay>
             </div>
           </div>
 

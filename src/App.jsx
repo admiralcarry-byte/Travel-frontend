@@ -36,6 +36,7 @@ import UsersList from './pages/UsersList';
 import UserForm from './pages/UserForm';
 import DailyReports from './pages/DailyReports';
 import AdminInsightsDashboard from './pages/AdminInsightsDashboard';
+import SearchPage from './pages/SearchPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const AppRoutes = () => {
@@ -303,6 +304,16 @@ const AppRoutes = () => {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/admin-insights"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <Layout>
+                    <AdminInsightsDashboard />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
             {/* Notification routes - DISABLED */}
             {/* <Route
               path="/notifications/history"
@@ -375,11 +386,11 @@ const AppRoutes = () => {
               }
             />
             <Route
-              path="/admin-insights"
+              path="/search"
               element={
-                <ProtectedRoute requireAdmin>
+                <ProtectedRoute>
                   <Layout>
-                    <AdminInsightsDashboard />
+                    <SearchPage />
                   </Layout>
                 </ProtectedRoute>
               }

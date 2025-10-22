@@ -5,6 +5,7 @@ import PaymentForm from './PaymentForm';
 import Modal from './Modal';
 import ProvisionalReceipt from './ProvisionalReceipt';
 import PaymentEditModal from './PaymentEditModal';
+import CurrencyDisplay from './CurrencyDisplay';
 import { formatMethodName, formatMethodNameShort } from '../utils/paymentMethodUtils';
 
 const PaymentsTable = ({ saleId, onPaymentAdded, saleCurrency = 'USD' }) => {
@@ -483,12 +484,12 @@ const PaymentsTable = ({ saleId, onPaymentAdded, saleCurrency = 'USD' }) => {
                     <div className="truncate">
                       {/* Display converted amount in sale currency as main amount */}
                       <div className="text-sm font-medium text-dark-100 truncate" title={formatCurrency(payment.amount, saleCurrency)}>
-                        {formatCurrency(payment.amount, saleCurrency)}
+                        <CurrencyDisplay>{formatCurrency(payment.amount, saleCurrency)}</CurrencyDisplay>
                       </div>
                       {/* Display original amount in Origin field */}
                       {payment.originalAmount && payment.originalCurrency && (
                         <div className="text-xs text-dark-400 truncate" title={`Origin: ${formatCurrency(payment.originalAmount, payment.originalCurrency)} (Rate: ${payment.exchangeRate?.toFixed(4) || 'N/A'})`}>
-                          Origin: {formatCurrency(payment.originalAmount, payment.originalCurrency)}
+                          Origin: <CurrencyDisplay>{formatCurrency(payment.originalAmount, payment.originalCurrency)}</CurrencyDisplay>
                           <span className="ml-1">(Rate: {payment.exchangeRate?.toFixed(4) || 'N/A'})</span>
                         </div>
                       )}

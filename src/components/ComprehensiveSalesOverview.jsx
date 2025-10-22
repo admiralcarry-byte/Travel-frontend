@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { formatCurrency, formatCurrencyCompact } from '../utils/formatNumbers';
+import CurrencyDisplay from './CurrencyDisplay';
 import api from '../utils/api';
 
 const ComprehensiveSalesOverview = ({ sales, onSaleClick, loading = false, selectedCurrency = 'ARS' }) => {
@@ -7,28 +8,7 @@ const ComprehensiveSalesOverview = ({ sales, onSaleClick, loading = false, selec
   const [sortOrder, setSortOrder] = useState('desc');
   const [viewMode, setViewMode] = useState('detailed'); // 'detailed', 'compact', 'summary'
   const [selectedPeriod, setSelectedPeriod] = useState('all'); // 'all', 'today', 'week', 'month', 'quarter', 'year'
-  const [selectedQuota, setSelectedQuota] = useState('all'); // 'all', 'none', 'all_quotas', or specific quota ID
-  const [availableQuotas, setAvailableQuotas] = useState([]);
-  const [loadingQuotas, setLoadingQuotas] = useState(false);
 
-  // Fetch available quotas for filtering
-  useEffect(() => {
-    const fetchQuotas = async () => {
-      setLoadingQuotas(true);
-      try {
-        const response = await api.get('/api/sales/available-quotas');
-        if (response.data.success) {
-          setAvailableQuotas(response.data.data);
-        }
-      } catch (error) {
-        console.error('Error fetching quotas:', error);
-      } finally {
-        setLoadingQuotas(false);
-      }
-    };
-
-    fetchQuotas();
-  }, []);
 
   // Calculate summary statistics filtered by selected currency
   const summaryStats = React.useMemo(() => {
@@ -67,7 +47,7 @@ const ComprehensiveSalesOverview = ({ sales, onSaleClick, loading = false, selec
     return stats;
   }, [sales, selectedCurrency]);
 
-  // Filter sales by period, quota, and currency
+  // Filter sales by period and currency
   const filteredSales = React.useMemo(() => {
     if (!sales) return [];
     
@@ -105,26 +85,8 @@ const ComprehensiveSalesOverview = ({ sales, onSaleClick, loading = false, selec
       }
     }
     
-    // Filter by quota
-    if (selectedQuota !== 'all') {
-      switch (selectedQuota) {
-        case 'none':
-          // Sales not made from quotas
-          filtered = filtered.filter(sale => !sale.cupoId);
-          break;
-        case 'all_quotas':
-          // Sales made from any quota
-          filtered = filtered.filter(sale => sale.cupoId);
-          break;
-        default:
-          // Sales made from specific quota
-          filtered = filtered.filter(sale => sale.cupoId?._id === selectedQuota);
-          break;
-      }
-    }
-    
     return filtered;
-  }, [sales, selectedPeriod, selectedQuota, selectedCurrency]);
+  }, [sales, selectedPeriod, selectedCurrency]);
 
   // Sort sales
   const sortedSales = React.useMemo(() => {
@@ -234,7 +196,7 @@ const ComprehensiveSalesOverview = ({ sales, onSaleClick, loading = false, selec
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-dark-300">Total Revenue</p>
-              <p className="text-2xl font-semibold text-dark-100">{formatCurrency(summaryStats.totalRevenue, selectedCurrency)}</p>
+              <p className="text-2xl font-semibold text-dark-100"><CurrencyDisplay>{formatCurrency(summaryStats.totalRevenue, selectedCurrency)}</CurrencyDisplay></p>
             </div>
           </div>
         </div>
@@ -250,7 +212,7 @@ const ComprehensiveSalesOverview = ({ sales, onSaleClick, loading = false, selec
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-dark-300">Total Cost</p>
-              <p className="text-2xl font-semibold text-dark-100">{formatCurrency(summaryStats.totalCost, selectedCurrency)}</p>
+              <p className="text-2xl font-semibold text-dark-100"><CurrencyDisplay>{formatCurrency(summaryStats.totalCost, selectedCurrency)}</CurrencyDisplay></p>
             </div>
           </div>
         </div>
@@ -267,7 +229,7 @@ const ComprehensiveSalesOverview = ({ sales, onSaleClick, loading = false, selec
             <div className="ml-4">
               <p className="text-sm font-medium text-dark-300">Total Profit</p>
               <p className={`text-2xl font-semibold ${getProfitColor(summaryStats.totalProfit)}`}>
-                {formatCurrency(summaryStats.totalProfit, selectedCurrency)}
+                <CurrencyDisplay>{formatCurrency(summaryStats.totalProfit, selectedCurrency)}</CurrencyDisplay>
               </p>
               <p className="text-sm text-dark-400">
                 {summaryStats.averageProfitMargin.toFixed(1)}% avg margin
@@ -310,27 +272,6 @@ const ComprehensiveSalesOverview = ({ sales, onSaleClick, loading = false, selec
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-dark-200 mb-2">Cupo Filter</label>
-              <select
-                value={selectedQuota}
-                onChange={(e) => setSelectedQuota(e.target.value)}
-                className="input-field"
-                disabled={loadingQuotas}
-              >
-                <option value="all">All Sales</option>
-                <option value="none">Non-Cupo Sales</option>
-                <option value="all_quotas">All Cupo Sales</option>
-                {availableQuotas.map(quota => (
-                  <option key={quota._id} value={quota._id}>
-                    {quota.name}
-                  </option>
-                ))}
-              </select>
-              {loadingQuotas && (
-                <p className="text-xs text-dark-400 mt-1">Loading quotas...</p>
-              )}
-            </div>
           </div>
 
           <div className="flex items-center gap-4">
@@ -342,10 +283,9 @@ const ComprehensiveSalesOverview = ({ sales, onSaleClick, loading = false, selec
             <button
               onClick={() => {
                 setSelectedPeriod('all');
-                setSelectedQuota('all');
               }}
               className="px-3 py-1 text-xs bg-dark-600 hover:bg-dark-500 text-dark-200 rounded-md transition-colors"
-              title="Reset period and quota filters"
+              title="Reset period filter"
             >
               Clear Filter
             </button>
@@ -435,14 +375,14 @@ const ComprehensiveSalesOverview = ({ sales, onSaleClick, loading = false, selec
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-dark-100">
-                      {formatCurrency(sale.totalSalePrice, selectedCurrency)}
+                      <CurrencyDisplay>{formatCurrency(sale.totalSalePrice, selectedCurrency)}</CurrencyDisplay>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-dark-100">
-                      {formatCurrency(sale.totalCost, selectedCurrency)}
+                      <CurrencyDisplay>{formatCurrency(sale.totalCost, selectedCurrency)}</CurrencyDisplay>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <div className={`text-sm font-medium ${getProfitColor(sale.profit)}`}>
-                        {formatCurrency(sale.profit, selectedCurrency)}
+                        <CurrencyDisplay>{formatCurrency(sale.profit, selectedCurrency)}</CurrencyDisplay>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -505,7 +445,7 @@ const ComprehensiveSalesOverview = ({ sales, onSaleClick, loading = false, selec
                 Passenger: {summaryStats.topPerformingSale.clientId?.name} {summaryStats.topPerformingSale.clientId?.surname}
               </div>
               <div className="text-sm font-medium text-green-400">
-                Profit: {formatCurrency(summaryStats.topPerformingSale.profit, selectedCurrency)}
+                Profit: <CurrencyDisplay>{formatCurrency(summaryStats.topPerformingSale.profit, selectedCurrency)}</CurrencyDisplay>
               </div>
               <div className="text-sm text-dark-300">
                 Margin: {summaryStats.topPerformingSale.totalSalePrice > 0 ? 
@@ -520,13 +460,13 @@ const ComprehensiveSalesOverview = ({ sales, onSaleClick, loading = false, selec
               <div className="flex justify-between text-sm">
                 <span className="text-dark-300">Average Sale Value:</span>
                 <span className="text-dark-100 font-medium">
-                  {formatCurrency(summaryStats.totalRevenue / summaryStats.totalSales, selectedCurrency)}
+                  <CurrencyDisplay>{formatCurrency(summaryStats.totalRevenue / summaryStats.totalSales, selectedCurrency)}</CurrencyDisplay>
                 </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-dark-300">Average Profit:</span>
                 <span className="text-dark-100 font-medium">
-                  {formatCurrency(summaryStats.totalProfit / summaryStats.totalSales, selectedCurrency)}
+                  <CurrencyDisplay>{formatCurrency(summaryStats.totalProfit / summaryStats.totalSales, selectedCurrency)}</CurrencyDisplay>
                 </span>
               </div>
               <div className="flex justify-between text-sm">

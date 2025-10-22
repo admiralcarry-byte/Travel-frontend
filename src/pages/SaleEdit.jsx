@@ -4,6 +4,7 @@ import api from '../utils/api';
 import ServiceTemplateInstanceEditor from '../components/ServiceTemplateInstanceEditor';
 import AddServiceModal from '../components/AddServiceModal';
 import PassengerPriceModal from '../components/PassengerPriceModal';
+import CurrencyDisplay from '../components/CurrencyDisplay';
 import { toast } from 'react-toastify';
 
 const SaleEdit = () => {

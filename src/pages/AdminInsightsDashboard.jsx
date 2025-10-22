@@ -607,8 +607,8 @@ const AdminInsightsDashboard = () => {
                   className="input-field"
                   style={{ wordWrap: 'break-word' }}
                 >
-                  <option value="ARS">AR$</option>
-                  <option value="USD">U$</option>
+                  <option value="ARS" className="notranslate">AR$</option>
+                  <option value="USD" className="notranslate">U$</option>
                 </select>
               </div>
 
@@ -843,10 +843,10 @@ const AdminInsightsDashboard = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                          {formatCurrencyFull(seller.performance?.totalSales || 0, filters.currency || 'ARS')}
+                          <span className="notranslate">{formatCurrencyFull(seller.performance?.totalSales || 0, filters.currency || 'ARS')}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-green-400">
-                          {formatCurrencyFull(seller.performance?.totalProfit || 0, filters.currency || 'ARS')}
+                          <span className="notranslate">{formatCurrencyFull(seller.performance?.totalProfit || 0, filters.currency || 'ARS')}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
                           {seller.performance?.profitMargin || 0}%
@@ -855,7 +855,7 @@ const AdminInsightsDashboard = () => {
                           {seller.performance?.saleCount || 0}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                          {formatCurrencyFull(seller.performance?.averageSaleValue || 0, filters.currency || 'ARS')}
+                          <span className="notranslate">{formatCurrencyFull(seller.performance?.averageSaleValue || 0, filters.currency || 'ARS')}</span>
                         </td>
                       </tr>
                     ))}
@@ -913,10 +913,10 @@ const AdminInsightsDashboard = () => {
                           {transaction.sellerName}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                          {formatCurrencyFull(transaction.totalSalePrice, filters.currency || 'ARS')}
+                          <span className="notranslate">{formatCurrencyFull(transaction.totalSalePrice, filters.currency || 'ARS')}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-green-400">
-                          {formatCurrencyFull(transaction.profit, filters.currency || 'ARS')}
+                          <span className="notranslate">{formatCurrencyFull(transaction.profit, filters.currency || 'ARS')}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${

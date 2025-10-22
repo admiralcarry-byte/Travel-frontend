@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
+import CurrencyDisplay from './CurrencyDisplay';
 import { toast } from 'react-toastify';
 
 const ServiceTemplateInstanceEditor = ({ 
@@ -316,7 +317,7 @@ const ServiceTemplateInstanceEditor = ({
                field === 'cost' ? (
                  <div>
                    <div className="text-dark-100 font-medium">
-                     {(currency || instance.currency) === 'USD' ? 'U$' : (currency || instance.currency) === 'ARS' ? 'AR$' : (currency || instance.currency)} {currentValue || (instance.cost !== null && instance.cost !== undefined ? instance.cost : (instance.costProvider !== null && instance.costProvider !== undefined ? instance.costProvider : 0))}
+                     <CurrencyDisplay>{(currency || instance.currency) === 'USD' ? 'U$' : (currency || instance.currency) === 'ARS' ? 'AR$' : (currency || instance.currency)} {currentValue || (instance.cost !== null && instance.cost !== undefined ? instance.cost : (instance.costProvider !== null && instance.costProvider !== undefined ? instance.costProvider : 0))}</CurrencyDisplay>
                    </div>
                  </div>
                ) :
@@ -426,8 +427,8 @@ const ServiceTemplateInstanceEditor = ({
                   className="input-field text-sm w-20"
                   disabled={saleCurrency ? true : false}
                 >
-                  <option value="USD">U$</option>
-                  <option value="ARS">AR$</option>
+                  <option value="USD"><CurrencyDisplay>U$</CurrencyDisplay></option>
+                  <option value="ARS"><CurrencyDisplay>AR$</CurrencyDisplay></option>
                 </select>
               </div>
               
@@ -551,8 +552,8 @@ const ServiceTemplateInstanceEditor = ({
 
       {/* Provider Selection Modal */}
       {showProviderModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md mx-4">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-[9999]">
+          <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl">
             <h3 className="text-lg font-semibold text-dark-100 mb-4">
               Select Providers ({selectedProviders.length} selected)
             </h3>
@@ -723,8 +724,8 @@ const ServiceTemplateInstanceEditor = ({
 
       {/* Date Selection Modal */}
       {showDateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md mx-4">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-[9999]">
+          <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl">
             <h3 className="text-lg font-semibold text-dark-100 mb-4">Edit Dates</h3>
             
             <div className="space-y-4">

@@ -6,6 +6,7 @@ import ProviderCreationModal from '../components/ProviderCreationModal';
 import AddServiceTemplateModal from '../components/AddServiceTemplateModal';
 import AddServiceTypeModal from '../components/AddServiceTypeModal';
 import ServiceEntryModal from '../components/ServiceEntryModal';
+import ServiceCostProviderModal from '../components/ServiceCostProviderModal';
 import ServiceTypeService from '../services/serviceTypeService';
 
 const SaleWizard = () => {
@@ -100,6 +101,10 @@ const SaleWizard = () => {
   // Provider Creation Modal
   const [showProviderModal, setShowProviderModal] = useState(false);
 
+  // Service Cost & Provider Modal
+  const [showServiceCostProviderModal, setShowServiceCostProviderModal] = useState(false);
+  const [selectedServiceForModal, setSelectedServiceForModal] = useState(null);
+
   // Service Template Settings
   const [serviceTemplates, setServiceTemplates] = useState([]);
   const [availableServiceTemplates, setAvailableServiceTemplates] = useState([]);
@@ -108,21 +113,35 @@ const SaleWizard = () => {
   // Debug service instances changes
   useEffect(() => {
     console.log('🔄 serviceTemplateInstances state changed:', serviceTemplateInstances.map(s => ({
-      name: s.serviceInfo || s.templateName,
+      id: s.id,
+      _id: s._id,
+      serviceId: s.serviceId,
+      serviceName: s.serviceName,
+      serviceInfo: s.serviceInfo,
+      templateName: s.templateName,
+      name: s.name,
+      displayName: s.serviceName || s.serviceInfo || s.name || 'Service',
       providers: s.providers?.length || 0,
-      providerNames: s.providers?.map(p => p.name) || []
+      providerNames: s.providers?.map(p => p.name) || [],
+      cost: s.cost
     })));
     
-    // Check if any service lost providers
-    serviceTemplateInstances.forEach(s => {
-      if (s.providers && s.providers.length === 0 && (s.serviceInfo || s.templateName) === 'Service2') {
-        console.error('🚨 Service2 providers disappeared!', {
-          service: s.serviceInfo || s.templateName,
-          providers: s.providers,
-          fullService: s
-        });
-      }
-    });
+    // Check for duplicate services
+    const serviceIds = serviceTemplateInstances.map(s => s.id || s._id || s.serviceId);
+    const uniqueIds = new Set(serviceIds);
+    if (serviceIds.length !== uniqueIds.size) {
+      console.error('🚨 Duplicate service IDs detected!', {
+        totalServices: serviceIds.length,
+        uniqueIds: uniqueIds.size,
+        serviceIds: serviceIds,
+        services: serviceTemplateInstances.map(s => ({
+          id: s.id,
+          _id: s._id,
+          serviceId: s.serviceId,
+          name: s.serviceInfo || s.templateName || s.serviceName
+        }))
+      });
+    }
   }, [serviceTemplateInstances]);
   const [currentServiceInstance, setCurrentServiceInstance] = useState(null);
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
@@ -186,6 +205,14 @@ const SaleWizard = () => {
         // Cupo data passed via state (from inventory dashboard)
         setCupoContext(location.state.cupo);
         setIsCupoReservation(true);
+        
+        // Set currency based on cupo's currency
+        const cupoCurrency = location.state.cupo.metadata?.currency || 'USD';
+        console.log('🔄 Setting currency from location.state.cupo:', cupoCurrency);
+        setGlobalCurrency(cupoCurrency);
+        setSaleCurrency(cupoCurrency);
+        setPassengerCurrency(cupoCurrency);
+        
         // Don't pre-populate yet - wait for service templates to load
       } else {
         // Check if cupoId or clientId is passed via URL parameters
@@ -198,8 +225,17 @@ const SaleWizard = () => {
             // Fetch cupo data using the cupoId
             const response = await api.get(`/api/cupos/${cupoId}`);
             if (response.data.success) {
-              setCupoContext(response.data.data.cupo);
+              const cupoData = response.data.data.cupo;
+              setCupoContext(cupoData);
               setIsCupoReservation(true);
+              
+              // Set currency based on cupo's currency
+              const cupoCurrency = cupoData.metadata?.currency || 'USD';
+              console.log('🔄 Setting currency from API cupo:', cupoCurrency);
+              setGlobalCurrency(cupoCurrency);
+              setSaleCurrency(cupoCurrency);
+              setPassengerCurrency(cupoCurrency);
+              
               // Don't pre-populate yet - wait for service templates to load
             } else {
               setError('Failed to load cupo data');
@@ -1288,11 +1324,13 @@ const SaleWizard = () => {
           setCurrentServiceCurrency(cupoServiceInstance.currency);
           setCurrentServiceProvider(cupoServiceInstance.provider);
           
-          // Also set the main sale currency based on the cupo service currency
+          // Also set the main sale currency and global currency based on the cupo service currency
           if (cupoServiceInstance.currency === 'ARS') {
             setSaleCurrency('ARS');
+            setGlobalCurrency('ARS');
           } else {
             setSaleCurrency('USD');
+            setGlobalCurrency('USD');
           }
         }
         
@@ -1530,10 +1568,11 @@ const SaleWizard = () => {
         const updatedInstances = [...prev, newServiceInstance];
         
         // Then update all other service instances that don't have cost/providers configured
+        // BUT only if they are from the same service template (same serviceTypeId)
         return updatedInstances.map(instance => {
-          // If this instance doesn't have cost or providers configured, apply the same values
-          // Skip the newly added service instance to avoid duplicating it
+          // Only apply to services from the same template that are truly unconfigured
           if (instance.id !== newServiceInstance.id && 
+              instance.serviceTypeId === newServiceInstance.serviceTypeId &&
               (instance.cost === 0 || !instance.cost || instance.isTemplateOnly) && 
               (instance.providers.length === 0 || !instance.providers || instance.isTemplateOnly)) {
             return {
@@ -1764,27 +1803,29 @@ const SaleWizard = () => {
   const toggleServiceSelection = (service) => {
     // Check if service is already selected by comparing the service template ID
     const isSelected = serviceTemplateInstances.find(s => {
-      const selectedServiceId = s.serviceId || s._id;
-      return selectedServiceId === service._id;
+      return s.serviceId === service._id;
     });
     
     if (isSelected) {
       // Remove from selected services
-      setServiceTemplateInstances(prev => prev.filter(s => {
-        const selectedServiceId = s.serviceId || s._id;
-        return selectedServiceId !== service._id;
-      }));
+      setServiceTemplateInstances(prev => prev.filter(s => s.serviceId !== service._id));
       // Add back to available services
       setAvailableServiceTemplates(prev => [...prev, service]);
     } else {
       // Add to selected services (create a service sale object)
       const serviceSale = {
         ...service,
+        id: `service_${service._id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate truly unique ID
         serviceId: service._id, // Store the service template ID
         serviceName: service.name,
+        serviceInfo: service.name, // Add serviceInfo for display
         priceClient: 0,
         costProvider: 0,
-        quantity: 1
+        quantity: 1,
+        cost: 0,
+        currency: globalCurrency,
+        providers: [],
+        provider: null
       };
       setServiceTemplateInstances(prev => [...prev, serviceSale]);
       // Remove from available services
@@ -1794,10 +1835,10 @@ const SaleWizard = () => {
 
   const removeSelectedService = (serviceId) => {
     // Find the service being removed
-    const serviceToRemove = serviceTemplateInstances.find(s => s._id === serviceId);
+    const serviceToRemove = serviceTemplateInstances.find(s => s.id === serviceId || s._id === serviceId);
     
     // Remove from selected services
-    setServiceTemplateInstances(prev => prev.filter(s => s._id !== serviceId));
+    setServiceTemplateInstances(prev => prev.filter(s => s.id !== serviceId && s._id !== serviceId));
     
     // Add back to available services if it exists
     if (serviceToRemove) {
@@ -1944,10 +1985,21 @@ const SaleWizard = () => {
       if (id) allProvidersMap.set(id, p);
     });
     
-    // Add from service instances
+    // Add from service instances, preserving documents if they exist
     providersFromServices.forEach(p => {
       const id = p._id || p.providerId;
-      if (id) allProvidersMap.set(id, p);
+      if (id) {
+        const existingProvider = allProvidersMap.get(id);
+        if (existingProvider && p.documents && p.documents.length > 0) {
+          // Merge documents from service instance into existing provider
+          allProvidersMap.set(id, {
+            ...existingProvider,
+            documents: [...(existingProvider.documents || []), ...p.documents]
+          });
+        } else {
+          allProvidersMap.set(id, p);
+        }
+      }
     });
     
     const allProviders = Array.from(allProvidersMap.values());
@@ -2173,24 +2225,17 @@ const SaleWizard = () => {
       saleData.serviceTemplateInstances = saleData.serviceTemplateInstances.map(service => {
         console.log(`🔍 Processing service: ${service.templateName}`);
         
-        // Map documents from selectedProviders to individual providers in this service
+        // Use documents directly from service instances (they already have the correct documents)
         const providersWithDocuments = service.providers.map(provider => {
           const providerId = provider._id || provider.providerId;
-          const selectedProvider = saleData.selectedProviders.find(sp => sp.providerId === providerId);
           
           console.log(`🔍 Mapping documents for provider ${provider.name} (${providerId}):`, {
-            selectedProvider: !!selectedProvider,
-            hasDocuments: selectedProvider?.documents?.length > 0,
-            documentCount: selectedProvider?.documents?.length || 0
+            hasDocuments: provider.documents?.length > 0,
+            documentCount: provider.documents?.length || 0,
+            documents: provider.documents
           });
           
-          if (selectedProvider && selectedProvider.documents) {
-            return {
-              ...provider,
-              documents: selectedProvider.documents
-            };
-          }
-          
+          // Return provider as-is since documents are already attached from service instances
           return provider;
         });
 
@@ -2288,8 +2333,14 @@ const SaleWizard = () => {
       // Lock currency when moving from Step 2 (Price Per Passenger) to Step 3
       if (currentStep === 2) {
         setCurrencyLocked(true);
-        setGlobalCurrency(passengerCurrency);
-        setSaleCurrency(passengerCurrency); // Also lock the sale currency
+        // For Cupo reservations, use the already set globalCurrency, otherwise use passengerCurrency
+        if (isCupoReservation) {
+          // Currency is already set from Cupo context, just lock it
+          setCurrencyLocked(true);
+        } else {
+          setGlobalCurrency(passengerCurrency);
+          setSaleCurrency(passengerCurrency); // Also lock the sale currency
+        }
       }
       
       setCurrentStep(currentStep + 1);
@@ -2777,6 +2828,54 @@ const SaleWizard = () => {
     setShowProviderModal(false);
   };
 
+  // Service Cost & Provider Modal functions
+  const openServiceCostProviderModal = (service) => {
+    setSelectedServiceForModal(service);
+    setShowServiceCostProviderModal(true);
+  };
+
+  const closeServiceCostProviderModal = () => {
+    setShowServiceCostProviderModal(false);
+    setSelectedServiceForModal(null);
+  };
+
+  const saveServiceCostAndProviders = (updatedService) => {
+    console.log('🔄 saveServiceCostAndProviders called with:', {
+      updatedService: updatedService,
+      updatedServiceId: updatedService.id,
+      updatedServiceId2: updatedService._id,
+      updatedServiceId3: updatedService.serviceId
+    });
+    
+    // Update the service in serviceTemplateInstances
+    setServiceTemplateInstances(prev => {
+      console.log('🔄 Current services before update:', prev.map(s => ({
+        id: s.id,
+        _id: s._id,
+        serviceId: s.serviceId,
+        name: s.serviceName || s.serviceInfo
+      })));
+      
+      const updated = prev.map(service => {
+        // Only match if IDs are defined and equal
+        const matches = (service.id && updatedService.id && service.id === updatedService.id) || 
+                       (service._id && updatedService._id && service._id === updatedService._id);
+        console.log(`🔄 Checking service ${service.id} vs ${updatedService.id}: ${matches}`);
+        return matches ? updatedService : service;
+      });
+      
+      console.log('🔄 Services after update:', updated.map(s => ({
+        id: s.id,
+        _id: s._id,
+        serviceId: s.serviceId,
+        name: s.serviceName || s.serviceInfo
+      })));
+      
+      return updated;
+    });
+    closeServiceCostProviderModal();
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
@@ -3023,6 +3122,10 @@ const SaleWizard = () => {
           // Cupo Context
           cupoContext={cupoContext}
           isCupoReservation={isCupoReservation}
+          // Service Cost & Provider Modal
+          openServiceCostProviderModal={openServiceCostProviderModal}
+          closeServiceCostProviderModal={closeServiceCostProviderModal}
+          saveServiceCostAndProviders={saveServiceCostAndProviders}
         />
       </div>
 
@@ -3062,6 +3165,18 @@ const SaleWizard = () => {
         isOpen={showAddServiceTemplateModal}
         onClose={() => setShowAddServiceTemplateModal(false)}
         onServiceTemplateAdded={handleServiceTemplateAdded}
+      />
+
+      {/* Service Cost & Provider Modal - Rendered at top level to avoid parent container constraints */}
+      <ServiceCostProviderModal
+        isOpen={showServiceCostProviderModal}
+        onClose={closeServiceCostProviderModal}
+        service={selectedServiceForModal}
+        onSave={saveServiceCostAndProviders}
+        availableProviders={availableProviders}
+        onProviderSearch={setProviderSearch}
+        globalCurrency={globalCurrency}
+        currencyLocked={isCupoReservation ? currencyLocked : (currencyLocked && currentStep > 2)}
       />
 
       {/* Edit Service Template Modal - Rendered at top level to avoid parent container constraints */}

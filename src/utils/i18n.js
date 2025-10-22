@@ -45,6 +45,10 @@ const translations = {
     usd: 'U$',
     ars: 'AR$',
     
+    // Currency symbols for display
+    usdSymbol: 'U$',
+    arsSymbol: 'AR$',
+    
     // Placeholders
     searchPlaceholder: 'Search by name, DNI/CUIT, email, or passport...',
     
@@ -82,8 +86,12 @@ const translations = {
     showPassengers: 'Mostrar pasajeros',
     
     // Currency options
-    usd: 'USD - Dólar Estadounidense',
-    ars: 'ARS - Peso Argentino',
+    usd: 'U$',
+    ars: 'AR$',
+    
+    // Currency symbols for display
+    usdSymbol: 'U$',
+    arsSymbol: 'AR$',
     
     // Placeholders
     searchPlaceholder: 'Buscar por nombre, DNI/CUIT, email, pasaporte...',

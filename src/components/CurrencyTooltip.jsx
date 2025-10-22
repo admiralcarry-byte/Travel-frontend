@@ -1,38 +1,22 @@
 import React, { useState } from 'react';
+import { t } from '../utils/i18n';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
+import CurrencyDisplay from './CurrencyDisplay';
 
 const CurrencyTooltip = ({ children, currency, data }) => {
   const [showTooltip, setShowTooltip] = useState(false);
+  const { formatCurrency, formatCurrencyJSX } = useCurrencyFormat();
 
   if (!currency || !data) {
     return children;
   }
 
-  const formatCurrency = (amount, currency) => {
-    if (!amount) return '0';
-    
-    const formatter = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-    
-    const formatted = formatter.format(amount);
-    
-    // Replace $ with U$ for USD currency
-    if (currency?.toUpperCase() === 'USD') {
-      return formatted.replace('$', 'U$');
-    }
-    
-    return formatted;
-  };
-
   const getCurrencySymbol = (currency) => {
     switch (currency) {
       case 'USD':
-        return '$';
+        return t('usdSymbol');
       case 'ARS':
-        return 'AR$';
+        return t('arsSymbol');
       default:
         return currency;
     }
@@ -42,13 +26,13 @@ const CurrencyTooltip = ({ children, currency, data }) => {
     switch (currency) {
       case 'USD':
         return {
-          name: 'U$',
+          name: t('usdSymbol'),
           symbol: '$',
           description: 'United States Dollar - Primary currency for international transactions'
         };
       case 'ARS':
         return {
-          name: 'AR$',
+          name: t('arsSymbol'),
           symbol: '$',
           description: 'Argentine Peso - Local currency for Argentina operations'
         };
@@ -77,13 +61,13 @@ const CurrencyTooltip = ({ children, currency, data }) => {
             {/* Currency Header */}
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-sm">
+                <CurrencyDisplay className="text-white font-bold text-sm notranslate">
                   {currencyInfo.symbol}
-                </span>
+                </CurrencyDisplay>
               </div>
               <div>
                 <h4 className="text-white font-semibold text-sm">
-                  {currencyInfo.name}
+                  <CurrencyDisplay className="notranslate">{currencyInfo.name}</CurrencyDisplay>
                 </h4>
                 <p className="text-dark-300 text-xs">
                   {currencyInfo.description}
@@ -103,8 +87,8 @@ const CurrencyTooltip = ({ children, currency, data }) => {
               {data.totalRevenue && (
                 <div className="flex justify-between items-center">
                   <span className="text-dark-300 text-xs">Total Revenue:</span>
-                  <span className="text-white font-medium text-sm">
-                    {formatCurrency(data.totalRevenue, currency)}
+                  <span className="text-white font-medium text-sm notranslate">
+                    {formatCurrencyJSX(data.totalRevenue, currency, 'en-US', '')}
                   </span>
                 </div>
               )}
@@ -112,8 +96,8 @@ const CurrencyTooltip = ({ children, currency, data }) => {
               {data.totalProfit && (
                 <div className="flex justify-between items-center">
                   <span className="text-dark-300 text-xs">Total Profit:</span>
-                  <span className="text-green-400 font-medium text-sm">
-                    {formatCurrency(data.totalProfit, currency)}
+                  <span className="text-green-400 font-medium text-sm notranslate">
+                    {formatCurrencyJSX(data.totalProfit, currency, 'en-US', '')}
                   </span>
                 </div>
               )}
@@ -130,8 +114,8 @@ const CurrencyTooltip = ({ children, currency, data }) => {
               {data.averageSaleValue && (
                 <div className="flex justify-between items-center">
                   <span className="text-dark-300 text-xs">Avg Sale Value:</span>
-                  <span className="text-white font-medium text-sm">
-                    {formatCurrency(data.averageSaleValue, currency)}
+                  <span className="text-white font-medium text-sm notranslate">
+                    {formatCurrencyJSX(data.averageSaleValue, currency, 'en-US', '')}
                   </span>
                 </div>
               )}

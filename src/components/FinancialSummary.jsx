@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { formatCurrency, formatCurrencyCompact } from '../utils/formatNumbers';
+import CurrencyDisplay from './CurrencyDisplay';
 
 const FinancialSummary = ({ sales, period = 'all', selectedCurrency = 'ARS' }) => {
   const [selectedPeriod, setSelectedPeriod] = useState(period);
@@ -249,7 +250,7 @@ const FinancialSummary = ({ sales, period = 'all', selectedCurrency = 'ARS' }) =
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-dark-300">Total Revenue</p>
-              <p className="text-2xl font-semibold text-dark-100">{formatCurrency(financialMetrics.totalRevenue, selectedCurrency)}</p>
+              <p className="text-2xl font-semibold text-dark-100"><CurrencyDisplay>{formatCurrency(financialMetrics.totalRevenue, selectedCurrency)}</CurrencyDisplay></p>
             </div>
           </div>
         </div>
@@ -265,7 +266,7 @@ const FinancialSummary = ({ sales, period = 'all', selectedCurrency = 'ARS' }) =
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-dark-300">Total Cost</p>
-              <p className="text-2xl font-semibold text-dark-100">{formatCurrency(financialMetrics.totalCost, selectedCurrency)}</p>
+              <p className="text-2xl font-semibold text-dark-100"><CurrencyDisplay>{formatCurrency(financialMetrics.totalCost, selectedCurrency)}</CurrencyDisplay></p>
             </div>
           </div>
         </div>
@@ -282,7 +283,7 @@ const FinancialSummary = ({ sales, period = 'all', selectedCurrency = 'ARS' }) =
             <div className="ml-4">
               <p className="text-sm font-medium text-dark-300">Total Profit</p>
               <p className={`text-2xl font-semibold ${getProfitColor(financialMetrics.totalProfit)}`}>
-                {formatCurrency(financialMetrics.totalProfit, selectedCurrency)}
+                <CurrencyDisplay>{formatCurrency(financialMetrics.totalProfit, selectedCurrency)}</CurrencyDisplay>
               </p>
               <p className="text-sm text-dark-400">
                 {financialMetrics.averageProfitMargin.toFixed(1)}% margin
@@ -300,11 +301,11 @@ const FinancialSummary = ({ sales, period = 'all', selectedCurrency = 'ARS' }) =
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-dark-300">Average Sale Value:</span>
-                <span className="text-dark-100 font-medium">{formatCurrency(financialMetrics.averageSaleValue, selectedCurrency)}</span>
+                <span className="text-dark-100 font-medium"><CurrencyDisplay>{formatCurrency(financialMetrics.averageSaleValue, selectedCurrency)}</CurrencyDisplay></span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-dark-300">Average Profit:</span>
-                <span className="text-dark-100 font-medium">{formatCurrency(financialMetrics.averageProfit, selectedCurrency)}</span>
+                <span className="text-dark-100 font-medium"><CurrencyDisplay>{formatCurrency(financialMetrics.averageProfit, selectedCurrency)}</CurrencyDisplay></span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-dark-300">Gross Profit Margin:</span>
@@ -399,14 +400,14 @@ const FinancialSummary = ({ sales, period = 'all', selectedCurrency = 'ARS' }) =
                         {service.count}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100 text-right">
-                        {formatCurrency(service.totalRevenue, selectedCurrency)}
+                        <CurrencyDisplay>{formatCurrency(service.totalRevenue, selectedCurrency)}</CurrencyDisplay>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100 text-right">
-                        {formatCurrency(service.totalCost, selectedCurrency)}
+                        <CurrencyDisplay>{formatCurrency(service.totalCost, selectedCurrency)}</CurrencyDisplay>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <div className={`text-sm font-medium ${getProfitColor(service.totalProfit)}`}>
-                          {formatCurrency(service.totalProfit, selectedCurrency)}
+                          <CurrencyDisplay>{formatCurrency(service.totalProfit, selectedCurrency)}</CurrencyDisplay>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -436,7 +437,7 @@ const FinancialSummary = ({ sales, period = 'all', selectedCurrency = 'ARS' }) =
                 Passenger: {financialMetrics.topPerformingSale.clientId?.name} {financialMetrics.topPerformingSale.clientId?.surname}
               </div>
               <div className="text-sm font-medium text-green-400">
-                Profit: {formatCurrency(financialMetrics.topPerformingSale.profit, selectedCurrency)}
+                Profit: <CurrencyDisplay>{formatCurrency(financialMetrics.topPerformingSale.profit, selectedCurrency)}</CurrencyDisplay>
               </div>
               <div className="text-sm text-dark-300">
                 Margin: {financialMetrics.topPerformingSale.totalSalePrice > 0 ? 
@@ -464,7 +465,7 @@ const FinancialSummary = ({ sales, period = 'all', selectedCurrency = 'ARS' }) =
               <div className="flex justify-between text-sm">
                 <span className="text-dark-300">Revenue per Sale:</span>
                 <span className="text-dark-100 font-medium">
-                  {formatCurrency(financialMetrics.averageSaleValue, selectedCurrency)}
+                  <CurrencyDisplay>{formatCurrency(financialMetrics.averageSaleValue, selectedCurrency)}</CurrencyDisplay>
                 </span>
               </div>
             </div>

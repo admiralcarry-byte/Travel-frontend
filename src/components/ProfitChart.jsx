@@ -1,4 +1,5 @@
 import React from 'react';
+import CurrencyDisplay from './CurrencyDisplay';
 import { formatCurrencyCompact, formatWithWarning, formatCurrencyFull } from '../utils/formatNumbers';
 
 const ProfitChart = ({ sale }) => {
@@ -44,7 +45,7 @@ const ProfitChart = ({ sale }) => {
               className={`text-sm font-bold ${formattedSalePrice.warning ? 'text-red-500' : 'text-blue-500'}`}
               style={{ color: formattedSalePrice.warning ? '#ef4444' : '#3b82f6' }}
             >
-              {formattedSalePrice.value}
+              <CurrencyDisplay>{formattedSalePrice.value}</CurrencyDisplay>
               {formattedSalePrice.warning && <span className="text-xs text-red-400 ml-1">⚠️</span>}
             </span>
           </div>
@@ -64,7 +65,7 @@ const ProfitChart = ({ sale }) => {
               className={`text-sm font-bold ${formattedCost.warning ? 'text-red-500' : 'text-red-500'}`}
               style={{ color: '#ef4444' }}
             >
-              {formattedCost.value}
+              <CurrencyDisplay>{formattedCost.value}</CurrencyDisplay>
               {formattedCost.warning && <span className="text-xs text-red-400 ml-1">⚠️</span>}
             </span>
           </div>
@@ -84,7 +85,7 @@ const ProfitChart = ({ sale }) => {
               className={`text-sm font-bold ${formattedClientPayments.warning ? 'text-red-500' : 'text-green-500'}`}
               style={{ color: formattedClientPayments.warning ? '#ef4444' : '#22c55e' }}
             >
-              {formattedClientPayments.value}
+              <CurrencyDisplay>{formattedClientPayments.value}</CurrencyDisplay>
               {formattedClientPayments.warning && <span className="text-xs text-red-400 ml-1">⚠️</span>}
             </span>
           </div>
@@ -104,7 +105,7 @@ const ProfitChart = ({ sale }) => {
               className={`text-sm font-bold ${formattedProviderPayments.warning ? 'text-red-500' : 'text-orange-500'}`}
               style={{ color: formattedProviderPayments.warning ? '#ef4444' : '#f97316' }}
             >
-              {formattedProviderPayments.value}
+              <CurrencyDisplay>{formattedProviderPayments.value}</CurrencyDisplay>
               {formattedProviderPayments.warning && <span className="text-xs text-red-400 ml-1">⚠️</span>}
             </span>
           </div>
@@ -124,7 +125,7 @@ const ProfitChart = ({ sale }) => {
           <span className={`text-2xl font-bold ${
             profit >= 0 ? 'text-success-400' : 'text-error-400'
           } ${formattedProfit.warning ? 'text-red-500' : ''}`}>
-            {formattedProfit.value}
+            <CurrencyDisplay>{formattedProfit.value}</CurrencyDisplay>
             {formattedProfit.warning && <span className="text-xs text-red-400 ml-1">⚠️</span>}
           </span>
         </div>
@@ -147,7 +148,7 @@ const ProfitChart = ({ sale }) => {
               const balance = totalSalePrice - totalClientPayments;
               return balance <= 0 ? 'text-success-400' : 'text-error-400';
             })()}`}>
-              {formatCurrencyFull(totalSalePrice - totalClientPayments, sale.saleCurrency)}
+              <CurrencyDisplay>{formatCurrencyFull(totalSalePrice - totalClientPayments, sale.saleCurrency)}</CurrencyDisplay>
             </div>
           </div>
           <div>
@@ -156,7 +157,7 @@ const ProfitChart = ({ sale }) => {
               const balance = totalCost - totalProviderPayments;
               return balance >= 0 ? 'text-success-400' : 'text-error-400';
             })()}`}>
-              {formatCurrencyFull(totalCost - totalProviderPayments, sale.saleCurrency)}
+              <CurrencyDisplay>{formatCurrencyFull(totalCost - totalProviderPayments, sale.saleCurrency)}</CurrencyDisplay>
             </div>
           </div>
         </div>

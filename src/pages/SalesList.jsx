@@ -7,6 +7,8 @@ import FinancialSummary from '../components/FinancialSummary';
 import MultiCurrencySummary from '../components/MultiCurrencySummary';
 import { t, getDropdownOptions } from '../utils/i18n';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
+import CurrencyDisplay from '../components/CurrencyDisplay';
 
 // TruncatedText component with double-click to show scrollbar
 const TruncatedText = ({ text, className = '', title = '' }) => {
@@ -44,6 +46,7 @@ const TruncatedText = ({ text, className = '', title = '' }) => {
 
 const SalesList = () => {
   const navigate = useNavigate();
+  const { formatCurrencyJSX } = useCurrencyFormat();
   
   // Helper function to get earliest start date from all services
   const getEarliestStartDate = (sale) => {
@@ -74,6 +77,7 @@ const SalesList = () => {
   const [clients, setClients] = useState([]);
   const [providers, setProviders] = useState([]);
   const [users, setUsers] = useState([]);
+  const [availableQuotas, setAvailableQuotas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState('');
@@ -85,29 +89,27 @@ const SalesList = () => {
   const [currencySummary, setCurrencySummary] = useState([]);
   const [filters, setFilters] = useState({
     status: '',
-    minProfit: '',
-    maxProfit: '',
     startDate: '',
     endDate: '',
     search: '',
     includeNoSales: 'true',
     providerId: '',
     createdBy: '',
-    currency: ''
+    currency: '',
+    cupoId: ''
   });
   const [viewMode, setViewMode] = useState('comprehensive'); // 'comprehensive', 'monthly', 'financial', 'traditional'
   const [selectedCurrency, setSelectedCurrency] = useState('USD'); // Default to USD to match currency summary
   const [debouncedFilters, setDebouncedFilters] = useState({
     status: '',
-    minProfit: '',
-    maxProfit: '',
     startDate: '',
     endDate: '',
     search: '',
     includeNoSales: 'true',
     providerId: '',
     createdBy: '',
-    currency: ''
+    currency: '',
+    cupoId: ''
   });
   
   // Refs to track current values for stable fetchSales function
@@ -154,6 +156,9 @@ const SalesList = () => {
         limit: rowsPerPageRef.current,
         ...debouncedFiltersRef.current
       });
+
+      console.log('Fetching sales with filters:', debouncedFiltersRef.current);
+      console.log('API URL:', `/api/sales?${params}`);
 
       const response = await api.get(`/api/sales?${params}`);
 
@@ -233,10 +238,22 @@ const SalesList = () => {
     }
   }, []);
 
+  const fetchAvailableQuotas = useCallback(async () => {
+    try {
+      const response = await api.get('/api/sales/available-quotas');
+      if (response.data.success) {
+        setAvailableQuotas(response.data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch available quotas:', error);
+    }
+  }, []);
+
   // Initial load effect - fetch both sales and clients
   useEffect(() => {
     fetchProviders(); // Fetch providers on mount
     fetchUsers(); // Fetch team members on mount
+    fetchAvailableQuotas(); // Fetch available quotas on mount
     fetchSales(true);
     fetchClients(true);
   }, []); // Run once on mount
@@ -262,29 +279,27 @@ const SalesList = () => {
     if (tab === 'sales') {
       setFilters({
         status: '',
-        minProfit: '',
-        maxProfit: '',
         startDate: '',
         endDate: '',
         search: '',
         includeNoSales: 'true',
         providerId: '',
         createdBy: '',
-        currency: ''
+        currency: '',
+        cupoId: ''
       });
       navigate('/sales');
     } else {
       setFilters({
         status: '',
-        minProfit: '',
-        maxProfit: '',
         startDate: '',
         endDate: '',
         search: '',
         includeNoSales: 'true',
         providerId: '',
         createdBy: '',
-        currency: ''
+        currency: '',
+        cupoId: ''
       });
       navigate('/sales?tab=passengers');
     }
@@ -293,15 +308,14 @@ const SalesList = () => {
   const clearFilters = () => {
     setFilters({
       status: '',
-      minProfit: '',
-      maxProfit: '',
       startDate: '',
       endDate: '',
       search: '',
       includeNoSales: 'true',
       providerId: '',
       createdBy: '',
-      currency: ''
+      currency: '',
+      cupoId: ''
     });
     setCurrentPage(1);
   };
@@ -420,6 +434,43 @@ const SalesList = () => {
               <h3 className="text-lg font-semibold text-dark-200">{t('salesFilters')}</h3>
               <LanguageSwitcher />
             </div> */}
+            
+            {/* Active Filters Summary */}
+            {(filters.startDate || filters.endDate || filters.status || filters.providerId || filters.createdBy || filters.currency || filters.cupoId) && (
+              <div className="mb-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-blue-300">Active Filters:</span>
+                    {filters.startDate && (
+                      <span className="px-2 py-1 bg-blue-600 text-blue-100 text-xs rounded">
+                        From: {new Date(filters.startDate).toLocaleDateString()}
+                      </span>
+                    )}
+                    {filters.endDate && (
+                      <span className="px-2 py-1 bg-blue-600 text-blue-100 text-xs rounded">
+                        To: {new Date(filters.endDate).toLocaleDateString()}
+                      </span>
+                    )}
+                    {filters.status && (
+                      <span className="px-2 py-1 bg-green-600 text-green-100 text-xs rounded">
+                        Status: {filters.status}
+                      </span>
+                    )}
+                    {filters.currency && (
+                      <span className="px-2 py-1 bg-purple-600 text-purple-100 text-xs rounded">
+                        Currency: {filters.currency}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={clearFilters}
+                    className="text-xs text-red-400 hover:text-red-300 underline"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="sales-filter-grid">
               <div className="filter-dropdown-container">
                 <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
@@ -447,58 +498,35 @@ const SalesList = () => {
                   onChange={(e) => setSelectedCurrency(e.target.value)}
                   className="input-field"
                 >
-                  <option value="ARS">ARS (AR$)</option>
-                  <option value="USD">USD (U$)</option>
+                  <option value="ARS"><CurrencyDisplay>ARS (AR$)</CurrencyDisplay></option>
+                  <option value="USD"><CurrencyDisplay>USD (U$)</CurrencyDisplay></option>
                 </select>
               </div>
 
-              <div className="filter-dropdown-container">
-                <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  {t('minProfit')}
-                </label>
-                <input
-                  type="number"
-                  value={filters.minProfit}
-                  onChange={(e) => handleFilterChange('minProfit', e.target.value)}
-                  placeholder="0"
-                  className="input-field"
-                />
-              </div>
 
               <div className="filter-dropdown-container">
                 <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  {t('maxProfit')}
-                </label>
-                <input
-                  type="number"
-                  value={filters.maxProfit}
-                  onChange={(e) => handleFilterChange('maxProfit', e.target.value)}
-                  placeholder="10000"
-                  className="input-field"
-                />
-              </div>
-
-              <div className="filter-dropdown-container">
-                <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  {t('startDate')}
+                  {t('startDate')} {filters.startDate && <span className="text-green-400">●</span>}
                 </label>
                 <input
                   type="date"
                   value={filters.startDate}
                   onChange={(e) => handleFilterChange('startDate', e.target.value)}
                   className="input-field"
+                  placeholder="Select start date"
                 />
               </div>
 
               <div className="filter-dropdown-container">
                 <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  {t('endDate')}
+                  {t('endDate')} {filters.endDate && <span className="text-green-400">●</span>}
                 </label>
                 <input
                   type="date"
                   value={filters.endDate}
                   onChange={(e) => handleFilterChange('endDate', e.target.value)}
                   className="input-field"
+                  placeholder="Select end date"
                 />
               </div>
 
@@ -537,58 +565,29 @@ const SalesList = () => {
                   ))}
                 </select>
               </div>
-            </div>
-          </div>
 
-          {/* Passenger Filters */}
-          <div>
-            <h3 className="text-lg font-semibold text-dark-200 mb-4">{t('passengerFilters')}</h3>
-            <div className="flex flex-col md:flex-row gap-4 md:gap-6">
-              <div className="flex-1 md:flex-[2] filter-dropdown-container">
-                <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  {t('searchPassengers')}
-                </label>
-                <input
-                  type="text"
-                  value={filters.search}
-                  onChange={(e) => handleFilterChange('search', e.target.value)}
-                  placeholder={t('searchPlaceholder')}
-                  className="input-field w-full"
-                />
-              </div>
-
-              <div className="flex-1 filter-dropdown-container">
-                <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  {t('showPassengers')}
+              <div className="filter-dropdown-container">
+                <label className="block text-sm font-semibold text-dark-200 mb-4 break-words notranslate">
+                  Cupo Filter
                 </label>
                 <select
-                  value={filters.includeNoSales}
-                  onChange={(e) => handleFilterChange('includeNoSales', e.target.value)}
-                  className="input-field w-full"
+                  value={filters.cupoId}
+                  onChange={(e) => handleFilterChange('cupoId', e.target.value)}
+                  className="input-field"
                 >
-                  <option value="true">{t('allPassengers')}</option>
-                  <option value="false">{t('onlyPassengersWithSales')}</option>
+                  <option value="" className="notranslate">All Sales</option>
+                  <option value="none" className="notranslate">No-Cupo Sales</option>
+                  <option value="all_quotas" className="notranslate">All Cupo Sales</option>
+                  {availableQuotas.map(quota => (
+                    <option key={quota._id} value={quota._id} className="notranslate">
+                      {quota.name}
+                    </option>
+                  ))}
                 </select>
-              </div>
-
-
-              <div className="flex-1 filter-dropdown-container"
-              >
-                <label className="block text-sm font-semibold text-dark-200 mb-4 break-words">
-                  &nbsp;
-                </label>
-                <button
-                  onClick={() => {
-                    clearFilters();
-                    setSelectedCurrency('USD');
-                  }}
-                  className="w-full px-4 py-3 text-sm font-medium text-white bg-dark-600 hover:bg-dark-500 border border-white/20 rounded-md h-12"
-                >
-                  {t('clearFilters')}
-                </button>
               </div>
             </div>
           </div>
+
         </div>
 
         {/* Multi-Currency Summary */}
@@ -793,16 +792,20 @@ const SalesList = () => {
                           {filteredSales.length}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-dark-100 text-right">
-                          {(() => {
-                            const totalSales = filteredSales.reduce((sum, sale) => sum + (sale.totalSalePrice || 0), 0);
-                            return formatCurrency(totalSales, selectedCurrency);
-                          })()}
+                          <CurrencyDisplay>
+                            {(() => {
+                              const totalSales = filteredSales.reduce((sum, sale) => sum + (sale.totalSalePrice || 0), 0);
+                              return formatCurrencyJSX(totalSales, selectedCurrency, 'en-US', '');
+                            })()}
+                          </CurrencyDisplay>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-dark-100 text-right">
-                          {(() => {
-                            const totalProfit = filteredSales.reduce((sum, sale) => sum + (sale.profit || 0), 0);
-                            return formatCurrency(totalProfit, selectedCurrency);
-                          })()}
+                          <CurrencyDisplay>
+                            {(() => {
+                              const totalProfit = filteredSales.reduce((sum, sale) => sum + (sale.profit || 0), 0);
+                              return formatCurrencyJSX(totalProfit, selectedCurrency, 'en-US', '');
+                            })()}
+                          </CurrencyDisplay>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-400 text-center">
                           {client.latestSale ? formatDate(client.latestSale.createdAt) : 'No sales'}
@@ -1017,19 +1020,19 @@ const SalesList = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-dark-100">
-                            {formatCurrency(sale.totalSalePrice, selectedCurrency)}
+                            <CurrencyDisplay>{formatCurrencyJSX(sale.totalSalePrice, selectedCurrency, 'en-US', '')}</CurrencyDisplay>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-dark-100">
-                            {formatCurrency(sale.totalCost, selectedCurrency)}
+                            <CurrencyDisplay>{formatCurrencyJSX(sale.totalCost, selectedCurrency, 'en-US', '')}</CurrencyDisplay>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className={`text-sm font-medium ${
                             sale.profit >= 0 ? 'text-green-400' : 'text-red-400'
                           }`}>
-                            {formatCurrency(sale.profit, selectedCurrency)}
+                            <CurrencyDisplay>{formatCurrencyJSX(sale.profit, selectedCurrency, 'en-US', '')}</CurrencyDisplay>
                           </div>
                           <div className="text-xs text-dark-400">
                             {sale.totalSalePrice > 0 ? Math.round((sale.profit / sale.totalSalePrice) * 100) : 0}% margin

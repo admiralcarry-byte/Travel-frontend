@@ -174,7 +174,7 @@ const MonthlySales = () => {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
-                <span className="text-sm font-medium">{getCurrencySymbol(selectedCurrency)}</span>
+                <span className="text-sm font-medium notranslate">{getCurrencySymbol(selectedCurrency)}</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
@@ -193,7 +193,7 @@ const MonthlySales = () => {
                       }`}
                     >
                       <div className="flex items-center space-x-2">
-                        <span className="font-medium">AR$</span>
+                        <span className="font-medium notranslate">AR$</span>
                         <span className="text-xs text-dark-300">Argentine Peso</span>
                       </div>
                     </button>
@@ -207,8 +207,8 @@ const MonthlySales = () => {
                       }`}
                     >
                       <div className="flex items-center space-x-2">
-                        <span className="font-medium">U$</span>
-                        <span className="text-xs text-dark-300">U$</span>
+                        <span className="font-medium notranslate">U$</span>
+                        <span className="text-xs text-dark-300 notranslate">U$</span>
                       </div>
                     </button>
                   </div>
@@ -250,7 +250,7 @@ const MonthlySales = () => {
                 </div>
               </div>
               <h3 className="text-lg font-bold text-dark-100 mb-2">Total Revenue</h3>
-              <p className="text-3xl font-bold text-accent-400">{formatCurrencyValue(summary.totalRevenue)}</p>
+              <p className="text-3xl font-bold text-accent-400 notranslate">{formatCurrencyValue(summary.totalRevenue)}</p>
               <p className="text-sm text-accent-300">This month</p>
             </div>
 
@@ -263,7 +263,7 @@ const MonthlySales = () => {
                 </div>
               </div>
               <h3 className="text-lg font-bold text-dark-100 mb-2">Total Profit</h3>
-              <p className={`text-3xl font-bold ${getProfitColor(summary.totalProfit)}`}>
+              <p className={`text-3xl font-bold ${getProfitColor(summary.totalProfit)} notranslate`}>
                 {formatCurrencyValue(summary.totalProfit)}
               </p>
               <p className="text-sm text-success-300">{summary.avgProfitMargin}% margin</p>
@@ -278,7 +278,7 @@ const MonthlySales = () => {
                 </div>
               </div>
               <h3 className="text-lg font-bold text-dark-100 mb-2">Avg Sale Value</h3>
-              <p className="text-3xl font-bold text-info-400">{formatCurrencyValue(summary.avgSaleValue)}</p>
+              <p className="text-3xl font-bold text-info-400 notranslate">{formatCurrencyValue(summary.avgSaleValue)}</p>
               <p className="text-sm text-info-300">Per transaction</p>
             </div>
           </div>
@@ -409,10 +409,10 @@ const MonthlySales = () => {
                             {getStatusBadge(sale.status)}
                           </td>
                           <td className="py-3 px-4 text-right font-medium text-dark-100">
-                            {formatCurrencyValue(sale.totalSalePrice)}
+                            <span className="notranslate">{formatCurrencyValue(sale.totalSalePrice)}</span>
                           </td>
                           <td className={`py-3 px-4 text-right font-medium ${getProfitColor(sale.profit)}`}>
-                            {formatCurrencyValue(sale.profit)}
+                            <span className="notranslate">{formatCurrencyValue(sale.profit)}</span>
                           </td>
                           <td className="py-3 px-4 text-right text-dark-300">
                             {profitMargin}%

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import CurrencyDisplay from '../components/CurrencyDisplay';
 import api from '../utils/api';
 
 const InventoryDashboard = () => {
@@ -96,11 +97,11 @@ const InventoryDashboard = () => {
           window.location.href = '/login';
         }, 2000);
       } else if (error.response?.status === 403) {
-        setError('Access denied. You need admin or seller permissions to view cupos.');
+        setError('Access denied. You need admin or seller permissions to view <CurrencyDisplay>cupos</CurrencyDisplay>.');
       } else if (error.response?.status === 404) {
-        setError('Cupos endpoint not found. Please check your connection.');
+        setError('<CurrencyDisplay>Cupos</CurrencyDisplay> endpoint not found. Please check your connection.');
       } else {
-        setError(error.response?.data?.message || 'Failed to fetch cupos');
+        setError(error.response?.data?.message || 'Failed to fetch <CurrencyDisplay>cupos</CurrencyDisplay>');
       }
     } finally {
       if (isInitialLoad) {
@@ -139,7 +140,7 @@ const InventoryDashboard = () => {
       }
       
       if (!isAdmin && !isSeller) {
-        setError('Access denied. You need admin or seller permissions to view cupos.');
+        setError('Access denied. You need admin or seller permissions to view <CurrencyDisplay>cupos</CurrencyDisplay>.');
         return;
       }
       
@@ -232,16 +233,16 @@ const InventoryDashboard = () => {
         {/* Header */}
         <div className="text-center">
           <h1 className="text-5xl sm:text-6xl font-bold gradient-text mb-6 font-poppins">
-            Cupos Dashboard
+            <CurrencyDisplay>Cupos</CurrencyDisplay> Dashboard
           </h1>
           <p className="text-xl text-dark-300 max-w-3xl mx-auto mb-8">
-            Manage pre-purchased cupos and reservations
+            Manage pre-purchased <CurrencyDisplay>cupos</CurrencyDisplay> and reservations
           </p>
           <button
             onClick={() => navigate('/cupos/new')}
             className="btn-primary"
           >
-            Add New Cupo
+            Add New <CurrencyDisplay>Cupo</CurrencyDisplay>
           </button>
         </div>
 
@@ -365,18 +366,18 @@ const InventoryDashboard = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                   </svg>
                 </div>
-                <div className="text-dark-200 text-xl font-bold">No cupos found</div>
+                <div className="text-dark-200 text-xl font-bold">No <CurrencyDisplay>cupos</CurrencyDisplay> found</div>
               </div>
               <div className="text-center">
                 <p className="text-dark-400 text-sm mb-6">
-                  {Object.values(filters).some(f => f) ? 'Try adjusting your filter criteria' : 'Get started by adding your first cupo'}
+                  {Object.values(filters).some(f => f) ? 'Try adjusting your filter criteria' : 'Get started by adding your first <CurrencyDisplay>cupo</CurrencyDisplay>'}
                 </p>
                 {!Object.values(filters).some(f => f) && (
                   <button
                     onClick={() => navigate('/cupos/new')}
                     className="btn-primary"
                   >
-                    Add First Cupo
+                    Add First <CurrencyDisplay>Cupo</CurrencyDisplay>
                   </button>
                 )}
               </div>

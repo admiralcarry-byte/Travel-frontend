@@ -5,6 +5,7 @@ import PaymentsTable from '../components/PaymentsTable';
 import ProfitChart from '../components/ProfitChart';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorDisplay from '../components/ErrorDisplay';
+import CurrencyDisplay from '../components/CurrencyDisplay';
 import { formatCurrencyCompact, formatWithWarning, formatCurrencyFull, getCurrencySymbol } from '../utils/formatNumbers';
 
 // Component for individual provider cards with expandable details
@@ -12,6 +13,7 @@ const ProviderCard = ({ provider, serviceIndex, providerIndex }) => {
   const [providerDetails, setProviderDetails] = useState(provider);
   const [loadingProvider, setLoadingProvider] = useState(true);
   const [errorProvider, setErrorProvider] = useState('');
+  const [showViewModal, setShowViewModal] = useState(false);
 
   useEffect(() => {
     const setupProviderDetails = () => {
@@ -54,51 +56,206 @@ const ProviderCard = ({ provider, serviceIndex, providerIndex }) => {
   if (loadingProvider) return <p className="text-dark-300">Loading provider...</p>;
   if (errorProvider) return <ErrorDisplay message={errorProvider} />;
 
-  const handleViewDocuments = () => {
-    if (!providerDetails.documents || providerDetails.documents.length === 0) {
-      alert('No documents available for this provider.');
+  // File handling functions
+  const handleOpenFile = (file) => {
+    try {
+      console.log('🔍 Attempting to open file:', {
+        filename: file.filename || file.name,
+        hasUrl: !!(file.url && file.url.trim() !== ''),
+        hasFileObject: !!(file.fileObject && file.fileObject instanceof File),
+        hasFile: !!(file.file && file.file instanceof File),
+        fileObjectType: typeof file.fileObject,
+        fileObjectKeys: file.fileObject ? Object.keys(file.fileObject) : 'no fileObject',
+        fileType: typeof file.file,
+        fileKeys: file.file ? Object.keys(file.file) : 'no file',
+        allFileKeys: Object.keys(file)
+      });
+      
+      console.log('🔍 Complete file object:', file);
+
+      // Check if file has a URL (from server)
+      if (file.url && file.url.trim() !== '') {
+        console.log('✅ Opening file from URL:', file.url);
+        window.open(file.url, '_blank');
       return;
     }
 
-    // Group documents by service for better organization
-    const documentsByService = {};
-    let docIndex = 0;
-
-    providerDetails.documents.forEach((doc) => {
-      // Find which service this document belongs to
-      const serviceInfo = provider.services?.find(service => 
-        service.documents && service.documents.some(serviceDoc => 
-          serviceDoc.filename === doc.filename && serviceDoc.url === doc.url
-        )
-      ) || { serviceName: 'Unknown Service' };
-
-      const serviceName = serviceInfo.serviceName || 'Unknown Service';
-      
-      if (!documentsByService[serviceName]) {
-        documentsByService[serviceName] = [];
+      // Check if file has a fileObject (from upload)
+      if (file.fileObject && file.fileObject instanceof File) {
+        console.log('✅ Opening file from fileObject');
+        const url = URL.createObjectURL(file.fileObject);
+        window.open(url, '_blank');
+        // Clean up the URL after a delay
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        return;
       }
       
-      documentsByService[serviceName].push({ ...doc, docIndex: docIndex++ });
-    });
+      // Check if file has a file property (alternative structure)
+      if (file.file && file.file instanceof File) {
+        console.log('✅ Opening file from file property');
+        const url = URL.createObjectURL(file.file);
+        window.open(url, '_blank');
+        // Clean up the URL after a delay
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        return;
+      }
+      
+      // Check if fileObject exists but is not a File (might be serialized)
+      if (file.fileObject && typeof file.fileObject === 'object' && Object.keys(file.fileObject).length === 0) {
+        console.log('⚠️ fileObject is empty object - file was serialized and lost');
+        alert('File was uploaded but the file data was lost during processing. This happens when files are saved to the database.\n\nFile: ' + (file.filename || file.name || 'Unknown') + '\n\nPlease re-upload the file if you need to view it.');
+        return;
+      }
+      
+      // Check if file has empty URL (stored in database but not served)
+      if (file.url === '') {
+        console.log('⚠️ File has empty URL - needs server-side file serving implementation');
+        alert('File is stored in the database but not accessible for viewing.\n\nFile: ' + (file.filename || file.name || 'Unknown') + '\n\nThis requires implementing a file serving system on the backend to generate proper URLs for uploaded files.');
+        return;
+      }
+      
+      // If no valid file source found, show error
+      console.log('❌ No valid file source found');
+      alert('File was uploaded but URL is not available. This may be due to upload failure or server configuration.\n\nCurrent file: ' + (file.filename || file.name || 'Unknown'));
+    } catch (error) {
+      console.error('Error opening file:', error);
+      alert('Error opening file: ' + error.message);
+    }
+  };
 
-    const fileList = Object.entries(documentsByService).map(([serviceName, docs]) => {
-      const serviceDocs = docs.map((doc) => {
+  // Format file size
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleViewDocuments = () => {
+    setShowViewModal(true);
+  };
+
+  return (
+    <>
+      <div className="bg-dark-700/50 border border-white/10 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-dark-100">
+              {providerDetails.name}
+            </h3>
+          </div>
+          
+          <button
+            onClick={handleViewDocuments}
+            disabled={!providerDetails.documents || providerDetails.documents.length === 0}
+            className={`inline-flex items-center justify-center w-8 h-8 transition-colors ${
+              providerDetails.documents && providerDetails.documents.length > 0
+                ? 'text-primary-400 hover:text-primary-300'
+                : 'text-gray-500 cursor-not-allowed'
+            }`}
+            title={
+              providerDetails.documents && providerDetails.documents.length > 0
+                ? `View ${providerDetails.documents.length} file(s)`
+                : 'No files uploaded for this provider'
+            }
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" strokeWidth={2} />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* File View Modal */}
+      {showViewModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10000]">
+          <div className="bg-dark-800 rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-dark-100">
+                Files for {providerDetails.name}
+              </h3>
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="text-dark-400 hover:text-dark-100 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {providerDetails.documents && providerDetails.documents.length > 0 ? (
+              <div className="space-y-3">
+                {providerDetails.documents.map((file, index) => (
+                  <div
+                    key={index}
+                    className="bg-dark-700/50 border border-white/10 rounded-lg p-4 hover:bg-dark-700/70 transition-colors cursor-pointer"
+                    onClick={() => handleOpenFile(file)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3 flex-1">
+                        {/* File Icon */}
+                        <div className="flex-shrink-0">
+                          {file.type && file.type.startsWith('image/') ? (
+                            <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          ) : (file.filename && file.filename.toLowerCase().endsWith('.pdf')) || (file.type && file.type.includes('pdf')) ? (
+                            <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                          ) : (file.filename && (file.filename.toLowerCase().includes('word') || file.filename.toLowerCase().includes('doc'))) || (file.type && (file.type.includes('word') || file.type.includes('document'))) ? (
+                            <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          ) : (file.filename && (file.filename.toLowerCase().includes('sheet') || file.filename.toLowerCase().includes('excel'))) || (file.type && (file.type.includes('sheet') || file.type.includes('excel'))) ? (
+                            <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          )}
+                        </div>
+
+                        {/* File Info */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-dark-100 truncate">
+                            {file.filename || file.name || `Document ${index + 1}`}
+                          </h4>
+                          <div className="flex items-center space-x-4 text-xs text-dark-400">
+                            {file.size && <span>{formatFileSize(file.size)}</span>}
+                            {file.uploadDate && <span>{new Date(file.uploadDate).toLocaleDateString()}</span>}
+                            <span className="capitalize">
+                              {file.type ? file.type.split('/')[1] : (file.filename ? file.filename.split('.').pop() : 'file')}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* View File Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
         // Handle different document scenarios
         let fileUrl = '';
         let canView = false;
 
-        if (doc.url && doc.url.startsWith('http')) {
+                          if (file.url && file.url.startsWith('http')) {
           // Full URL provided
-          fileUrl = doc.url;
+                            fileUrl = file.url;
           canView = true;
-        } else if (doc.url && doc.url.trim() !== '') {
+                          } else if (file.url && file.url.trim() !== '') {
           // Relative URL - construct full URL
-          fileUrl = `${api.getUri()}${doc.url}`;
+                            fileUrl = `${api.getUri()}${file.url}`;
           canView = true;
-        } else if (doc.fileObject) {
+                          } else if (file.fileObject) {
           // File object available - create object URL for viewing
           try {
-            fileUrl = URL.createObjectURL(doc.fileObject);
+                              fileUrl = URL.createObjectURL(file.fileObject);
             canView = true;
           } catch (error) {
             console.error('Error creating object URL:', error);
@@ -111,238 +268,47 @@ const ProviderCard = ({ provider, serviceIndex, providerIndex }) => {
           canView = false;
         }
 
-        const filename = doc.filename || doc.name || `Document ${doc.docIndex + 1}`;
-        const isPdf = filename.toLowerCase().endsWith('.pdf');
-        
-        return `
-          <div class="document-item">
-            <div class="document-header">
-              <div class="file-icon">
-                ${isPdf ?
-            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14,2 14,8 20,8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10,9 9,9 8,9"></polyline></svg>' :
-            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21,15 16,10 5,21"></polyline></svg>'
-          }
+                          if (canView) {
+                            window.open(fileUrl, '_blank');
+                          } else {
+                            alert(`File was uploaded but URL is not available. This may be due to upload failure or server configuration.\n\nCurrent file: ${file.filename || file.name || 'Unknown'}`);
+                          }
+                        }}
+                        className="text-primary-400 hover:text-primary-300 p-1 ml-2"
+                        title="View file"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
               </div>
-              <div class="file-info">
-                <div class="filename">${filename}</div>
-                <div class="file-type">${doc.type || 'document'}</div>
               </div>
+                ))}
             </div>
-            <div class="document-actions">
-              ${canView ?
-            `<button onclick="window.open('${fileUrl}', '_blank')" class="view-btn">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
+            ) : (
+              <div className="text-center py-8 text-dark-400">
+                <svg className="w-12 h-12 mx-auto mb-4 text-dark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                View
-              </button>` :
-            `<button onclick="alert('File was uploaded but URL is not available. This may be due to upload failure or server configuration.\\n\\nCurrent file: ${doc.filename}')" class="view-btn-disabled" title="File uploaded but URL not available - click for details">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-                View
-              </button>`
-          }
+                <p>No files uploaded for this provider yet.</p>
+                <p className="text-sm mt-1">Files can be uploaded during the service configuration process.</p>
             </div>
-          </div>
-        `;
-      }).join('');
+            )}
 
-      return `
-        <div class="service-section">
-          <h3 class="service-title">${serviceName}</h3>
-          ${serviceDocs}
-        </div>
-      `;
-    }).join('');
-
-    const modal = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
-    modal.document.write(`
-      <html>
-        <head>
-          <title>Provider Documents - ${providerDetails.name}</title>
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { 
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-              padding: 24px; 
-              background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); 
-              color: #ffffff; 
-              min-height: 100vh;
-            }
-            .modal-container {
-              background: #2a2a4a;
-              border-radius: 12px;
-              padding: 32px;
-              max-width: 700px;
-              margin: 40px auto;
-              box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            }
-            h2 {
-              color: #f97316;
-              font-size: 28px;
-              margin-bottom: 24px;
-              font-weight: 700;
-              text-align: center;
-            }
-            .document-item {
-              background: #1e1e3a;
-              border: 1px solid #3a3a5a;
-              border-radius: 10px;
-              padding: 16px;
-              margin-bottom: 16px;
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              transition: all 0.3s ease;
-            }
-            .document-item:hover {
-              transform: translateY(-3px);
-              box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
-            }
-            .document-header {
-              display: flex;
-              align-items: center;
-              flex: 1;
-            }
-            .file-icon {
-              color: #f97316;
-              margin-right: 12px;
-            }
-            .file-info {
-              flex: 1;
-            }
-            .filename {
-              font-size: 14px;
-              font-weight: 500;
-              color: #ffffff;
-              margin-bottom: 4px;
-              word-break: break-all;
-            }
-            .file-type {
-              font-size: 12px;
-              color: #a1a1aa;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-            }
-            .document-actions {
-              margin-left: 16px;
-            }
-            .view-btn {
-              background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-              color: white;
-              border: none;
-              border-radius: 8px;
-              padding: 8px 16px;
-              font-size: 12px;
-              font-weight: 500;
-              cursor: pointer;
-              transition: all 0.3s ease;
-              display: flex;
-              align-items: center;
-              gap: 6px;
-            }
-            .view-btn:hover {
-              background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
-              transform: translateY(-1px);
-              box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
-            }
-            .view-btn-disabled {
-              background: #6b7280;
-              color: #d1d5db;
-              border: none;
-              border-radius: 8px;
-              padding: 8px 16px;
-              font-size: 12px;
-              font-weight: 500;
-              cursor: pointer;
-              display: flex;
-              align-items: center;
-              gap: 6px;
-              opacity: 0.8;
-              transition: all 0.3s ease;
-            }
-            .view-btn-disabled:hover {
-              background: #4b5563;
-              color: #f3f4f6;
-              opacity: 1;
-            }
-            .close-btn { 
-              margin-top: 24px; 
-              padding: 12px 24px; 
-              background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); 
-              color: white; 
-              border: none; 
-              border-radius: 8px; 
-              cursor: pointer; 
-              font-size: 14px;
-              font-weight: 500;
-              transition: all 0.3s ease;
-              display: block;
-              margin-left: auto;
-              margin-right: auto;
-            }
-            .close-btn:hover {
-              background: linear-gradient(135deg, #7c7c7c 0%, #5a5a5a 100%);
-              transform: translateY(-1px);
-            }
-            .service-section {
-              margin-bottom: 32px;
-              padding: 20px;
-              background: #1a1a3a;
-              border-radius: 12px;
-              border: 1px solid #3a3a5a;
-            }
-            .service-title {
-              color: #f97316;
-              font-size: 18px;
-              font-weight: 600;
-              margin-bottom: 16px;
-              padding-bottom: 8px;
-              border-bottom: 2px solid #3a3a5a;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="modal-container">
-            <h2>Provider Documents for ${providerDetails.name}</h2>
-            <p style="text-align: center; color: #a1a1aa; margin-bottom: 24px;">Total: ${providerDetails.documents.length} document(s) across ${Object.keys(documentsByService).length} service(s)</p>
-            ${providerDetails.documents.length > 0 ?
-        `<div class="documents-list">${fileList}</div>` :
-        `<div class="empty-state">No documents available for this provider.</div>`
-      }
-            <button onclick="window.close()" class="close-btn">Close</button>
-          </div>
-        </body>
-      </html>
-    `);
-  };
-
-  return (
-    <div className="bg-dark-700/50 border border-white/10 rounded-lg p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-dark-100">
-            {providerDetails.name}
-          </h3>
-        </div>
-        
-        {providerDetails.documents.length > 0 && (
+            {/* Modal Actions */}
+            <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-white/10">
           <button
-            onClick={handleViewDocuments}
-            className="inline-flex items-center justify-center w-8 h-8 text-primary-400 hover:text-primary-300 transition-colors"
-            title={`View ${providerDetails.documents.length} file(s)`}
+                onClick={() => setShowViewModal(false)}
+                className="px-4 py-2 text-dark-300 hover:text-dark-100 border border-white/10 rounded-lg transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-              <circle cx="12" cy="12" r="3" strokeWidth={2} />
-            </svg>
+                Close
           </button>
-        )}
       </div>
     </div>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -387,7 +353,7 @@ const ProviderDisplay = ({ provider, providerIndex }) => {
       </div>
       {provider.costProvider && (
         <span className="text-sm font-semibold text-blue-400 ml-4 flex-shrink-0">
-          {getCurrencySymbol(provider.currency || sale.saleCurrency)}{provider.costProvider.toFixed(2)}
+          <CurrencyDisplay>{getCurrencySymbol(provider.currency || sale.saleCurrency)}{provider.costProvider.toFixed(2)}</CurrencyDisplay>
         </span>
       )}
     </div>
@@ -413,6 +379,17 @@ const SaleSummary = () => {
   useEffect(() => {
     fetchSale();
   }, [location.key, id]);
+
+  // Check sale status when sale data is loaded
+  useEffect(() => {
+    if (sale && sale.clientBalance !== undefined) {
+      // Check if sale should be automatically closed
+      if (sale.clientBalance <= 0 && sale.status === 'open') {
+        console.log('Sale should be closed - checking status...');
+        checkSaleStatus();
+      }
+    }
+  }, [sale]);
 
   const fetchSale = async () => {
     try {
@@ -464,19 +441,58 @@ const SaleSummary = () => {
     }
   };
 
-  const handlePaymentAdded = () => {
+  const handlePaymentAdded = async () => {
     // Refresh sale data to get updated balances
-    fetchSale();
+    await fetchSale();
+    
+    // Check if status should be updated after payment
+    if (sale && sale.clientBalance <= 0 && sale.status === 'open') {
+      console.log('Payment added - checking if sale should be closed...');
+      await checkSaleStatus();
+    }
+  };
+
+  // Function to check and update sale status
+  const checkSaleStatus = async () => {
+    try {
+      const response = await api.put(`/api/sales/${id}/check-status`);
+      if (response.data.success) {
+        const { sale: updatedSale, statusUpdate } = response.data.data;
+        
+        // Update the sale state with the latest data
+        setSale(updatedSale);
+        
+        // Show notification if status changed
+        if (statusUpdate.statusChanged) {
+          console.log(`Sale status updated: ${statusUpdate.previousStatus} → ${statusUpdate.newStatus}`);
+          // You could add a toast notification here if you have one
+        }
+        
+        return statusUpdate;
+      }
+    } catch (error) {
+      console.error('Error checking sale status:', error);
+    }
+    return null;
   };
 
 
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'open': return 'bg-yellow-100 text-yellow-800';
-      case 'closed': return 'bg-green-100 text-green-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'open': return 'bg-yellow-500 text-yellow-900';
+      case 'closed': return 'bg-green-500 text-green-900';
+      case 'cancelled': return 'bg-red-500 text-red-900';
+      default: return 'bg-gray-500 text-gray-900';
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'open': return '🔓';
+      case 'closed': return '🔒';
+      case 'cancelled': return '❌';
+      default: return '❓';
     }
   };
 
@@ -673,11 +689,17 @@ const SaleSummary = () => {
               <p className="text-dark-300 mt-2">Sale ID: {sale.id}</p>
             </div>
             <div className="flex space-x-3">
-              <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(sale.status)}`}
-                style={{ alignItems: "center" }}
-              >
+              <span className={`inline-flex items-center px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(sale.status)}`}>
+                <span className="mr-1">{getStatusIcon(sale.status)}</span>
                 {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
               </span>
+              <button
+                onClick={checkSaleStatus}
+                className="px-3 py-1 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600 transition-colors"
+                title="Check and update sale status"
+              >
+                🔄 Check Status
+              </button>
               {/* <button
                 onClick={fetchSale}
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
@@ -930,7 +952,7 @@ const SaleSummary = () => {
                             {serviceCost && (
                               <div className="text-right">
                                 <p className="text-lg font-semibold text-green-300">
-                                  {parseFloat(serviceCost).toFixed(2)} {getCurrencySymbol(serviceCurrency)}
+                                  <CurrencyDisplay>{parseFloat(serviceCost).toFixed(2)} {getCurrencySymbol(serviceCurrency)}</CurrencyDisplay>
                                 </p>
                               </div>
                             )}
@@ -1139,20 +1161,20 @@ const SaleSummary = () => {
                 <div className="flex justify-between">
                   <span className="text-dark-300">Total Sale Price:</span>
                   <span className="font-semibold text-dark-100">
-                    {formatCurrencyFull(sale.totalSalePrice || 0, sale.saleCurrency)}
+                    <CurrencyDisplay>{formatCurrencyFull(sale.totalSalePrice || 0, sale.saleCurrency)}</CurrencyDisplay>
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-dark-300">Total Cost:</span>
                   <span className="font-semibold text-dark-100">
-                    {formatCurrencyFull(sale.totalCost || 0, sale.saleCurrency)}
+                    <CurrencyDisplay>{formatCurrencyFull(sale.totalCost || 0, sale.saleCurrency)}</CurrencyDisplay>
                   </span>
                 </div>
                 <div className="border-t pt-3">
                   <div className="flex justify-between">
                     <span className="text-dark-300">Profit:</span>
                     <span className={`font-bold text-lg ${(sale.profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrencyFull(sale.profit || 0, sale.saleCurrency)}
+                      <CurrencyDisplay>{formatCurrencyFull(sale.profit || 0, sale.saleCurrency)}</CurrencyDisplay>
                     </span>
                   </div>
                   <div className="flex justify-between mt-1">
@@ -1178,13 +1200,13 @@ const SaleSummary = () => {
                 <div className="flex justify-between">
                   <span className="text-dark-300">Passenger Payments:</span>
                   <span className="font-semibold text-dark-100">
-                    {formatCurrencyFull(sale.totalClientPayments, sale.saleCurrency)}
+                    <CurrencyDisplay>{formatCurrencyFull(sale.totalClientPayments, sale.saleCurrency)}</CurrencyDisplay>
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-dark-300">Provider Payments:</span>
                   <span className="font-semibold text-dark-100">
-                    {formatCurrencyFull(sale.totalProviderPayments, sale.saleCurrency)}
+                    <CurrencyDisplay>{formatCurrencyFull(sale.totalProviderPayments, sale.saleCurrency)}</CurrencyDisplay>
                   </span>
                 </div>
                 <div className="border-t pt-3">
@@ -1197,10 +1219,10 @@ const SaleSummary = () => {
                       return balance <= 0 ? 'text-green-600' : 'text-red-600';
                     })()}`}>
                       {(() => {
-                        const totalPassengerPrice = sale.totalSalePrice || 0;
-                        const totalClientPayments = sale.totalClientPayments || 0;
-                        const balance = totalPassengerPrice - totalClientPayments;
-                        return formatCurrencyFull(balance, sale.saleCurrency);
+                      const totalPassengerPrice = sale.totalSalePrice || 0;
+                      const totalClientPayments = sale.totalClientPayments || 0;
+                      const balance = totalPassengerPrice - totalClientPayments;
+                      return <CurrencyDisplay>{formatCurrencyFull(balance, sale.saleCurrency)}</CurrencyDisplay>;
                       })()}
                     </span>
                   </div>
@@ -1226,7 +1248,7 @@ const SaleSummary = () => {
                         }, 0) || 0;
                         const totalProviderPayments = sale.totalProviderPayments || 0;
                         const balance = totalServiceCost - totalProviderPayments;
-                        return formatCurrencyFull(balance, sale.saleCurrency);
+                        return <CurrencyDisplay>{formatCurrencyFull(balance, sale.saleCurrency)}</CurrencyDisplay>;
                       })()}
                     </span>
                   </div>

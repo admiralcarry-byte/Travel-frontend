@@ -1,7 +1,11 @@
 import React from 'react';
-import { formatCurrency, formatCurrencyCompact } from '../utils/formatNumbers';
+import { formatCurrencyCompact } from '../utils/formatNumbers';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
+import CurrencyDisplay from './CurrencyDisplay';
 
 const MultiCurrencySummary = ({ currencyData, title = "Sales by Currency" }) => {
+  const { formatCurrency } = useCurrencyFormat();
+
   if (!currencyData || currencyData.length === 0) {
     return (
       <div className="card-glass p-6">
@@ -72,23 +76,23 @@ const MultiCurrencySummary = ({ currencyData, title = "Sales by Currency" }) => 
                 >
                   <td className="py-3 px-4">
                     <div className="flex items-center space-x-2">
-                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-500/20 text-primary-400 font-semibold text-sm">
-                        {currency}
+                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-500/20 text-primary-400 font-semibold text-sm notranslate">
+                        <CurrencyDisplay>{currency}</CurrencyDisplay>
                       </span>
-                      <span className="text-dark-200 font-medium">{currency}</span>
+                      <span className="text-dark-200 font-medium notranslate"><CurrencyDisplay>{currency}</CurrencyDisplay></span>
                     </div>
                   </td>
                   <td className="text-right py-3 px-4 text-dark-200">
                     {salesCount}
                   </td>
                   <td className="text-right py-3 px-4 text-dark-200 font-medium">
-                    {formatWithCurrency(totalRevenue, currency)}
+                    <span className="notranslate"><CurrencyDisplay>{formatWithCurrency(totalRevenue, currency)}</CurrencyDisplay></span>
                   </td>
                   <td className="text-right py-3 px-4 text-dark-300">
-                    {formatWithCurrency(totalCost, currency)}
+                    <span className="notranslate"><CurrencyDisplay>{formatWithCurrency(totalCost, currency)}</CurrencyDisplay></span>
                   </td>
                   <td className="text-right py-3 px-4 text-green-400 font-semibold">
-                    {formatWithCurrency(totalProfit, currency)}
+                    <span className="notranslate"><CurrencyDisplay>{formatWithCurrency(totalProfit, currency)}</CurrencyDisplay></span>
                   </td>
                   <td className={`text-right py-3 px-4 font-semibold ${getProfitMarginColor(profitMargin)}`}>
                     {profitMargin.toFixed(2)}%
@@ -157,7 +161,7 @@ const MultiCurrencySummary = ({ currencyData, title = "Sales by Currency" }) => 
 
             return (
               <div key={currency || index} className="flex items-center space-x-3">
-                <span className="text-xs font-medium text-dark-300 w-12">{currency}</span>
+                <span className="text-xs font-medium text-dark-300 w-12 notranslate"><CurrencyDisplay>{currency}</CurrencyDisplay></span>
                 <div className="flex-1 bg-dark-700 rounded-full h-6 overflow-hidden">
                   <div 
                     className="h-full bg-gradient-to-r from-primary-500 to-primary-400 rounded-full flex items-center justify-end px-2"

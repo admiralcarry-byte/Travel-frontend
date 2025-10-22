@@ -123,7 +123,7 @@ const PaymentMethodsTable = ({ data, currency = 'USD' }) => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 notranslate">
                       {detail._id.currency === 'USD' ? 'U$' : detail._id.currency === 'ARS' ? 'AR$' : detail._id.currency}
                     </span>
                   </td>
@@ -131,13 +131,13 @@ const PaymentMethodsTable = ({ data, currency = 'USD' }) => {
                     {detail.count.toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                    {detail.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {detail._id.currency === 'USD' ? 'U$' : detail._id.currency === 'ARS' ? 'AR$' : detail._id.currency}
+                    <span className="notranslate">{detail.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {detail._id.currency === 'USD' ? 'U$' : detail._id.currency === 'ARS' ? 'AR$' : detail._id.currency}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                    {currency === 'ARS' ? 'AR$' : 'U$'}{detail.totalAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <span className="notranslate">{currency === 'ARS' ? 'AR$' : 'U$'}{detail.totalAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-dark-100">
-                    {currency === 'ARS' ? 'AR$' : 'U$'}{detail.avgAmountUSD ? detail.avgAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'N/A'}
+                    <span className="notranslate">{currency === 'ARS' ? 'AR$' : 'U$'}{detail.avgAmountUSD ? detail.avgAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'N/A'}</span>
                   </td>
                 </tr>
               ))}
