@@ -130,3 +130,27 @@ select option.db-value,
 [data-database-field="true"] {
   translate: no !important;
 }
+
+/* Specific protection for currency symbols and names */
+[data-currency],
+[data-currency] *,
+.currency-symbol,
+.currency-name,
+.currency-display,
+[data-field="currency"],
+[data-field="currency"] * {
+  translate: no !important;
+}
+
+/* Protection for currency in dropdowns */
+select option[data-currency],
+select option .currency-symbol,
+select option .currency-name {
+  translate: no !important;
+}
+
+/* Protection for currency in option elements */
+option[class*="notranslate"],
+option .db-value {
+  translate: no !important;
+}

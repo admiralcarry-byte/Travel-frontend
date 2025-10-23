@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ServiceEntryModal from './ServiceEntryModal';
 import DatabaseValue from './DatabaseValue';
+import { CurrencySymbol, CurrencyName } from './CurrencyDropdown';
 
 // Helper function to format providers display with quantities
 const formatProvidersDisplay = (providers) => {
@@ -470,8 +471,12 @@ const NewSaleWizardSteps = ({
                   cursor: (isCupoReservation ? currencyLocked : (currencyLocked && currentStep > 2)) ? 'not-allowed' : 'pointer'
                 }}
               >
-                <option value="USD">U$</option>
-                <option value="ARS">AR$</option>
+                <option value="USD" className="notranslate">
+                  <CurrencySymbol currency="USD" />
+                </option>
+                <option value="ARS" className="notranslate">
+                  <CurrencySymbol currency="ARS" />
+                </option>
               </select>
               <p className="text-xs text-dark-400 mt-1">
                 {isCupoReservation && currencyLocked
@@ -497,7 +502,7 @@ const NewSaleWizardSteps = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-sm text-blue-300">
-                <strong>Total for {selectedPassengers.length + selectedCompanions.length} passenger{(selectedPassengers.length + selectedCompanions.length) > 1 ? 's' : ''}:</strong> {passengerCurrency === 'USD' ? 'U$' : 'AR$'} {pricePerPassenger || '0'} × {selectedPassengers.length + selectedCompanions.length} = {passengerCurrency === 'USD' ? 'U$' : 'AR$'} {((parseFloat(pricePerPassenger) || 0) * (selectedPassengers.length + selectedCompanions.length)).toFixed(2)}
+                <strong>Total for {selectedPassengers.length + selectedCompanions.length} passenger{(selectedPassengers.length + selectedCompanions.length) > 1 ? 's' : ''}:</strong> <CurrencySymbol currency={passengerCurrency} /> {pricePerPassenger || '0'} × {selectedPassengers.length + selectedCompanions.length} = <CurrencySymbol currency={passengerCurrency} /> {((parseFloat(pricePerPassenger) || 0) * (selectedPassengers.length + selectedCompanions.length)).toFixed(2)}
                 <br />
                 <span className="text-xs text-blue-200">
                   ({selectedPassengers.length} main passenger{selectedPassengers.length !== 1 ? 's' : ''} + {selectedCompanions.length} companion{selectedCompanions.length !== 1 ? 's' : ''})
@@ -1003,7 +1008,7 @@ const NewSaleWizardSteps = ({
                 return (
                   <div className="text-right">
                     <div className="text-sm text-blue-300 font-medium">
-                      ({passengerCurrency === 'USD' ? 'U$' : 'AR$'} {passengerPrice.toFixed(2)} × {totalPassengers}: {passengerCurrency === 'USD' ? 'U$' : 'AR$'} {totalPassengerCost.toFixed(2)})
+                      (<CurrencySymbol currency={passengerCurrency} /> {passengerPrice.toFixed(2)} × {totalPassengers}: <CurrencySymbol currency={passengerCurrency} /> {totalPassengerCost.toFixed(2)})
                     </div>
                   </div>
                 );

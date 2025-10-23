@@ -3,6 +3,9 @@
  * This handles language switching and text translation
  */
 
+import React from 'react';
+import DatabaseValue from '../components/DatabaseValue';
+
 // Language detection
 const getBrowserLanguage = () => {
   const lang = navigator.language || navigator.languages?.[0] || 'en';
@@ -167,6 +170,44 @@ export const getAvailableLanguages = () => [
 ];
 
 /**
+ * Get currency symbol as DatabaseValue component (blocks translation)
+ * @param {string} currency - Currency code ('USD' or 'ARS')
+ * @returns {JSX.Element} DatabaseValue component with currency symbol
+ */
+export const getCurrencySymbol = (currency) => {
+  const symbol = currency === 'ARS' ? 'AR$' : 'U$';
+  return <DatabaseValue data-field="currency" data-currency={currency}>{symbol}</DatabaseValue>;
+};
+
+/**
+ * Get currency name as DatabaseValue component (blocks translation)
+ * @param {string} currency - Currency code ('USD' or 'ARS')
+ * @returns {JSX.Element} DatabaseValue component with currency name
+ */
+export const getCurrencyName = (currency) => {
+  const name = currency === 'ARS' ? 'dólares argentinos' : 'dólares estadounidenses';
+  return <DatabaseValue data-field="currency" data-currency={currency}>{name}</DatabaseValue>;
+};
+
+/**
+ * Get currency symbol as string (for use in non-JSX contexts)
+ * @param {string} currency - Currency code ('USD' or 'ARS')
+ * @returns {string} Currency symbol
+ */
+export const getCurrencySymbolString = (currency) => {
+  return currency === 'ARS' ? 'AR$' : 'U$';
+};
+
+/**
+ * Get currency name as string (for use in non-JSX contexts)
+ * @param {string} currency - Currency code ('USD' or 'ARS')
+ * @returns {string} Currency name
+ */
+export const getCurrencyNameString = (currency) => {
+  return currency === 'ARS' ? 'dólares argentinos' : 'dólares estadounidenses';
+};
+
+/**
  * Get language-specific options for dropdowns
  */
 export const getDropdownOptions = {
@@ -179,8 +220,8 @@ export const getDropdownOptions = {
   
   currency: () => [
     { value: '', label: t('allCurrencies') },
-    { value: 'USD', label: t('usd') },
-    { value: 'ARS', label: t('ars') }
+    { value: 'USD', label: getCurrencySymbolString('USD') },
+    { value: 'ARS', label: getCurrencySymbolString('ARS') }
   ],
   
   provider: () => [

@@ -66,7 +66,33 @@ The following database fields are automatically protected from translation:
 5. `frontend/src/utils/translationUtils.js` - Utility functions
 6. `frontend/src/utils/updateDatabaseValues.js` - Helper patterns and mappings
 7. `frontend/src/pages/ServicesList.jsx` - Updated service cards
-8. `frontend/src/components/NewSaleWizardSteps.jsx` - Updated service cards
+8. `frontend/src/components/NewSaleWizardSteps.jsx` - Updated service cards and currency displays
+9. `frontend/src/utils/i18n.js` - Added currency functions with DatabaseValue components
+10. `frontend/src/utils/formatNumbers.js` - Added currency symbol functions with DatabaseValue
+11. `frontend/src/components/CurrencyDropdown.jsx` - New currency-specific components
+12. `frontend/src/utils/currencyUtils.js` - Comprehensive currency utilities
+
+## Currency Translation Fix
+**Issue Fixed**: Currency symbols like "U$", "AR$" and currency names like "dólares estadounidenses" were being translated by the browser.
+
+**Solution**: Created comprehensive currency protection:
+- **CurrencySymbol component**: Displays currency symbols with translation blocking
+- **CurrencyName component**: Displays currency names with translation blocking
+- **Updated all currency dropdowns**: Now use DatabaseValue components
+- **Updated currency displays**: All currency symbols in summaries and forms are protected
+
+**Example of the Fix**:
+```jsx
+// Before (Currency could be translated)
+<option value="USD">U$</option>
+<span>Total: U$ 1200.00</span>
+
+// After (Currency blocked from translation)
+<option value="USD" className="notranslate">
+  <CurrencySymbol currency="USD" />
+</option>
+<span>Total: <CurrencySymbol currency="USD" /> 1200.00</span>
+```
 
 ## Testing
 To test the solution:
@@ -75,6 +101,8 @@ To test the solution:
 3. Verify that:
    - UI labels like "Type:", "Providers:", "Service" can be translated
    - Database values like "hotel", provider names, destinations cannot be translated
+   - Currency symbols like "U$", "AR$" cannot be translated
+   - Currency names like "dólares estadounidenses" cannot be translated
 
 ## Future Updates
 To apply this pattern to other components:
