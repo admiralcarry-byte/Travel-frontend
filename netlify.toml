@@ -2,14 +2,14 @@
 
 [build]
   # Build command - install dependencies first, then build
-  command = "npm install && npm run build"
+  command = "npm ci && npm run build"
   
   # Publish directory
   publish = "dist"
 
 [build.environment]
   # Node version - Vite 7+ requires Node.js 20.19+ or 22.12+
-  NODE_VERSION = "20"
+  NODE_VERSION = "20.19.0"
   # API Base URL for production
   VITE_API_BASE_URL = "https://travel-backend-production-5253.up.railway.app"
   # Set production mode
