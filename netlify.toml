@@ -1,13 +1,10 @@
 # Netlify configuration for Travel Management System
 
 [build]
-  # Base directory - where the frontend project is located
-  base = "frontend"
-  
   # Build command - install dependencies first, then build
   command = "npm install && npm run build"
   
-  # Publish directory (relative to base directory)
+  # Publish directory
   publish = "dist"
 
 [build.environment]
