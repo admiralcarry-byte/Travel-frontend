@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { getCurrencySymbol } from '../utils/formatNumbers';
+import AddServiceTypeModal from './AddServiceTypeModal';
 
 const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServiceTemplateIds = [] }) => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -9,6 +10,9 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
   
   // Service data
   const [serviceTemplates, setServiceTemplates] = useState([]);
+  const [serviceTypes, setServiceTypes] = useState([]);
+  const [serviceTemplateSearch, setServiceTemplateSearch] = useState('');
+  const [serviceLoading, setServiceLoading] = useState(false);
   const [currentServiceTemplate, setCurrentServiceTemplate] = useState(null);
   const [serviceInfo, setServiceInfo] = useState('');
   const [serviceDates, setServiceDates] = useState({ checkIn: '', checkOut: '' });
@@ -17,6 +21,9 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [selectedProviders, setSelectedProviders] = useState([]);
   const [destination, setDestination] = useState({ city: '', country: '' });
+  
+  // Service Type Modal state
+  const [showAddServiceTypeModal, setShowAddServiceTypeModal] = useState(false);
   
   // Available data
   const [providers, setProviders] = useState([]);
@@ -27,6 +34,7 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
   useEffect(() => {
     if (isOpen) {
       fetchServiceTemplates();
+      fetchServiceTypes();
       fetchProviders();
       resetForm();
     }
@@ -77,6 +85,21 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
     } catch (error) {
       console.error('Failed to fetch service templates:', error);
       setError('Failed to load service templates');
+    }
+  };
+
+  const fetchServiceTypes = async () => {
+    try {
+      setServiceLoading(true);
+      const response = await api.get('/api/service-types?active=true');
+      if (response.data.success) {
+        setServiceTypes(response.data.data.serviceTypes || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch service types:', error);
+      setError('Failed to load service types');
+    } finally {
+      setServiceLoading(false);
     }
   };
 
@@ -136,6 +159,32 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
         return newProviders;
       }
     });
+  };
+
+  const selectServiceType = (serviceType) => {
+    // Create a service template from the service type
+    const serviceTemplate = {
+      _id: serviceType._id,
+      name: serviceType.name,
+      description: serviceType.description || '',
+      category: 'Service Type',
+      serviceType: serviceType._id
+    };
+    
+    setCurrentServiceTemplate(serviceTemplate);
+    setServiceInfo(serviceType.name);
+    setCurrentStep(2);
+  };
+
+  const handleServiceTypeAdded = (newServiceType) => {
+    setServiceTypes(prev => {
+      const exists = prev.some(st => st._id === newServiceType._id);
+      if (!exists) {
+        return [...prev, newServiceType];
+      }
+      return prev;
+    });
+    setShowAddServiceTypeModal(false);
   };
 
   const handleSubmit = async () => {
@@ -223,45 +272,99 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
 
   const renderStep = () => {
     switch (currentStep) {
-      case 1: // Step 3: Select Service Template
+      case 1: // Step 1: Select Service Template
         return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-dark-100">Select Service Template</h3>
-            <p className="text-sm text-dark-400">Choose a service template to add to this sale</p>
-            
-            {serviceTemplates.filter(template => !existingServiceTemplateIds.includes(template.name)).length === 0 ? (
-              <div className="text-center py-8 bg-dark-700 rounded-lg border border-dark-600">
-                <div className="text-dark-400 mb-4">
-                  <svg className="w-12 h-12 mx-auto mb-3 text-dark-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium text-dark-100">Select Service Template</h3>
+                <p className="text-sm text-dark-400">Review and manage service types for your sale</p>
+              </div>
+              <button
+                onClick={() => setShowAddServiceTypeModal(true)}
+                className="text-xs text-primary-400 hover:text-primary-300 underline whitespace-nowrap"
+              >
+                + Add New Service Type
+              </button>
+            </div>
+
+            {/* Search Section */}
+            <div className="space-y-3">
+              <h4 className="text-md font-medium text-dark-100">
+                Search and select service types from the database
+              </h4>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search service types by name..."
+                  value={serviceTemplateSearch || ''}
+                  onChange={(e) => setServiceTemplateSearch(e.target.value)}
+                  className="input-field w-full pl-10"
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
-                  <p className="text-dark-300">All available service templates are already added to this sale</p>
-                  <p className="text-sm text-dark-400 mt-2">No additional service templates available</p>
                 </div>
               </div>
-            ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-64 overflow-y-auto">
-              {serviceTemplates
-                .filter(template => !existingServiceTemplateIds.includes(template.name))
-                .map((template) => (
-                  <div
-                    key={template._id}
-                    onClick={() => {
-                      setCurrentServiceTemplate(template);
-                      setServiceInfo(template.name); // Auto-fill service info
-                      setCurrentStep(2);
-                    }}
-                    className="p-4 border border-dark-600 rounded-lg cursor-pointer hover:border-primary-500 hover:bg-primary-500/10 transition-colors"
-                  >
-                    <h4 className="font-medium text-dark-100">{template.name}</h4>
-                    <p className="text-sm text-dark-400 mt-1">{template.description}</p>
-                    <span className="inline-block mt-2 px-2 py-1 bg-primary-500/20 text-primary-400 text-xs rounded">
-                      {template.category}
-                    </span>
-                  </div>
-                ))}
             </div>
-            )}
+
+            {/* Available Service Types Section */}
+            <div className="space-y-3">
+              <h4 className="text-md font-medium text-dark-100">
+                Available Service Types {serviceLoading && <span className="text-sm text-dark-400">(Loading...)</span>}
+              </h4>
+              
+              {(() => {
+                // Filter service types based on search term
+                const filteredServiceTypes = serviceTypes.filter(serviceType => {
+                  if (serviceTemplateSearch && serviceTemplateSearch.trim()) {
+                    const searchTerm = serviceTemplateSearch.toLowerCase().trim();
+                    const matchesName = serviceType.name?.toLowerCase().includes(searchTerm);
+                    
+                    return matchesName;
+                  }
+                  
+                  return true; // Show all available service types
+                });
+                
+                return filteredServiceTypes.length === 0 && !serviceLoading ? (
+                  <div className="text-center py-8 text-dark-400">
+                    {serviceTemplateSearch && serviceTemplateSearch.trim() ? (
+                      <div>
+                        <p>No service types found matching "{serviceTemplateSearch}"</p>
+                        <p className="text-sm mt-2">Try adjusting your search or add a new service type.</p>
+                      </div>
+                    ) : (
+                      <p>No service types available. Add a new service type to get started.</p>
+                    )}
+                  </div>
+                ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
+                  {filteredServiceTypes.map((serviceType) => {
+                    return (
+                      <div 
+                        key={serviceType._id} 
+                        onClick={() => selectServiceType(serviceType)}
+                        className="p-4 border rounded-lg bg-dark-700/50 border-white/10 hover:bg-dark-600/50 hover:border-primary-500/30 cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex-1">
+                            <h5 className="font-medium text-dark-100">{serviceType.name}</h5>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-xs text-dark-400 px-2 py-1 bg-dark-600/50 rounded">
+                            Service Type
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         );
 
@@ -536,6 +639,13 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
           )}
         </div>
       </div>
+      
+      {/* Add Service Type Modal */}
+      <AddServiceTypeModal
+        isOpen={showAddServiceTypeModal}
+        onClose={() => setShowAddServiceTypeModal(false)}
+        onServiceTypeAdded={handleServiceTypeAdded}
+      />
     </div>
   );
 };
