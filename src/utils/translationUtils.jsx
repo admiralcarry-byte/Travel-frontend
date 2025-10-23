@@ -1,9 +1,12 @@
 /**
  * Translation Utilities
  * 
- * Utility functions to handle selective translation blocking for database values
- * while allowing translation for UI labels.
+ * This utility helps identify and update database value displays
+ * to use the DatabaseValue component for translation blocking.
  */
+
+import React from 'react';
+import DatabaseValue from '../components/DatabaseValue';
 
 /**
  * Wraps database values with translation blocking attributes
@@ -11,7 +14,7 @@
  * @param {string} className - Additional CSS classes
  * @returns {JSX.Element} - A span with translation blocking
  */
-export const DatabaseValue = ({ children, className = '', ...props }) => {
+export const DatabaseValueWrapper = ({ children, className = '', ...props }) => {
   return (
     <span 
       className={`db-value ${className}`} 

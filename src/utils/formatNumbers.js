@@ -2,8 +2,6 @@
  * Utility functions for formatting numbers in a readable way
  */
 import { t } from './i18n';
-import React from 'react';
-import DatabaseValue from '../components/DatabaseValue';
 
 /**
  * Format number with commas as thousand separators, independent of browser locale
@@ -144,20 +142,6 @@ export const getCurrencySymbol = (currency) => {
   return symbols[currency?.toUpperCase()] || t('usdSymbol');
 };
 
-/**
- * Get currency symbol as DatabaseValue component (blocks translation)
- * @param {string} currency - Currency code
- * @returns {JSX.Element} DatabaseValue component with currency symbol
- */
-export const getCurrencySymbolJSX = (currency) => {
-  const symbols = {
-    'USD': 'U$',
-    'ARS': 'AR$'
-  };
-  
-  const symbol = symbols[currency?.toUpperCase()] || 'U$';
-  return <DatabaseValue data-field="currency" data-currency={currency}>{symbol}</DatabaseValue>;
-};
 
 
 /**

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ServiceEntryModal from './ServiceEntryModal';
 import DatabaseValue from './DatabaseValue';
-import { CurrencySymbol, CurrencyName } from './CurrencyDropdown';
+import { CurrencySymbol } from '../utils/currencyJSX';
 
 // Helper function to format providers display with quantities
 const formatProvidersDisplay = (providers) => {

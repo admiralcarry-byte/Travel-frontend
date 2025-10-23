@@ -3,9 +3,6 @@
  * This handles language switching and text translation
  */
 
-import React from 'react';
-import DatabaseValue from '../components/DatabaseValue';
-
 // Language detection
 const getBrowserLanguage = () => {
   const lang = navigator.language || navigator.languages?.[0] || 'en';
@@ -168,26 +165,6 @@ export const getAvailableLanguages = () => [
   { code: 'en', name: 'English', flag: '🇺🇸' },
   { code: 'es', name: 'Español', flag: '🇪🇸' }
 ];
-
-/**
- * Get currency symbol as DatabaseValue component (blocks translation)
- * @param {string} currency - Currency code ('USD' or 'ARS')
- * @returns {JSX.Element} DatabaseValue component with currency symbol
- */
-export const getCurrencySymbol = (currency) => {
-  const symbol = currency === 'ARS' ? 'AR$' : 'U$';
-  return <DatabaseValue data-field="currency" data-currency={currency}>{symbol}</DatabaseValue>;
-};
-
-/**
- * Get currency name as DatabaseValue component (blocks translation)
- * @param {string} currency - Currency code ('USD' or 'ARS')
- * @returns {JSX.Element} DatabaseValue component with currency name
- */
-export const getCurrencyName = (currency) => {
-  const name = currency === 'ARS' ? 'dólares argentinos' : 'dólares estadounidenses';
-  return <DatabaseValue data-field="currency" data-currency={currency}>{name}</DatabaseValue>;
-};
 
 /**
  * Get currency symbol as string (for use in non-JSX contexts)
