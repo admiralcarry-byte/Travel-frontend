@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import DatabaseValue from '../components/DatabaseValue';
 
 const ServicesList = () => {
   const navigate = useNavigate();
@@ -446,18 +447,18 @@ const ServicesList = () => {
                   )}
 
                   {/* Service Content */}
-                  <div className="p-6 notranslate" translate="no">
+                  <div className="p-6">
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="text-lg font-semibold text-dark-100 line-clamp-2">
-                        {service.destino}
+                        <DatabaseValue data-field="destino">{service.destino}</DatabaseValue>
                       </h3>
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(service.type)}`}>
-                        {service.type.charAt(0).toUpperCase() + service.type.slice(1)}
+                        <DatabaseValue data-field="type">{service.type.charAt(0).toUpperCase() + service.type.slice(1)}</DatabaseValue>
                       </span>
                     </div>
 
                     <p className="text-dark-300 text-sm mb-4 line-clamp-3">
-                      {service.description}
+                      <DatabaseValue data-field="description">{service.description}</DatabaseValue>
                     </p>
 
                     {/* Providers Badge */}
@@ -471,12 +472,12 @@ const ServicesList = () => {
                                 key={provider._id || index}
                                 className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-500/20 text-primary-400 border border-primary-500/30"
                               >
-                                {provider.name}
+                                <DatabaseValue data-field="providerName">{provider.name}</DatabaseValue>
                               </span>
                             ))
                           ) : (
                             <span className="text-primary-400 font-medium">
-                              {service.providerId?.name || 'Unknown Provider'}
+                              <DatabaseValue data-field="providerName">{service.providerId?.name || 'Unknown Provider'}</DatabaseValue>
                             </span>
                           )}
                         </div>

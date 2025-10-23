@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ServiceEntryModal from './ServiceEntryModal';
+import DatabaseValue from './DatabaseValue';
 
 // Helper function to format providers display with quantities
 const formatProvidersDisplay = (providers) => {
@@ -540,7 +541,9 @@ const NewSaleWizardSteps = ({
                 {serviceCards.map((serviceCard) => (
                   <div key={serviceCard.id} className="p-4 border rounded-lg bg-primary-500/10 border-primary-500/30">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-bold text-primary-400 notranslate">Type: {serviceCard.serviceTypeName}</p>
+                      <p className="text-sm font-bold text-primary-400">
+                        Type: <DatabaseValue data-field="serviceTypeName">{serviceCard.serviceTypeName}</DatabaseValue>
+                      </p>
                       <button
                         onClick={() => removeServiceCard(serviceCard.id)}
                         className="text-red-400 hover:text-red-300 text-sm"
@@ -549,9 +552,11 @@ const NewSaleWizardSteps = ({
                         ✕
                       </button>
                     </div>
-                    <p className="text-sm text-dark-300 line-clamp-2 notranslate">{serviceCard.serviceDescription}</p>
+                    <p className="text-sm text-dark-300 line-clamp-2">
+                      <DatabaseValue data-field="serviceDescription">{serviceCard.serviceDescription}</DatabaseValue>
+                    </p>
                     <div className="mt-2">
-                      <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded notranslate">
+                      <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded">
                         Service
                       </span>
                     </div>

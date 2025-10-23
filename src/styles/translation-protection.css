@@ -1,0 +1,132 @@
+/**
+ * Translation Protection CSS
+ * 
+ * Comprehensive CSS rules to prevent browser translation of database values
+ * while allowing translation of UI labels.
+ */
+
+/* Core database value protection */
+.db-value,
+.db-value *,
+[data-db-value="true"],
+[data-db-value="true"] * {
+  translate: no !important;
+  -webkit-transform: translateZ(0);
+  -moz-transform: translateZ(0);
+  -ms-transform: translateZ(0);
+  -o-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* Specific database field protection */
+[data-field="type"],
+[data-field="name"],
+[data-field="destino"],
+[data-field="description"],
+[data-field="provider"],
+[data-field="providerId"],
+[data-field="serviceType"],
+[data-field="serviceTypeName"],
+[data-field="serviceName"],
+[data-field="serviceDescription"],
+[data-field="providerName"],
+[data-field="clientName"],
+[data-field="passengerName"],
+[data-field="currency"],
+[data-field="status"],
+[data-field="paymentMethod"],
+[data-field="paymentTerms"],
+[data-field="destination"],
+[data-field="origin"],
+[data-field="category"],
+[data-field="subcategory"],
+[data-field="brand"],
+[data-field="model"],
+[data-field="serial"],
+[data-field="code"],
+[data-field="reference"],
+[data-field="id"],
+[data-field="_id"],
+[data-field="email"],
+[data-field="phone"],
+[data-field="address"],
+[data-field="city"],
+[data-field="country"],
+[data-field="zipCode"],
+[data-field="company"],
+[data-field="department"],
+[data-field="position"],
+[data-field="notes"],
+[data-field="metadata"] {
+  translate: no !important;
+}
+
+/* Keep existing currency and financial data protection */
+.currency-symbol,
+.currency-value,
+.currency-display,
+[data-currency],
+.notranslate,
+.notranslate *,
+[translate="no"],
+[translate="no"] * {
+  translate: no !important;
+}
+
+/* Protection for service cards and similar components */
+.service-card .db-value,
+.service-item .db-value,
+.provider-card .db-value,
+.client-card .db-value,
+.passenger-card .db-value {
+  translate: no !important;
+}
+
+/* Protection for tables displaying database data */
+table .db-value,
+table [data-db-value="true"],
+.table-row .db-value,
+.table-cell .db-value {
+  translate: no !important;
+}
+
+/* Protection for modals and forms */
+.modal .db-value,
+.modal [data-db-value="true"],
+.form-field .db-value,
+.input-field .db-value {
+  translate: no !important;
+}
+
+/* Protection for badges and tags */
+.badge .db-value,
+.tag .db-value,
+.chip .db-value,
+.pill .db-value {
+  translate: no !important;
+}
+
+/* Protection for dropdown options */
+select option.db-value,
+.dropdown-option .db-value,
+.menu-item .db-value {
+  translate: no !important;
+}
+
+/* Ensure UI labels remain translatable */
+.ui-label,
+.label,
+.field-label,
+.section-title,
+.page-title,
+.button-text,
+.menu-label {
+  /* These should remain translatable - no translate: no */
+}
+
+/* Additional protection for dynamic content */
+[data-dynamic="true"] .db-value,
+[data-api-data="true"] .db-value,
+[data-database-field="true"] {
+  translate: no !important;
+}
