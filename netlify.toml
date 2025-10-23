@@ -2,7 +2,7 @@
 
 [build]
   # Build command - install dependencies first, then build
-  command = "npm ci && npm run build"
+  command = "npm install && NODE_ENV=production npm run build"
   
   # Publish directory
   publish = "dist"
