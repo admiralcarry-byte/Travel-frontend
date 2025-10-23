@@ -32,7 +32,25 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
     }
   }, [isOpen]);
 
+  // Currency conversion state
+  const [serviceExchangeRate, setServiceExchangeRate] = useState('');
+  const [convertedAmount, setConvertedAmount] = useState(null);
+
   // Currency conversion effects
+  useEffect(() => {
+    if (serviceCurrency === 'USD') {
+      setServiceExchangeRate('');
+      setConvertedAmount(null);
+    }
+  }, [serviceCurrency]);
+
+  useEffect(() => {
+    if (serviceExchangeRate && serviceCost && serviceCurrency && serviceCurrency !== 'USD') {
+      setConvertedAmount(parseFloat(serviceCost) / parseFloat(serviceExchangeRate));
+    } else if (serviceCurrency === 'USD') {
+      setConvertedAmount(parseFloat(serviceCost));
+    }
+  }, [serviceExchangeRate, serviceCost, serviceCurrency]);
 
   const resetForm = () => {
     setCurrentStep(1);
@@ -78,7 +96,7 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
 
   const handleNext = () => {
     // Validate current step before proceeding
-    if (currentStep === 5) {
+    if (currentStep === 3) {
       // Service Cost step validation
       // Allow cost of 0 as valid - cost is optional and defaults to 0
       if (serviceCost === undefined || serviceCost === null || serviceCost === '' || isNaN(parseFloat(serviceCost)) || parseFloat(serviceCost) < 0) {
@@ -88,7 +106,7 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
       
     }
     
-    if (currentStep < 7) {
+    if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
       setError(''); // Clear any previous errors
     }
@@ -132,20 +150,31 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
       return;
     }
 
+    // Validate exchange rate for non-USD currencies
+    if (serviceCurrency !== 'USD' && (!serviceExchangeRate || isNaN(parseFloat(serviceExchangeRate)) || parseFloat(serviceExchangeRate) <= 0)) {
+      setError('Please enter a valid exchange rate for non-USD currencies');
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
 
-      // Use cost as provided (assuming it's already in USD)
+      // Calculate cost in USD
       let costInUSD = parseFloat(serviceCost);
       let originalCurrency = serviceCurrency;
       let originalAmount = parseFloat(serviceCost);
       let exchangeRate = null;
 
+      if (serviceCurrency !== 'USD') {
+        exchangeRate = parseFloat(serviceExchangeRate);
+        costInUSD = originalAmount / exchangeRate;
+      }
+
       // Format providers array for backend
       const formattedProviders = selectedProviders.map(provider => ({
         providerId: provider._id,
-        costProvider: costInUSD, // Use actual provider cost
+        costProvider: costInUSD, // Use actual provider cost in USD
         currency: 'USD', // Always store provider costs in USD
         commissionRate: 0
       }));
@@ -153,9 +182,11 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
       const serviceData = {
         serviceTemplateId: currentServiceTemplate._id,
         serviceName: serviceInfo,
+        serviceInfo: serviceInfo, // Add serviceInfo for compatibility
         checkIn: serviceDates.checkIn,
         checkOut: serviceDates.checkOut,
         cost: costInUSD, // Always store in USD
+        costProvider: costInUSD, // Add costProvider for compatibility
         currency: 'USD', // Always store as USD in database
         originalCurrency: originalCurrency, // Keep track of original currency
         originalAmount: originalAmount, // Keep track of original amount
@@ -163,15 +194,24 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
         providerId: selectedProviders[0]?._id, // Keep first provider for backward compatibility
         providers: formattedProviders, // Include multiple providers
         notes: `${destination.city}, ${destination.country}`,
-        destination: destination
+        destination: destination,
+        serviceDates: {
+          startDate: serviceDates.checkIn,
+          endDate: serviceDates.checkOut
+        }
       };
+
+      console.log('Adding service with data:', serviceData);
 
       const response = await api.post(`/api/sales/${saleId}/services-from-template`, serviceData);
       
       if (response.data.success) {
+        console.log('Service added successfully:', response.data.data.service);
         onServiceAdded(response.data.data.service);
         onClose();
         resetForm();
+      } else {
+        throw new Error(response.data.message || 'Failed to add service');
       }
     } catch (error) {
       console.error('Failed to add service:', error);
@@ -183,7 +223,7 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
 
   const renderStep = () => {
     switch (currentStep) {
-      case 1:
+      case 1: // Step 3: Select Service Template
         return (
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-dark-100">Select Service Template</h3>
@@ -208,6 +248,7 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
                     key={template._id}
                     onClick={() => {
                       setCurrentServiceTemplate(template);
+                      setServiceInfo(template.name); // Auto-fill service info
                       setCurrentStep(2);
                     }}
                     className="p-4 border border-dark-600 rounded-lg cursor-pointer hover:border-primary-500 hover:bg-primary-500/10 transition-colors"
@@ -224,34 +265,7 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
           </div>
         );
 
-      case 2:
-        return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-dark-100">Service Information</h3>
-            <p className="text-sm text-dark-400">Enter specific details for this {currentServiceTemplate?.name} service</p>
-            
-            <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-4">
-              <h4 className="font-medium text-dark-100">Selected: {currentServiceTemplate?.name}</h4>
-              <p className="text-sm text-dark-300">{currentServiceTemplate?.description}</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-dark-200 mb-2">
-                Service Details *
-              </label>
-              <input
-                type="text"
-                value={serviceInfo}
-                onChange={(e) => setServiceInfo(e.target.value)}
-                className="input-field"
-                placeholder="e.g., Sheraton Hotel, American Airlines, etc."
-                required
-              />
-            </div>
-          </div>
-        );
-
-      case 3:
+      case 2: // Step 4: Service Dates
         return (
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-dark-100">Service Dates</h3>
@@ -286,48 +300,11 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
           </div>
         );
 
-      case 4:
+      case 3: // Step 5: Service Cost & Provider
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-dark-100">Destination</h3>
-            <p className="text-sm text-dark-400">Enter the destination for this service</p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-dark-200 mb-2">
-                  City *
-                </label>
-                <input
-                  type="text"
-                  value={destination.city}
-                  onChange={(e) => setDestination(prev => ({ ...prev, city: e.target.value }))}
-                  className="input-field"
-                  placeholder="e.g., Paris"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-dark-200 mb-2">
-                  Country *
-                </label>
-                <input
-                  type="text"
-                  value={destination.country}
-                  onChange={(e) => setDestination(prev => ({ ...prev, country: e.target.value }))}
-                  className="input-field"
-                  placeholder="e.g., France"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case 5:
-        return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-dark-100">Service Cost</h3>
-            <p className="text-sm text-dark-400">Set the cost for this service</p>
+            <h3 className="text-lg font-medium text-dark-100">Service Cost & Provider</h3>
+            <p className="text-sm text-dark-400">Set the cost and select providers for this service</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -360,15 +337,29 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
               </div>
             </div>
 
-          </div>
-        );
+            {/* Exchange Rate for non-USD currencies */}
+            {serviceCurrency !== 'USD' && (
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-2">
+                  Exchange Rate to USD *
+                </label>
+                <input
+                  type="number"
+                  value={serviceExchangeRate}
+                  onChange={(e) => setServiceExchangeRate(e.target.value)}
+                  className="input-field"
+                  placeholder="e.g., 1000 for 1000 ARS = 1 USD"
+                  step="0.01"
+                  required
+                />
+                {convertedAmount && (
+                  <p className="text-sm text-primary-400 mt-1">
+                    Converted to USD: ${convertedAmount.toFixed(2)}
+                  </p>
+                )}
+              </div>
+            )}
 
-      case 6:
-        return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-dark-100">Service Providers</h3>
-            <p className="text-sm text-dark-400">Select one or more providers for this service</p>
-            
             <div>
               <label className="block text-sm font-medium text-dark-200 mb-2">
                 Search Providers
@@ -447,7 +438,7 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
           </div>
         );
 
-      case 7:
+      case 4: // Step 6: Edit Services (Review)
         return (
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-dark-100">Review Service</h3>
@@ -459,8 +450,10 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
                 <div><span className="text-primary-400">Template:</span> {currentServiceTemplate?.name}</div>
                 <div><span className="text-primary-400">Details:</span> {serviceInfo}</div>
                 <div><span className="text-primary-400">Dates:</span> {serviceDates.checkIn} to {serviceDates.checkOut}</div>
-                <div><span className="text-primary-400">Destination:</span> {destination.city}, {destination.country}</div>
                 <div><span className="text-primary-400">Cost:</span> {getCurrencySymbol(serviceCurrency)} {serviceCost}</div>
+                {convertedAmount && serviceCurrency !== 'USD' && (
+                  <div><span className="text-primary-400">USD Equivalent:</span> ${convertedAmount.toFixed(2)}</div>
+                )}
                 <div><span className="text-primary-400">Provider(s):</span> {selectedProviders.map(p => p.name).join(', ')}</div>
               </div>
             </div>
@@ -492,13 +485,13 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
         {/* Progress Bar */}
         <div className="mb-6">
           <div className="flex items-center justify-between text-sm text-dark-400 mb-2">
-            <span>Step {currentStep} of 7</span>
-            <span>{Math.round((currentStep / 7) * 100)}%</span>
+            <span>Step {currentStep} of 4</span>
+            <span>{Math.round((currentStep / 4) * 100)}%</span>
           </div>
           <div className="w-full bg-dark-700 rounded-full h-2">
             <div 
               className="bg-primary-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(currentStep / 7) * 100}%` }}
+              style={{ width: `${(currentStep / 4) * 100}%` }}
             />
           </div>
         </div>
@@ -525,7 +518,7 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
             Previous
           </button>
           
-          {currentStep < 7 ? (
+          {currentStep < 4 ? (
             <button
               onClick={handleNext}
               className="btn-primary"
@@ -538,7 +531,7 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
               disabled={loading}
               className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Adding Service...' : 'Add Service'}
+              {loading ? 'Adding Service...' : 'Complete Add Service'}
             </button>
           )}
         </div>
