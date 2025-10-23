@@ -250,7 +250,7 @@ const FinancialSummary = ({ sales, period = 'all', selectedCurrency = 'ARS' }) =
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-dark-300">Total Revenue</p>
-              <p className="text-2xl font-semibold text-dark-100"><CurrencyDisplay>{formatCurrencyEllipsis(financialMetrics.totalRevenue, selectedCurrency)}</CurrencyDisplay></p>
+              <p className="text-2xl font-semibold text-dark-100"><CurrencyDisplay>{formatCurrency(financialMetrics.totalRevenue, selectedCurrency)}</CurrencyDisplay></p>
             </div>
           </div>
         </div>
@@ -266,7 +266,7 @@ const FinancialSummary = ({ sales, period = 'all', selectedCurrency = 'ARS' }) =
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-dark-300">Total Cost</p>
-              <p className="text-2xl font-semibold text-dark-100"><CurrencyDisplay>{formatCurrencyEllipsis(financialMetrics.totalCost, selectedCurrency)}</CurrencyDisplay></p>
+              <p className="text-2xl font-semibold text-dark-100"><CurrencyDisplay>{formatCurrency(financialMetrics.totalCost, selectedCurrency)}</CurrencyDisplay></p>
             </div>
           </div>
         </div>
@@ -283,7 +283,7 @@ const FinancialSummary = ({ sales, period = 'all', selectedCurrency = 'ARS' }) =
             <div className="ml-4">
               <p className="text-sm font-medium text-dark-300">Total Profit</p>
               <p className={`text-2xl font-semibold ${getProfitColor(financialMetrics.totalProfit)}`}>
-                <CurrencyDisplay>{formatCurrencyEllipsis(financialMetrics.totalProfit, selectedCurrency)}</CurrencyDisplay>
+                <CurrencyDisplay>{formatCurrency(financialMetrics.totalProfit, selectedCurrency)}</CurrencyDisplay>
               </p>
               <p className="text-sm text-dark-400">
                 {financialMetrics.averageProfitMargin.toFixed(1)}% margin
