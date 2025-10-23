@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { getCurrencySymbol } from '../utils/formatNumbers';
 import AddServiceTypeModal from './AddServiceTypeModal';
+import ServiceEntryModal from './ServiceEntryModal';
 
 const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServiceTemplateIds = [] }) => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -24,6 +25,11 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
   
   // Service Type Modal state
   const [showAddServiceTypeModal, setShowAddServiceTypeModal] = useState(false);
+  
+  // Service cards state (for Added Services section)
+  const [serviceCards, setServiceCards] = useState([]);
+  const [showServiceEntryModal, setShowServiceEntryModal] = useState(false);
+  const [selectedServiceType, setSelectedServiceType] = useState(null);
   
   // Available data
   const [providers, setProviders] = useState([]);
@@ -72,6 +78,9 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
     setSelectedProvider(null);
     setSelectedProviders([]);
     setDestination({ city: '', country: '' });
+    setServiceCards([]);
+    setShowServiceEntryModal(false);
+    setSelectedServiceType(null);
     setError('');
   };
 
@@ -162,18 +171,17 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
   };
 
   const selectServiceType = (serviceType) => {
-    // Create a service template from the service type
-    const serviceTemplate = {
-      _id: serviceType._id,
-      name: serviceType.name,
-      description: serviceType.description || '',
-      category: 'Service Type',
-      serviceType: serviceType._id
-    };
+    // Check if we can select more of this service type (max 7)
+    const selectionCount = serviceCards.filter(card => 
+      card.serviceTypeId === serviceType._id
+    ).length;
     
-    setCurrentServiceTemplate(serviceTemplate);
-    setServiceInfo(serviceType.name);
-    setCurrentStep(2);
+    if (selectionCount >= 7) {
+      return; // Can't select more
+    }
+    
+    setSelectedServiceType(serviceType);
+    setShowServiceEntryModal(true);
   };
 
   const handleServiceTypeAdded = (newServiceType) => {
@@ -185,6 +193,16 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
       return prev;
     });
     setShowAddServiceTypeModal(false);
+  };
+
+  const handleServiceAdded = (serviceCard) => {
+    setServiceCards(prev => [...prev, serviceCard]);
+    setShowServiceEntryModal(false);
+    setSelectedServiceType(null);
+  };
+
+  const removeServiceCard = (cardId) => {
+    setServiceCards(prev => prev.filter(card => card.id !== cardId));
   };
 
   const handleSubmit = async () => {
@@ -288,6 +306,39 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
               </button>
             </div>
 
+            {/* Added Services Section */}
+            {serviceCards.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-md font-medium text-dark-100">Added Services</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {serviceCards.map((serviceCard) => (
+                    <div key={serviceCard.id} className="p-4 border rounded-lg bg-primary-500/10 border-primary-500/30">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-bold text-primary-400">
+                          Type: {serviceCard.serviceTypeName}
+                        </p>
+                        <button
+                          onClick={() => removeServiceCard(serviceCard.id)}
+                          className="text-red-400 hover:text-red-300 text-sm"
+                          title="Remove service"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <p className="text-sm text-dark-300 line-clamp-2">
+                        {serviceCard.serviceDescription}
+                      </p>
+                      <div className="mt-2">
+                        <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded">
+                          Service
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Search Section */}
             <div className="space-y-3">
               <h4 className="text-md font-medium text-dark-100">
@@ -342,21 +393,39 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
                 ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
                   {filteredServiceTypes.map((serviceType) => {
+                    // Count how many times this service type has been selected
+                    const selectionCount = serviceCards.filter(card => 
+                      card.serviceTypeId === serviceType._id
+                    ).length;
+                    const canSelectMore = selectionCount < 7;
+                    
                     return (
                       <div 
                         key={serviceType._id} 
-                        onClick={() => selectServiceType(serviceType)}
-                        className="p-4 border rounded-lg bg-dark-700/50 border-white/10 hover:bg-dark-600/50 hover:border-primary-500/30 cursor-pointer"
+                        onClick={() => canSelectMore && selectServiceType(serviceType)}
+                        className={`p-4 border rounded-lg bg-dark-700/50 border-white/10 ${canSelectMore ? 'hover:bg-dark-600/50 hover:border-primary-500/30 cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex-1">
                             <h5 className="font-medium text-dark-100">{serviceType.name}</h5>
+                            {selectionCount > 0 && (
+                              <div className="flex items-center space-x-2 mt-1">
+                                <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded">
+                                  Selected: {selectionCount}/7
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center justify-between mt-2">
                           <span className="text-xs text-dark-400 px-2 py-1 bg-dark-600/50 rounded">
                             Service Type
                           </span>
+                          {!canSelectMore && (
+                            <span className="text-xs text-red-400 bg-red-500/20 px-2 py-1 rounded">
+                              Max reached (7/7)
+                            </span>
+                          )}
                         </div>
                       </div>
                     );
@@ -496,27 +565,45 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
               ) : (
                 providers.map((provider) => {
                   const isSelected = selectedProviders.some(p => p._id === provider._id);
+                  const selectionCount = selectedProviders.filter(p => p._id === provider._id).length;
+                  const canSelectMore = selectedProviders.length < 7;
+                  
                   return (
                     <div
                       key={provider._id}
-                      onClick={() => handleProviderToggle(provider)}
+                      onClick={() => canSelectMore && handleProviderToggle(provider)}
                       className={`p-3 border rounded-lg cursor-pointer transition-colors ${
                         isSelected
                           ? 'border-primary-500 bg-primary-500/10'
-                          : 'border-dark-600 hover:border-primary-500 hover:bg-primary-500/10'
+                          : canSelectMore 
+                            ? 'border-dark-600 hover:border-primary-500 hover:bg-primary-500/10'
+                            : 'opacity-50 cursor-not-allowed'
                       }`}
                     >
                       <div className="flex items-center space-x-3">
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => handleProviderToggle(provider)}
-                          className="w-4 h-4 text-primary-600 bg-dark-800 border-white/20 rounded focus:ring-primary-500 focus:ring-2"
+                          onChange={() => canSelectMore && handleProviderToggle(provider)}
+                          disabled={!canSelectMore}
+                          className="w-4 h-4 text-primary-600 bg-dark-800 border-white/20 rounded focus:ring-primary-500 focus:ring-2 disabled:opacity-50"
                         />
                         <div className="flex-1">
                           <h4 className="font-medium text-dark-100">{provider.name}</h4>
                           <p className="text-sm text-dark-400">{provider.email}</p>
+                          {selectionCount > 0 && (
+                            <div className="flex items-center space-x-2 mt-1">
+                              <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded">
+                                Selected: {selectionCount}/7
+                              </span>
+                            </div>
+                          )}
                         </div>
+                        {!canSelectMore && !isSelected && (
+                          <span className="text-xs text-red-400 bg-red-500/20 px-2 py-1 rounded">
+                            Max reached (7/7)
+                          </span>
+                        )}
                       </div>
                     </div>
                   );
@@ -530,11 +617,23 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
                   Selected Providers ({selectedProviders.length})
                 </h4>
                 <div className="space-y-1">
-                  {selectedProviders.map((provider) => (
-                    <div key={provider._id} className="text-sm text-dark-200">
-                      • {provider.name}
-                    </div>
-                  ))}
+                  {(() => {
+                    // Group providers by name and count occurrences
+                    const providerGroups = {};
+                    selectedProviders.forEach(provider => {
+                      const providerName = provider.name;
+                      providerGroups[providerName] = (providerGroups[providerName] || 0) + 1;
+                    });
+                    
+                    // Format as "Provider 1, Provider 2 * 2, Provider 3"
+                    return Object.entries(providerGroups)
+                      .map(([name, count]) => count > 1 ? `${name} * ${count}` : name)
+                      .map((displayName, index) => (
+                        <div key={index} className="text-sm text-dark-200">
+                          • {displayName}
+                        </div>
+                      ));
+                  })()}
                 </div>
               </div>
             )}
@@ -645,6 +744,17 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
         isOpen={showAddServiceTypeModal}
         onClose={() => setShowAddServiceTypeModal(false)}
         onServiceTypeAdded={handleServiceTypeAdded}
+      />
+      
+      {/* Service Entry Modal */}
+      <ServiceEntryModal
+        isOpen={showServiceEntryModal}
+        onClose={() => {
+          setShowServiceEntryModal(false);
+          setSelectedServiceType(null);
+        }}
+        serviceType={selectedServiceType}
+        onServiceAdded={handleServiceAdded}
       />
     </div>
   );
