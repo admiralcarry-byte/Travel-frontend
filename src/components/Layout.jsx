@@ -238,30 +238,38 @@ const Layout = ({ children, showNavigation = true }) => {
                 {/* User Profile Section */}
                 {user && (
                   <div className="flex-shrink-0 border-t border-white/10 p-2 sm:p-4 md:p-6">
-                    <div className="flex items-center w-full">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center text-white font-bold text-sm sm:text-base md:text-lg shadow-lg">
-                          <DatabaseValue data-field="userInitial" className="text-sm sm:text-base md:text-lg font-bold text-white">
-                            {(user?.username || user?.email || 'U').charAt(0).toUpperCase()}
-                          </DatabaseValue>
+                    <div className="w-full space-y-3">
+                      {/* User Information Card */}
+                      <div className="w-full bg-dark-700 rounded-lg p-3 sm:p-4">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center text-white font-bold text-sm sm:text-base md:text-lg shadow-lg">
+                              <DatabaseValue data-field="userInitial" className="text-sm sm:text-base md:text-lg font-bold text-white">
+                                {(user?.username || user?.email || 'U').charAt(0).toUpperCase()}
+                              </DatabaseValue>
+                            </div>
+                          </div>
+                          <div className="ml-2 sm:ml-3 md:ml-4 flex-1 hidden md:block">
+                            <p className="text-sm font-semibold text-dark-100">
+                              {user?.username || user?.email}
+                            </p>
+                            <p className="text-xs text-dark-400 uppercase tracking-wide">
+                              {user?.role}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <div className="ml-2 sm:ml-3 md:ml-4 flex-1 hidden md:block">
-                        <p className="text-sm font-semibold text-dark-100">
-                          {user?.username || user?.email}
-                        </p>
-                        <p className="text-xs text-dark-400 uppercase tracking-wide">
-                          {user?.role}
-                        </p>
-                      </div>
+                      
+                      {/* Logout Button */}
                       <button
                         onClick={logout}
-                        className="ml-1 sm:ml-2 md:ml-3 p-1 sm:p-2 rounded-lg text-dark-400 hover:text-error-500 hover:bg-error-500/10 transition-all duration-200"
+                        className="w-full p-2 sm:p-3 rounded-lg text-dark-400 hover:text-error-500 hover:bg-error-500/10 transition-all duration-200 flex items-center justify-center"
                         title="Logout"
                       >
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
+                        <span className="hidden md:block text-sm font-medium">Logout</span>
                       </button>
                     </div>
                   </div>

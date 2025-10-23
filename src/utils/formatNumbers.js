@@ -177,7 +177,7 @@ export const formatCurrencyFull = (amount, currency = 'USD') => {
 };
 
 /**
- * Format currency with ellipsis style (e.g., "10..." instead of "10.00")
+ * Format currency with ellipsis style (e.g., "10." instead of "10.00")
  * @param {number} amount - The amount to format
  * @param {string} currency - Currency code (default: 'USD')
  * @returns {string} Formatted currency string with ellipsis style
@@ -197,7 +197,7 @@ export const formatCurrencyEllipsis = (amount, currency = 'USD') => {
   // Format with commas for thousands
   const formattedAmount = roundedAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   
-  return `${sign}${symbol}${formattedAmount}...`;
+  return `${sign}${symbol}${formattedAmount}.`;
 };
 
 /**
