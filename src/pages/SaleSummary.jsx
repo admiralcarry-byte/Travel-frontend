@@ -1197,9 +1197,6 @@ const SaleSummary = () => {
               <p className="text-dark-200">
                 Sale with {sale.services?.length || 0} service template instance{(sale.services?.length || 0) !== 1 ? 's' : ''}.
               </p>
-              {sale.notes && (
-                <p className="text-dark-200 mt-2">{sale.notes}</p>
-              )}
             </div>
 
             {/* Payments */}
