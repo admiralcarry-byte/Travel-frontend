@@ -1352,7 +1352,7 @@ const SaleSummary = () => {
               </div>
               
               <p className="text-dark-300 mb-4">
-                You are about to permanently delete this sale. All associated data including passengers, services, providers, and payments will be removed.
+                You are about to permanently delete this sale record. The sale data including passenger information, service details, provider assignments, and payment records associated with this sale will be removed. Note: The underlying provider, service, and passenger entities will remain in the system.
               </p>
               
               <div className="bg-dark-700/50 border border-red-500/30 rounded-lg p-3">
