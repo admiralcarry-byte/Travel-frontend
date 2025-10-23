@@ -249,8 +249,8 @@ const Layout = ({ children, showNavigation = true }) => {
                               </DatabaseValue>
                             </div>
                           </div>
-                          <div className="ml-2 sm:ml-3 md:ml-4 flex-1 hidden md:block">
-                            <p className="text-sm font-semibold text-dark-100">
+                          <div className="ml-2 sm:ml-3 md:ml-4 flex-1 hidden md:block min-w-0">
+                            <p className="text-sm font-semibold text-dark-100 truncate" title={user?.username || user?.email}>
                               {user?.username || user?.email}
                             </p>
                             <p className="text-xs text-dark-400 uppercase tracking-wide">
