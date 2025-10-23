@@ -154,3 +154,13 @@ option[class*="notranslate"],
 option .db-value {
   translate: no !important;
 }
+
+/* Protection for user/passenger initials */
+[data-field="passengerInitial"],
+[data-field="userInitial"],
+[data-field="customerInitial"],
+[data-field="passengerInitial"] *,
+[data-field="userInitial"] *,
+[data-field="customerInitial"] * {
+  translate: no !important;
+}

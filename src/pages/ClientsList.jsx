@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import DatabaseValue from '../components/DatabaseValue';
 
 const ClientsList = () => {
   const navigate = useNavigate();
@@ -259,9 +260,9 @@ const ClientsList = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
                         <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-accent-500 to-accent-600 flex items-center justify-center shadow-lg">
-                          <span className="text-lg font-bold text-white">
+                          <DatabaseValue data-field="passengerInitial" className="text-lg font-bold text-white">
                             {client.name?.charAt(0).toUpperCase() || 'C'}
-                          </span>
+                          </DatabaseValue>
                         </div>
                         <div>
                           <div className="text-lg font-semibold text-dark-100">

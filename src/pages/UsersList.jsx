@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useSystemStats } from '../contexts/SystemStatsContext';
+import DatabaseValue from '../components/DatabaseValue';
 
 const UsersList = () => {
   const navigate = useNavigate();
@@ -235,9 +236,9 @@ const UsersList = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg">
-                        <span className="text-lg font-bold text-white">
+                        <DatabaseValue data-field="userInitial" className="text-lg font-bold text-white">
                           {user.username?.charAt(0).toUpperCase() || 'U'}
-                        </span>
+                        </DatabaseValue>
                       </div>
                       <div>
                         <div className="text-lg font-semibold text-dark-100">

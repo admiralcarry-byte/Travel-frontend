@@ -6,6 +6,7 @@ import { formatCurrencyCompact } from '../utils/formatNumbers';
 import { t, getCurrentLanguage } from '../utils/i18n';
 import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 import CurrencyDisplay from './CurrencyDisplay';
+import DatabaseValue from './DatabaseValue';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -994,9 +995,9 @@ const AdminDashboard = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg">
-                        <span className="text-lg font-bold text-white">
+                        <DatabaseValue data-field="userInitial" className="text-lg font-bold text-white">
                           {user.username.charAt(0).toUpperCase()}
-                        </span>
+                        </DatabaseValue>
                       </div>
                       <div>
                         <div className="text-lg font-semibold text-dark-100">

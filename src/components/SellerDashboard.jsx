@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 import { formatCurrencyCompact, formatCurrency, formatCurrencyEllipsis } from '../utils/formatNumbers';
+import DatabaseValue from './DatabaseValue';
 
 const SellerDashboard = () => {
   const navigate = useNavigate();
@@ -278,9 +279,9 @@ const SellerDashboard = () => {
                   <div className="flex items-center space-x-6">
                     <div className="flex-shrink-0">
                       <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-primary-500 via-accent-500 to-success-500 flex items-center justify-center shadow-lg">
-                        <span className="text-xl font-bold text-white">
+                        <DatabaseValue data-field="customerInitial" className="text-xl font-bold text-white">
                           {sale.customer.charAt(0).toUpperCase()}
-                        </span>
+                        </DatabaseValue>
                       </div>
                     </div>
                     <div className="min-w-0 flex-1">

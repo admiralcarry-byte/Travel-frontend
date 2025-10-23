@@ -38,9 +38,9 @@ const TruncatedText = ({ text, className = '', title = '' }) => {
       translate="no"
     >
       {text}
-      {isOverflowing && !isExpanded && (
-        <span className="text-xs text-dark-500 ml-1">...</span>
-      )}
+      {/* {isOverflowing && !isExpanded && (
+        // <span className="text-xs text-dark-500 ml-1">...</span>
+      )} */}
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import ThemeToggle from './ThemeToggle';
 import PageTransition from './PageTransition';
+import DatabaseValue from './DatabaseValue';
 
 const Layout = ({ children, showNavigation = true }) => {
   const { user, logout, isAdmin, isSeller } = useAuth();
@@ -240,7 +241,9 @@ const Layout = ({ children, showNavigation = true }) => {
                     <div className="flex items-center w-full">
                       <div className="flex-shrink-0">
                         <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center text-white font-bold text-sm sm:text-base md:text-lg shadow-lg">
-                          {(user?.username || user?.email || 'U').charAt(0).toUpperCase()}
+                          <DatabaseValue data-field="userInitial" className="text-sm sm:text-base md:text-lg font-bold text-white">
+                            {(user?.username || user?.email || 'U').charAt(0).toUpperCase()}
+                          </DatabaseValue>
                         </div>
                       </div>
                       <div className="ml-2 sm:ml-3 md:ml-4 flex-1 hidden md:block">
