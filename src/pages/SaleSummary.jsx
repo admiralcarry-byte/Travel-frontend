@@ -370,6 +370,8 @@ const SaleSummary = () => {
   const [showServices, setShowServices] = useState(false);
   const [showProviders, setShowProviders] = useState(false);
   const [showPassengers, setShowPassengers] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchSale();
@@ -474,6 +476,32 @@ const SaleSummary = () => {
       console.error('Error checking sale status:', error);
     }
     return null;
+  };
+
+  // Function to delete sale
+  const handleDeleteSale = async () => {
+    try {
+      setIsDeleting(true);
+      const response = await api.delete(`/api/sales/${id}`);
+      
+      if (response.data.success) {
+        // Navigate back to sales list after successful deletion
+        navigate('/sales');
+      } else {
+        console.error('Delete sale failed:', response.data.message);
+        alert('Failed to delete sale. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error deleting sale:', error);
+      if (error.response?.data?.message) {
+        alert(`Error deleting sale: ${error.response.data.message}`);
+      } else {
+        alert('An error occurred while deleting the sale. Please try again.');
+      }
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
   };
 
 
@@ -723,6 +751,15 @@ const SaleSummary = () => {
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                title="Delete Sale"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </button>
             </div>
@@ -1281,6 +1318,84 @@ const SaleSummary = () => {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10000]">
+          <div className="bg-dark-800 rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-dark-100">
+                Delete Sale
+              </h3>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="text-dark-400 hover:text-dark-100 transition-colors"
+                disabled={isDeleting}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mr-4">
+                  <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-lg font-medium text-dark-100">Are you sure?</h4>
+                  <p className="text-sm text-dark-300">This action cannot be undone.</p>
+                </div>
+              </div>
+              
+              <p className="text-dark-300 mb-4">
+                You are about to permanently delete this sale. All associated data including passengers, services, providers, and payments will be removed.
+              </p>
+              
+              <div className="bg-dark-700/50 border border-red-500/30 rounded-lg p-3">
+                <p className="text-sm text-dark-200 font-medium">Sale ID: {sale?.id}</p>
+                <p className="text-sm text-dark-300">Created: {sale?.createdAt ? new Date(sale.createdAt).toLocaleDateString() : 'N/A'}</p>
+                <p className="text-sm text-dark-300">Status: {sale?.status?.charAt(0).toUpperCase() + sale?.status?.slice(1) || 'N/A'}</p>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+                className="px-4 py-2 text-dark-300 hover:text-dark-100 border border-white/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteSale}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Delete Sale</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
