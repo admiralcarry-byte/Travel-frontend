@@ -12,6 +12,13 @@ const api = axios.create({
   },
 });
 
+// Log API instance configuration
+console.log('🔗 API Instance Configuration:', {
+  baseURL: apiConfig.baseURL,
+  timeout: 120000,
+  withCredentials: true
+});
+
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
@@ -39,6 +46,17 @@ api.interceptors.response.use(
       message: error.message,
       response: error.response?.data
     });
+    
+    // Handle CORS errors
+    if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+      console.error('❌ Network Error - Check CORS configuration and API URL');
+      console.error('API Base URL:', apiConfig.baseURL);
+    }
+    
+    // Handle CORS preflight errors
+    if (error.response?.status === 0 || error.message.includes('CORS')) {
+      console.error('❌ CORS Error - Check backend CORS configuration');
+    }
     
     if (error.response?.status === 401) {
       // Token expired or invalid, clear it

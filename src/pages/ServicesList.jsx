@@ -446,7 +446,7 @@ const ServicesList = () => {
                   )}
 
                   {/* Service Content */}
-                  <div className="p-6">
+                  <div className="p-6 notranslate" translate="no">
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="text-lg font-semibold text-dark-100 line-clamp-2">
                         {service.destino}

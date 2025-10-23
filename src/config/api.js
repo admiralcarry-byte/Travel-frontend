@@ -2,6 +2,29 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
   (import.meta.env.PROD ? 'https://travel-backend-production-5253.up.railway.app' : 'http://localhost:5000');
 
+// Log API configuration in development
+if (import.meta.env.DEV) {
+  console.log('🔧 Development API Configuration:', {
+    VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+    PROD: import.meta.env.PROD,
+    API_BASE_URL
+  });
+}
+
+// Log API configuration in production for debugging
+if (import.meta.env.PROD) {
+  console.log('🚀 Production API Configuration:', {
+    VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+    API_BASE_URL,
+    NODE_ENV: import.meta.env.NODE_ENV
+  });
+  
+  // Validate API configuration
+  if (!API_BASE_URL || API_BASE_URL === 'undefined') {
+    console.error('❌ API_BASE_URL is not properly configured');
+  }
+}
+
 // Export API_BASE_URL for components that need direct URL access
 export { API_BASE_URL };
 

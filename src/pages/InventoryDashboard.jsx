@@ -152,6 +152,28 @@ const InventoryDashboard = () => {
     }
   }, [authLoading, user, isAdmin, isSeller, navigate, fetchCupos, fetchServices]);
 
+  // Listen for cupo updates from other components
+  useEffect(() => {
+    const handleCupoUpdate = (event) => {
+      const { cupoId, updatedCupo } = event.detail;
+      
+      // Update the cupo in the local state
+      setCupos(prevCupos => 
+        prevCupos.map(cupo => 
+          cupo._id === cupoId || cupo.id === cupoId 
+            ? { ...cupo, ...updatedCupo }
+            : cupo
+        )
+      );
+    };
+
+    window.addEventListener('cupoUpdated', handleCupoUpdate);
+    
+    return () => {
+      window.removeEventListener('cupoUpdated', handleCupoUpdate);
+    };
+  }, []);
+
   // Search and filter effect
   useEffect(() => {
     if (loading) return; // Don't fetch if still on initial load

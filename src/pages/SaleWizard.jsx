@@ -1495,12 +1495,18 @@ const SaleWizard = () => {
     let originalAmount = parseFloat(currentServiceCost);
     let exchangeRate = null;
 
+    // Clean serviceInfo to prevent undefined concatenation
+    let cleanServiceInfo = currentServiceInfo || '';
+    cleanServiceInfo = cleanServiceInfo.replace(/^Service: undefined - /, '');
+    cleanServiceInfo = cleanServiceInfo.replace(/^undefinedundefinedService: undefined - /, '');
+    cleanServiceInfo = cleanServiceInfo.replace(/^undefined/, '');
+    
     const newServiceInstance = {
       id: currentServiceInstance?.id || Date.now(), // Use existing ID if editing, or create new one
       templateId: currentServiceTemplate._id,
       templateName: currentServiceTemplate.name,
       templateCategory: currentServiceTemplate.category,
-      serviceInfo: currentServiceInfo,
+      serviceInfo: cleanServiceInfo,
       checkIn: currentServiceDates.checkIn,
       checkOut: currentServiceDates.checkOut,
       cost: costInUSD, // Always store in USD
@@ -1817,8 +1823,8 @@ const SaleWizard = () => {
         ...service,
         id: `service_${service._id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate truly unique ID
         serviceId: service._id, // Store the service template ID
-        serviceName: service.name,
-        serviceInfo: service.name, // Add serviceInfo for display
+        serviceName: service.name || 'Unknown Service',
+        serviceInfo: service.name || 'Unknown Service', // Add serviceInfo for display, ensure no undefined values
         priceClient: 0,
         costProvider: 0,
         quantity: 1,

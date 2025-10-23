@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:local": "vite",
-    "build": "vite build",
+    "build": "NODE_ENV=production vite build",
     "build:local": "NODE_ENV=development vite build",
     "lint": "eslint .",
     "preview": "vite preview",

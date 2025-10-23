@@ -86,23 +86,28 @@ export const formatCurrency = (amount, currency = 'USD', locale = 'en-US') => {
     amount = 0;
   }
 
+  // Check if the amount is a whole number
+  const isWholeNumber = amount % 1 === 0;
+  const decimals = isWholeNumber ? 0 : 2;
 
   // Handle ARS currency specially since it's not a standard ISO currency code
   if (currency.toUpperCase() === 'ARS') {
-    const result = `${t('arsSymbol')}${formatNumberWithCommas(amount, 2)}`;
+    const result = `${t('arsSymbol')}${formatNumberWithCommas(amount, decimals)}`;
     return result;
   }
 
   // Handle USD currency
   if (currency.toUpperCase() === 'USD') {
-    const result = `${t('usdSymbol')}${formatNumberWithCommas(amount, 2)}`;
+    const result = `${t('usdSymbol')}${formatNumberWithCommas(amount, decimals)}`;
     return result;
   }
 
   // For other currencies, use Intl.NumberFormat
   const formatted = new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: currency
+    currency: currency,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
   }).format(amount);
   
   return formatted;

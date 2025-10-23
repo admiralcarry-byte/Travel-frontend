@@ -225,7 +225,7 @@ const CupoForm = () => {
   };
 
   const handleServiceDescriptionComplete = () => {
-    if (selectedServiceType && serviceName.trim() && serviceDescription.trim()) {
+    if (selectedServiceType && serviceDescription.trim()) {
       if (isEditingServiceType) {
         // Update existing service type
         updateServiceType(selectedServiceType._id, serviceDescription.trim());
@@ -233,7 +233,6 @@ const CupoForm = () => {
         // Create new service card
         const newServiceCard = {
           id: Date.now(),
-          serviceName: serviceName.trim(),
           type: selectedServiceType.name,
           description: serviceDescription.trim()
         };
@@ -450,13 +449,15 @@ const CupoForm = () => {
           throw new Error('Provider ID is required but not provided');
         }
         
-        const fallbackTypeId = '68f695646521249eb08ba3af'; // Hotel service type ID as fallback
+        // Find the service type ID from the selected service type
+        const selectedServiceType = serviceTypes.find(st => st.name === serviceCard.type);
+        const serviceTypeId = selectedServiceType?._id || '68f695646521249eb08ba3af'; // Fallback to Hotel if not found
         
         const serviceResponse = await api.post('/api/services', {
-          name: serviceCard.serviceName,
-          destino: serviceCard.serviceName,
-          type: 'Hotel', // Service controller expects this
-          typeId: fallbackTypeId, // Service model requires this
+          name: serviceCard.type, // Use service type as name
+          destino: serviceCard.type, // Use service type as destino
+          type: serviceCard.type, // Use the actual service type
+          typeId: serviceTypeId, // Use the correct service type ID
           description: serviceCard.description,
           providerId: formData.providerId,
           sellingPrice: formData.metadata.value || 0,
@@ -477,14 +478,16 @@ const CupoForm = () => {
           throw new Error('Provider ID is required but not provided');
         }
         
-        const fallbackTypeId = '68f695646521249eb08ba3af'; // Hotel service type ID as fallback
+        // Find the service type from the selected template ID
+        const selectedServiceType = serviceTypes.find(st => st._id === formData.serviceTemplateId);
+        const serviceTypeId = selectedServiceType?._id || '68f695646521249eb08ba3af'; // Fallback to Hotel if not found
         
         const serviceResponse = await api.post('/api/services', {
-          name: formData.serviceTemplateId, // Use the selected template ID as name
-          destino: formData.serviceTemplateId,
-          type: 'Hotel', // Service controller expects this
-          typeId: fallbackTypeId, // Service model requires this
-          description: formData.serviceTemplateId,
+          name: selectedServiceType?.name || formData.serviceTemplateId, // Use the service type name
+          destino: selectedServiceType?.name || formData.serviceTemplateId,
+          type: selectedServiceType?.name || 'Hotel', // Use the actual service type
+          typeId: serviceTypeId, // Use the correct service type ID
+          description: selectedServiceType?.description || formData.serviceTemplateId,
           providerId: formData.providerId,
           sellingPrice: formData.metadata.value || 0,
           baseCurrency: formData.metadata.currency || 'USD'
@@ -646,8 +649,7 @@ const CupoForm = () => {
                   <div className="bg-dark-700/50 border border-white/10 rounded-lg p-4 notranslate">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="text-sm font-medium text-dark-100 mb-2">{serviceCard.serviceName}</h4>
-                        <p className="text-xs text-primary-400 mb-1">Service Type: {serviceCard.type}</p>
+                        <p className="text-sm font-bold text-primary-400 mb-2">Service Type: {serviceCard.type}</p>
                         <p className="text-xs text-dark-300">{serviceCard.description}</p>
                       </div>
                       <button
@@ -1165,20 +1167,6 @@ const CupoForm = () => {
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="serviceName" className="block text-sm font-medium text-dark-200 mb-2">
-                  Service Name *
-                </label>
-                <input
-                  id="serviceName"
-                  type="text"
-                  value={serviceName}
-                  onChange={(e) => setServiceName(e.target.value)}
-                  className="input-field"
-                  placeholder="Enter service name..."
-                  required
-                />
-              </div>
 
               <div>
                 <label htmlFor="serviceDescription" className="block text-sm font-medium text-dark-200 mb-2">
@@ -1210,7 +1198,7 @@ const CupoForm = () => {
               </button>
               <button
                 onClick={handleServiceDescriptionComplete}
-                disabled={!serviceName.trim() || !serviceDescription.trim()}
+                disabled={!serviceDescription.trim()}
                 className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Complete

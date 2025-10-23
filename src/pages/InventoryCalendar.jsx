@@ -14,6 +14,20 @@ const InventoryCalendar = () => {
     fetchCalendarData();
   }, [currentDate, viewMode]);
 
+  // Listen for cupo updates from other components
+  useEffect(() => {
+    const handleCupoUpdate = () => {
+      // Refresh calendar data when a cupo is updated
+      fetchCalendarData();
+    };
+
+    window.addEventListener('cupoUpdated', handleCupoUpdate);
+    
+    return () => {
+      window.removeEventListener('cupoUpdated', handleCupoUpdate);
+    };
+  }, []);
+
   const fetchCalendarData = async () => {
     try {
       setLoading(true);

@@ -10,7 +10,7 @@ import CurrencyDisplay from './CurrencyDisplay';
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { systemStats, businessStats, fetchSystemStats, fetchBusinessStats, refreshStats } = useSystemStats();
-  const { formatCurrency, formatCurrencyJSX } = useCurrencyFormat();
+  const { formatCurrency, formatCurrencyJSX, formatCurrencyFullJSX } = useCurrencyFormat();
 
   // User Management State
   const [users, setUsers] = useState([]);
@@ -449,7 +449,7 @@ const AdminDashboard = () => {
                 {loading ? (
                   <div className="animate-pulse bg-success-400/20 h-8 w-32 rounded"></div>
                 ) : (
-                  formatCurrencyJSX(businessStats.usdSales, 'USD', 'en-US', '...')
+                  formatCurrencyFullJSX(businessStats.usdSales, 'USD', '...')
                 )}
               </p>
               <p className="text-sm text-dark-400 mt-2"><CurrencyDisplay>{t('usdSymbol')}</CurrencyDisplay> <CurrencyDisplay>transactions</CurrencyDisplay></p>
@@ -470,7 +470,7 @@ const AdminDashboard = () => {
                 {loading ? (
                   <div className="animate-pulse bg-warning-400/20 h-8 w-32 rounded"></div>
                 ) : (
-                  formatCurrencyJSX(businessStats.arsSales, 'ARS', 'en-US', '...')
+                  formatCurrencyFullJSX(businessStats.arsSales, 'ARS', '...')
                 )}
               </p>
               <p className="text-sm text-dark-400 mt-2"><CurrencyDisplay>{t('arsSymbol')}</CurrencyDisplay> <CurrencyDisplay>transactions</CurrencyDisplay></p>

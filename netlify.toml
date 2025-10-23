@@ -15,6 +15,10 @@
   NODE_VERSION = "20"
   # API Base URL for production
   VITE_API_BASE_URL = "https://travel-backend-production-5253.up.railway.app"
+  # Set production mode
+  NODE_ENV = "production"
+  # Build command
+  BUILD_COMMAND = "npm run build"
 
 # Redirect all requests to index.html for client-side routing
 [[redirects]]

@@ -159,7 +159,7 @@ const NewSaleWizardSteps = ({
       id: serviceCard.id,
       serviceTypeId: serviceCard.serviceTypeId,
       serviceTypeName: serviceCard.serviceTypeName,
-      serviceName: serviceCard.serviceName,
+      serviceName: serviceCard.serviceName || serviceCard.serviceTypeName, // Use serviceTypeName as fallback
       serviceInfo: serviceCard.serviceDescription,
       checkIn: currentServiceDates.checkIn || '',
       checkOut: currentServiceDates.checkOut || '',
@@ -540,7 +540,7 @@ const NewSaleWizardSteps = ({
                 {serviceCards.map((serviceCard) => (
                   <div key={serviceCard.id} className="p-4 border rounded-lg bg-primary-500/10 border-primary-500/30">
                     <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-medium text-dark-100 notranslate">{serviceCard.serviceName}</h5>
+                      <p className="text-sm font-bold text-primary-400 notranslate">Type: {serviceCard.serviceTypeName}</p>
                       <button
                         onClick={() => removeServiceCard(serviceCard.id)}
                         className="text-red-400 hover:text-red-300 text-sm"
@@ -549,7 +549,6 @@ const NewSaleWizardSteps = ({
                         ✕
                       </button>
                     </div>
-                    <p className="text-xs text-primary-400 mb-2 notranslate">Type: {serviceCard.serviceTypeName}</p>
                     <p className="text-sm text-dark-300 line-clamp-2 notranslate">{serviceCard.serviceDescription}</p>
                     <div className="mt-2">
                       <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded notranslate">
@@ -804,9 +803,7 @@ const NewSaleWizardSteps = ({
                   <div key={instance.id} className="text-sm text-dark-300 bg-dark-700/30 rounded p-2">
                     <span className="text-green-400 font-medium">•</span> {index + 1}. {instance.serviceName || instance.templateName}
                     <span className="text-dark-400 ml-2">({instance.serviceInfo})</span>
-                    {instance.cost && instance.cost > 0 && (
-                      <span className="text-dark-400 ml-2">- {globalCurrency === 'USD' ? 'U$' : 'AR$'} {parseFloat(instance.cost).toFixed(2)}</span>
-                    )}
+                    <span className="text-dark-400 ml-2">- {globalCurrency === 'USD' ? 'U$' : 'AR$'} {parseFloat(instance.cost || 0).toFixed(2)}</span>
                 </div>
               ))}
             </div>
@@ -888,9 +885,7 @@ const NewSaleWizardSteps = ({
                     <div className="text-xs text-dark-400 space-y-1">
                       <div><span className="text-primary-400">Dates:</span> {instance.checkIn && instance.checkOut ? `${instance.checkIn} to ${instance.checkOut}` : 'Not specified'}</div>
                       <div><span className="text-primary-400">Destination:</span> {instance.destination?.city || instance.destination?.name || 'Not specified'}</div>
-                      {instance.cost && instance.cost > 0 && (
-                        <div><span className="text-primary-400">Cost:</span> {globalCurrency === 'USD' ? 'U$' : 'AR$'} {parseFloat(instance.cost).toFixed(2)}</div>
-                      )}
+                      <div><span className="text-primary-400">Cost:</span> {globalCurrency === 'USD' ? 'U$' : 'AR$'} {parseFloat(instance.cost || 0).toFixed(2)}</div>
                       <div><span className="text-primary-400">Providers:</span> {(() => {
                         console.log(`🔍 Service ${instance.templateName} providers:`, instance.providers);
                         console.log(`🔍 Service ${instance.templateName} provider:`, instance.provider);

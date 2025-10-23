@@ -149,7 +149,7 @@ const DataTable = ({
   return (
     <div className={`card-glass overflow-hidden ${className}`}>
       <div className="overflow-x-auto">
-        <table className="w-full divide-y divide-white/10">
+        <table className="w-full divide-y divide-white/10 notranslate" translate="no">
           <thead className="bg-dark-700">
             <tr>
               {columns.map((column, index) => (

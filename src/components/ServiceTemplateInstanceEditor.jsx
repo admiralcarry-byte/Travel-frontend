@@ -123,8 +123,8 @@ const ServiceTemplateInstanceEditor = ({
          // Extract just the description part from the value (remove any category prefix)
          let cleanDescription = value;
          cleanDescription = cleanDescription.replace(/^Service: undefined - /, '');
-         cleanDescription = cleanDescription.replace(/^Service: [^-]+ - /, '');
-         cleanDescription = cleanDescription.replace(/^[^-]+ - /, ''); // Remove any category prefix
+         cleanDescription = cleanDescription.replace(/^undefinedundefinedService: undefined - /, '');
+         cleanDescription = cleanDescription.replace(/^undefined/, ''); // Remove any undefined prefix
          
          updateData.serviceInfo = value; // Keep the original value for display field
          // Don't update serviceName - only update notes field
@@ -173,8 +173,8 @@ const ServiceTemplateInstanceEditor = ({
           // Extract just the description part from the value (remove any category prefix)
           let cleanDescription = value;
           cleanDescription = cleanDescription.replace(/^Service: undefined - /, '');
-          cleanDescription = cleanDescription.replace(/^Service: [^-]+ - /, '');
-          cleanDescription = cleanDescription.replace(/^[^-]+ - /, ''); // Remove any category prefix
+          cleanDescription = cleanDescription.replace(/^undefinedundefinedService: undefined - /, '');
+          cleanDescription = cleanDescription.replace(/^undefined/, ''); // Remove any undefined prefix
           
           await api.put(`/api/services/${instance.templateId}`, {
             description: cleanDescription
@@ -400,6 +400,20 @@ const ServiceTemplateInstanceEditor = ({
                 autoFocus
               />
             </div>
+          ) : field === 'serviceInfo' ? (
+            <div className="flex-1">
+              <textarea
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.ctrlKey) saveField(field, editValue);
+                  if (e.key === 'Escape') cancelEditing();
+                }}
+                className="input-field text-sm w-full h-20 resize-none"
+                placeholder="Enter service details..."
+                autoFocus
+              />
+            </div>
           ) : field === 'cost' ? (
             <div className="flex-1 space-y-2">
               <div className="flex items-center space-x-2">
@@ -470,10 +484,7 @@ const ServiceTemplateInstanceEditor = ({
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <h4 className="font-medium text-dark-100 mb-1">
-            {instance.templateName || 'Service'}
-          </h4>
-          <div className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded inline-block">
+          <div className="text-lg font-bold text-primary-400 bg-primary-500/20 px-3 py-2 rounded inline-block">
             {instance.templateCategory}
           </div>
         </div>
@@ -492,18 +503,17 @@ const ServiceTemplateInstanceEditor = ({
 
       {/* Editable Fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Service Info - Hidden as requested */}
-        {/* {renderFieldEditor('serviceInfo', 'Service Details', (() => {
+        {/* Service Details - Same width as Cost section */}
+        {renderFieldEditor('serviceInfo', 'Service Details', (() => {
           // Clean up any "Service: undefined -" text from serviceDescription
-          let cleanDescription = instance.serviceDescription || 'No description';
+          let cleanDescription = instance.serviceDescription || instance.serviceInfo || 'No description';
           cleanDescription = cleanDescription.replace(/^Service: undefined - /, '');
-          cleanDescription = cleanDescription.replace(/^Service: [^-]+ - /, '');
+          cleanDescription = cleanDescription.replace(/^undefinedundefinedService: undefined - /, '');
+          cleanDescription = cleanDescription.replace(/^undefined/, '');
           // Show only the clean description, not the formatted string with category
           return cleanDescription;
-        })())} */}
-        
-        
-        {/* Cost - Show stored cost value, not calculated value */}
+        })())}
+          {/* Cost - Show stored cost value, not calculated value */}
         {renderFieldEditor('cost', 'Cost', (() => {
           // Use the stored cost value directly from the database
           if (instance.cost !== null && instance.cost !== undefined) {

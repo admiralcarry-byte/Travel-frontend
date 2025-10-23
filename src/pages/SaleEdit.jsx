@@ -283,6 +283,7 @@ const SaleEdit = () => {
       const serviceData = {
         serviceId: updatedInstance.templateId,
         serviceName: updatedInstance.serviceInfo,
+        serviceInfo: updatedInstance.serviceInfo, // Add serviceInfo field for Sale Summary compatibility
         priceClient: updatedInstance.cost,
         costProvider: updatedInstance.cost, // Use the stored cost value directly
         currency: updatedInstance.currency,
@@ -377,6 +378,7 @@ const SaleEdit = () => {
       
       const updatePayload = {
         serviceName: updatedInstance.serviceInfo,
+        serviceInfo: updatedInstance.serviceInfo, // Add serviceInfo for Sale Summary compatibility
         priceClient: updatedInstance.cost,
         costProvider: updatedInstance.cost, // Use the stored cost value directly
         currency: updatedInstance.currency,

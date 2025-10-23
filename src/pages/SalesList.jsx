@@ -31,10 +31,11 @@ const TruncatedText = ({ text, className = '', title = '' }) => {
   return (
     <div
       ref={textRef}
-      className={`${className} ${isExpanded ? 'overflow-auto' : 'truncate'} ${isOverflowing ? 'cursor-pointer hover:bg-dark-700/20 rounded px-1 -mx-1' : ''}`}
+      className={`${className} ${isExpanded ? 'overflow-auto' : 'truncate'} ${isOverflowing ? 'cursor-pointer hover:bg-dark-700/20 rounded px-1 -mx-1' : ''} notranslate`}
       title={isOverflowing ? `${title || text} (Double-click to expand)` : (title || text)}
       onDoubleClick={handleDoubleClick}
       style={isExpanded ? { maxHeight: '100px', whiteSpace: 'normal' } : {}}
+      translate="no"
     >
       {text}
       {isOverflowing && !isExpanded && (

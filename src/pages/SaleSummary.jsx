@@ -872,6 +872,7 @@ const SaleSummary = () => {
                       let serviceName = 'Unknown Service';
                       let serviceType = 'Unknown Type';
                       let serviceDescription = '';
+                      let serviceNotes = '';
                       let serviceCost = null;
                       let serviceCurrency = serviceSale.currency || sale.saleCurrency;
                       let startDate = null;
@@ -906,6 +907,24 @@ const SaleSummary = () => {
                         serviceDescription = '';
                       }
                       
+                      // Extract service notes
+                      if (serviceSale.notes) {
+                        serviceNotes = serviceSale.notes;
+                      }
+                      
+                      // Clean up any "undefined" values and remove "undefined -" prefix from notes
+                      if (serviceNotes && serviceNotes.includes('undefined -')) {
+                        serviceNotes = serviceNotes.replace('undefined -', '').trim();
+                      }
+                      if (serviceNotes === 'undefined' || serviceNotes === 'undefined -') {
+                        serviceNotes = '';
+                      }
+                      
+                      // Remove "Service:" prefix from notes
+                      if (serviceNotes && serviceNotes.startsWith('Service: ')) {
+                        serviceNotes = serviceNotes.replace(/^Service: /, '').trim();
+                      }
+                      
                       
                       // Extract pricing information - use costProvider instead of priceClient
                       // Handle costProvider = 0 case by checking for null/undefined explicitly
@@ -929,6 +948,7 @@ const SaleSummary = () => {
                         serviceName,
                         serviceType,
                         serviceDescription,
+                        serviceNotes,
                         serviceCost,
                         serviceCurrency,
                         startDate,
@@ -937,35 +957,29 @@ const SaleSummary = () => {
 
                       return (
                         <div key={index} className="bg-green-600/20 border border-green-500/30 rounded-lg p-4">
-                          {/* Service Name - Top Left */}
+                          {/* Service Type and Description - Top Section */}
                           <div className="mb-3">
-                            <h3 className="text-lg font-semibold text-green-300">
-                              {serviceName}
-                            </h3>
-                          </div>
-                          
-                          {/* Service Type (Left) and Price (Right) - Second Row */}
-                          <div className="flex justify-between items-center mb-3">
-                            <div>
-                              <span className="text-sm text-green-200">Type: {serviceType}</span>
-                            </div>
-                            {serviceCost && (
-                              <div className="text-right">
-                                <p className="text-lg font-semibold text-green-300">
-                                  <CurrencyDisplay>{parseFloat(serviceCost).toFixed(2)} {getCurrencySymbol(serviceCurrency)}</CurrencyDisplay>
-                                </p>
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <span className="text-lg font-bold text-green-200">Type: {serviceType}</span>
+                                {serviceNotes && (
+                                  <div className="mt-2">
+                                    <span className="text-sm font-medium text-green-200">Notes: </span>
+                                    <span className="text-sm text-green-100">
+                                      {serviceNotes}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                          
-                          {/* Service Description - Third Row */}
-                          {serviceDescription && (
-                            <div className="mb-3">
-                              <p className="text-sm text-green-100 line-clamp-2">
-                                {serviceDescription}
-                              </p>
+                              {serviceCost && (
+                                <div className="text-right">
+                                  <p className="text-lg font-semibold text-green-300">
+                                    <CurrencyDisplay>{parseFloat(serviceCost).toFixed(2)} {getCurrencySymbol(serviceCurrency)}</CurrencyDisplay>
+                                  </p>
+                                </div>
+                              )}
                             </div>
-                          )}
+                          </div>
                           
                           {/* Start and End Dates - Fourth Row */}
                           {(startDate || endDate) && (

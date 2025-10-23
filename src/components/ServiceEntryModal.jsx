@@ -2,24 +2,17 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 
 const ServiceEntryModal = ({ isOpen, onClose, serviceType, onServiceAdded }) => {
-  const [serviceName, setServiceName] = useState('');
   const [serviceDescription, setServiceDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const resetForm = () => {
-    setServiceName('');
     setServiceDescription('');
     setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!serviceName?.trim()) {
-      setError('Service name is required');
-      return;
-    }
     
     if (!serviceDescription?.trim()) {
       setError('Service description is required');
@@ -35,7 +28,6 @@ const ServiceEntryModal = ({ isOpen, onClose, serviceType, onServiceAdded }) => 
         id: `service_${serviceType._id}_${Date.now()}`,
         serviceTypeId: serviceType._id,
         serviceTypeName: serviceType.name,
-        serviceName: serviceName.trim(),
         serviceDescription: serviceDescription.trim(),
         timestamp: new Date().toISOString()
       };
@@ -91,22 +83,6 @@ const ServiceEntryModal = ({ isOpen, onClose, serviceType, onServiceAdded }) => 
             <h4 className="font-medium text-dark-100">Service Type: {serviceType?.name}</h4>
           </div>
 
-          {/* Service Name */}
-          <div>
-            <label htmlFor="serviceName" className="block text-sm font-medium text-dark-200 mb-2">
-              Service Name *
-            </label>
-            <input
-              id="serviceName"
-              type="text"
-              value={serviceName}
-              onChange={(e) => setServiceName(e.target.value)}
-              className="input-field w-full"
-              placeholder="Enter service name..."
-              required
-              disabled={loading}
-            />
-          </div>
 
           {/* Service Description */}
           <div>

@@ -301,7 +301,7 @@ const ProvisionalReceipt = ({ paymentId, saleId, onClose, onReceiptCompleted, on
           </div>
 
           {/* Simplified Receipt Content */}
-          <div id="receipt-content" className="bg-white rounded-lg border border-gray-200 p-4">
+          <div id="receipt-content" className="bg-white rounded-lg border border-gray-200 p-4 notranslate" translate="no">
             <div className="space-y-3">
               {/* Amount */}
               <div className="flex justify-between items-center">
