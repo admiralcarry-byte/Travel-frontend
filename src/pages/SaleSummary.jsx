@@ -1192,12 +1192,15 @@ const SaleSummary = () => {
 
 
             {/* Notes */}
-            {sale.notes && (
-              <div className="bg-dark-700 shadow rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-dark-100 mb-4">Notes</h2>
-                <p className="text-dark-200">{sale.notes}</p>
-              </div>
-            )}
+            <div className="bg-dark-700 shadow rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-dark-100 mb-4">Notes</h2>
+              <p className="text-dark-200">
+                Sale with {sale.services?.length || 0} service template instance{(sale.services?.length || 0) !== 1 ? 's' : ''}.
+              </p>
+              {sale.notes && (
+                <p className="text-dark-200 mt-2">{sale.notes}</p>
+              )}
+            </div>
 
             {/* Payments */}
             <div className="bg-dark-700 shadow rounded-lg p-6">
