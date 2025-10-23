@@ -1,8 +1,8 @@
 # Netlify configuration for Travel Management System
 
 [build]
-  # Build command
-  command = "npm run build"
+  # Build command - install dependencies first, then build
+  command = "npm install && npm run build"
   
   # Publish directory
   publish = "dist"
