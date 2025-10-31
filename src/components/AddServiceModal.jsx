@@ -175,6 +175,14 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
       }
     }
     
+    if (currentStep === 2) {
+      // Step 2: Validate dates and city
+      if (!serviceDates.checkIn || !serviceDates.checkOut || !destination.city) {
+        setError('Please enter check-in date, check-out date, and city');
+        return;
+      }
+    }
+    
     if (currentStep === 3) {
       // Service Cost step validation
       // Allow cost of 0 as valid - cost is optional and defaults to 0
@@ -517,13 +525,13 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
           </div>
         );
 
-      case 2: // Step 4: Service Dates
+      case 2: // Service Dates & Destination
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-dark-100">Service Dates</h3>
-            <p className="text-sm text-dark-400">Set check-in and check-out dates for this service</p>
+            <h3 className="text-lg font-medium text-dark-100">Service Dates & Destination</h3>
+            <p className="text-sm text-dark-400">Set check-in and check-out dates and destination for this service</p>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-dark-200 mb-2">
                   Check-in Date *
@@ -545,6 +553,19 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
                   value={serviceDates.checkOut}
                   onChange={(e) => setServiceDates(prev => ({ ...prev, checkOut: e.target.value }))}
                   className="input-field"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-2">
+                  City *
+                </label>
+                <input
+                  type="text"
+                  value={destination.city}
+                  onChange={(e) => setDestination(prev => ({ ...prev, city: e.target.value }))}
+                  className="input-field"
+                  placeholder="Enter city name"
                   required
                 />
               </div>
@@ -732,6 +753,7 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
                 <div><span className="text-primary-400">Template:</span> {currentServiceTemplate?.name}</div>
                 <div><span className="text-primary-400">Details:</span> {serviceInfo}</div>
                 <div><span className="text-primary-400">Dates:</span> {serviceDates.checkIn} to {serviceDates.checkOut}</div>
+                <div><span className="text-primary-400">City:</span> {destination.city || 'Not set'}</div>
                 <div><span className="text-primary-400">Cost:</span> {getCurrencySymbol(serviceCurrency)} {serviceCost}</div>
                 {convertedAmount && serviceCurrency !== 'USD' && (
                   <div><span className="text-primary-400">USD Equivalent:</span> ${convertedAmount.toFixed(2)}</div>
