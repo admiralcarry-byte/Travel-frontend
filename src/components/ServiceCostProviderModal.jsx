@@ -10,7 +10,9 @@ const ServiceCostProviderModal = ({
   availableProviders = [],
   onProviderSearch,
   globalCurrency = 'USD',
-  currencyLocked = false
+  currencyLocked = false,
+  getGlobalProviderCount = null,
+  serviceId = null
 }) => {
   const [serviceCost, setServiceCost] = useState(service?.cost || 0);
   const [serviceCurrency, setServiceCurrency] = useState(service?.currency || globalCurrency);
@@ -65,14 +67,35 @@ const ServiceCostProviderModal = ({
 
   const handleProviderToggle = (provider) => {
     setSelectedProviders(prev => {
-      const providerCount = prev.filter(p => p._id === provider._id).length;
+      // Count how many times this provider is currently selected in this modal
+      const currentModalCount = prev.filter(p => p._id === provider._id).length;
       
-      if (providerCount >= 7) {
-        // Provider is at maximum (7), remove one instance
+      // Count how many times this provider is selected in other services (excluding current service)
+      const otherServicesCount = getGlobalProviderCount ? getGlobalProviderCount(provider._id, serviceId) : 0;
+      
+      // Calculate what the real-time global count would be after adding one more
+      const wouldBeGlobalCount = otherServicesCount + currentModalCount + 1;
+      
+      const maxSelections = 7;
+      
+      // Check if adding one more would exceed the global limit
+      if (wouldBeGlobalCount > maxSelections) {
+        // If already at limit, allow removing
+        if (currentModalCount >= 7) {
+          const providerIndex = prev.findIndex(p => p._id === provider._id);
+          return prev.filter((_, index) => index !== providerIndex);
+        }
+        // Otherwise, don't allow adding more
+        return prev;
+      }
+      
+      // Check if provider is already selected in this modal
+      if (currentModalCount >= 7) {
+        // Provider is at maximum (7) in this modal, remove one instance
         const providerIndex = prev.findIndex(p => p._id === provider._id);
         return prev.filter((_, index) => index !== providerIndex);
       } else {
-        // Add provider (up to 7 instances per provider)
+        // Add provider (up to 7 instances per provider globally, respecting other services)
         return [...prev, provider];
       }
     });
@@ -472,16 +495,20 @@ const ServiceCostProviderModal = ({
                   .map((provider) => {
                     const selectedCount = selectedProviders.filter(p => p._id === provider._id).length;
                     const isSelected = selectedCount > 0;
-                    const canSelectMore = selectedCount < 7;
+                    
+                    // Get global count from other services
+                    const otherServicesCount = getGlobalProviderCount ? getGlobalProviderCount(provider._id, serviceId) : 0;
+                    const realTimeGlobalCount = otherServicesCount + selectedCount;
+                    const canSelectMore = realTimeGlobalCount < 7;
                     
                     return (
                       <div
                         key={provider._id}
-                        onClick={() => handleProviderToggle(provider)}
-                        className={`p-3 border rounded-lg transition-colors cursor-pointer ${
+                        onClick={() => canSelectMore ? handleProviderToggle(provider) : null}
+                        className={`p-3 border rounded-lg transition-colors ${
                           !canSelectMore
                             ? 'opacity-50 cursor-not-allowed bg-dark-700/30 border-white/5'
-                            : 'border-white/10 hover:bg-dark-700/50'
+                            : 'cursor-pointer border-white/10 hover:bg-dark-700/50'
                         } ${isSelected ? 'border-primary-500 bg-primary-500/10' : ''}`}
                       >
                         <div className="flex items-center space-x-3">
@@ -502,6 +529,11 @@ const ServiceCostProviderModal = ({
                               {isSelected && (
                                 <span className="bg-primary-500/20 text-primary-400 text-xs px-2 py-1 rounded-full">
                                   {selectedCount}x
+                                </span>
+                              )}
+                              {realTimeGlobalCount > 0 && (
+                                <span className="bg-blue-500/20 text-blue-400 text-xs px-2 py-1 rounded-full">
+                                  Global: {realTimeGlobalCount}/7
                                 </span>
                               )}
                             </div>

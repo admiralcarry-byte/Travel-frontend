@@ -3,6 +3,7 @@ import api from '../utils/api';
 import { getCurrencySymbol } from '../utils/formatNumbers';
 import AddServiceTypeModal from './AddServiceTypeModal';
 import ServiceEntryModal from './ServiceEntryModal';
+import ServiceCostProviderModal from './ServiceCostProviderModal';
 
 const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServiceTemplateIds = [] }) => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -31,6 +32,13 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
   const [showServiceEntryModal, setShowServiceEntryModal] = useState(false);
   const [selectedServiceType, setSelectedServiceType] = useState(null);
   
+  // Service instances state (for Step 3 - similar to serviceTemplateInstances in SaleWizard)
+  const [serviceInstances, setServiceInstances] = useState([]);
+  
+  // ServiceCostProviderModal state
+  const [showServiceCostProviderModal, setShowServiceCostProviderModal] = useState(false);
+  const [selectedServiceForModal, setSelectedServiceForModal] = useState(null);
+  
   // Available data
   const [providers, setProviders] = useState([]);
   const [providerSearch, setProviderSearch] = useState('');
@@ -44,6 +52,13 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
       fetchProviders();
       resetForm();
     }
+    
+    // Cleanup timeout on unmount or when modal closes
+    return () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+    };
   }, [isOpen]);
 
   // Currency conversion state
@@ -79,9 +94,35 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
     setSelectedProviders([]);
     setDestination({ city: '', country: '' });
     setServiceCards([]);
+    setServiceInstances([]);
     setShowServiceEntryModal(false);
     setSelectedServiceType(null);
+    setShowServiceCostProviderModal(false);
+    setSelectedServiceForModal(null);
     setError('');
+  };
+  
+  // Global provider tracking function (similar to SaleEdit)
+  const getGlobalProviderCount = (providerId, excludeServiceId = null) => {
+    const count = serviceInstances.reduce((total, service) => {
+      // Skip the excluded service (used when editing a specific service)
+      if (excludeServiceId && (service.id === excludeServiceId || service._id === excludeServiceId)) {
+        return total;
+      }
+      
+      if (service.providers && service.providers.length > 0) {
+        const providerCount = service.providers.filter(p => {
+          const actualProviderId = p.providerId?._id || p._id;
+          return actualProviderId === providerId;
+        }).length;
+        return total + providerCount;
+      } else if (service.provider && service.provider._id === providerId) {
+        return total + 1;
+      }
+      return total;
+    }, 0);
+    
+    return count;
   };
 
   const fetchServiceTemplates = async () => {
@@ -126,6 +167,28 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
     }
   };
 
+  const handleProviderSearch = (query) => {
+    setProviderSearch(query);
+    
+    // Clear existing timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    
+    // If query is empty, fetch immediately
+    if (query.trim() === '') {
+      fetchProviders();
+      return;
+    }
+    
+    // Debounce the search for non-empty queries
+    const newTimeout = setTimeout(() => {
+      fetchProviders();
+    }, 300);
+    
+    setSearchTimeout(newTimeout);
+  };
+
   const handleNext = async () => {
     // Validate current step before proceeding
     if (currentStep === 1) {
@@ -135,62 +198,74 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
         return;
       }
       
-      // For now, we'll use the first service card's data
-      // TODO: Support multiple services in a single submission
-      const firstServiceCard = serviceCards[0];
-      
-      // Find or create a ServiceTemplate for this ServiceType
-      try {
-        // First, try to find an existing ServiceTemplate that uses this ServiceType
-        const existingTemplate = serviceTemplates.find(t => t.serviceType === firstServiceCard.serviceTypeId);
+      // Convert service cards to service instances
+      const instances = serviceCards.map((card, index) => {
+        // Find or create a ServiceTemplate for this ServiceType
+        let template = serviceTemplates.find(t => t.serviceType === card.serviceTypeId);
         
-        if (existingTemplate) {
-          // Use the existing template
-          setCurrentServiceTemplate(existingTemplate);
-        } else {
-          // Need to find if a template exists with this service type name
-          // Check if any template has the same name as the service type
-          const templateByName = serviceTemplates.find(t => t.name.toLowerCase() === firstServiceCard.serviceTypeName.toLowerCase());
-          
+        if (!template) {
+          const templateByName = serviceTemplates.find(t => t.name.toLowerCase() === card.serviceTypeName.toLowerCase());
           if (templateByName) {
-            setCurrentServiceTemplate(templateByName);
+            template = templateByName;
           } else {
-            // Create a mock template object - the backend will handle service type conversion
-            const mockTemplate = {
-              _id: firstServiceCard.serviceTypeId,
-              name: firstServiceCard.serviceTypeName,
-              serviceType: firstServiceCard.serviceTypeId,
+            // Create a mock template object
+            template = {
+              _id: card.serviceTypeId,
+              name: card.serviceTypeName,
+              serviceType: card.serviceTypeId,
               category: 'Other',
-              isMockTemplate: true // Flag to identify mock templates
+              isMockTemplate: true
             };
-            setCurrentServiceTemplate(mockTemplate);
           }
         }
         
-        setServiceInfo(firstServiceCard.serviceDescription);
-      } catch (error) {
-        console.error('Error processing service template:', error);
-        setError('Failed to process service template');
-        return;
-      }
+        return {
+          id: `service_${card.id}_${Date.now()}_${index}`,
+          serviceId: card.serviceTypeId,
+          templateId: template._id,
+          templateName: card.serviceTypeName,
+          serviceName: card.serviceDescription,
+          serviceInfo: card.serviceDescription,
+          cost: 0,
+          currency: 'USD',
+          providers: [],
+          provider: null,
+          checkIn: '',
+          checkOut: '',
+          destination: { city: '', country: '' },
+          template: template // Store the template reference
+        };
+      });
+      
+      setServiceInstances(instances);
     }
     
     if (currentStep === 2) {
-      // Step 2: Validate dates and city
+      // Step 2: Validate dates and city for all services
       if (!serviceDates.checkIn || !serviceDates.checkOut || !destination.city) {
         setError('Please enter check-in date, check-out date, and city');
         return;
       }
+      
+      // Apply dates and destination to all service instances
+      setServiceInstances(prev => prev.map(service => ({
+        ...service,
+        checkIn: serviceDates.checkIn,
+        checkOut: serviceDates.checkOut,
+        destination: destination
+      })));
     }
     
     if (currentStep === 3) {
-      // Service Cost step validation
-      // Allow cost of 0 as valid - cost is optional and defaults to 0
-      if (serviceCost === undefined || serviceCost === null || serviceCost === '' || isNaN(parseFloat(serviceCost)) || parseFloat(serviceCost) < 0) {
-        setError('Please enter a valid service cost (0 or greater)');
+      // Step 3: Validate that all services have providers
+      const servicesWithoutProviders = serviceInstances.filter(service => 
+        (!service.providers || service.providers.length === 0) && !service.provider
+      );
+      
+      if (servicesWithoutProviders.length > 0) {
+        setError(`Please configure providers for all services. ${servicesWithoutProviders.length} service(s) still need provider configuration.`);
         return;
       }
-      
     }
     
     if (currentStep < 4) {
@@ -260,21 +335,57 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
     setServiceCards(prev => prev.filter(card => card.id !== cardId));
   };
 
-  const handleSubmit = async () => {
-    if (!currentServiceTemplate || !serviceInfo || !serviceDates.checkIn || !serviceDates.checkOut || selectedProviders.length === 0) {
-      setError('Please complete all required fields, including selecting at least one provider');
-      return;
-    }
-    
-    // Validate service cost (allow 0 as valid)
-    if (serviceCost === undefined || serviceCost === null || serviceCost === '' || isNaN(parseFloat(serviceCost)) || parseFloat(serviceCost) < 0) {
-      setError('Please enter a valid service cost (0 or greater)');
-      return;
-    }
+  // Open ServiceCostProviderModal for a specific service
+  const openServiceCostProviderModal = (service) => {
+    setSelectedServiceForModal(service);
+    setShowServiceCostProviderModal(true);
+  };
 
-    // Validate exchange rate for non-USD currencies
-    if (serviceCurrency !== 'USD' && (!serviceExchangeRate || isNaN(parseFloat(serviceExchangeRate)) || parseFloat(serviceExchangeRate) <= 0)) {
-      setError('Please enter a valid exchange rate for non-USD currencies');
+  const closeServiceCostProviderModal = () => {
+    setShowServiceCostProviderModal(false);
+    setSelectedServiceForModal(null);
+  };
+
+  const saveServiceCostAndProviders = (updatedService) => {
+    // Update the service in serviceInstances
+    setServiceInstances(prev => prev.map(service => {
+      const matches = (service.id && updatedService.id && service.id === updatedService.id) || 
+                     (service._id && updatedService._id && service._id === updatedService._id);
+      return matches ? {
+        ...service,
+        ...updatedService,
+        cost: updatedService.cost || 0,
+        currency: updatedService.currency || 'USD',
+        providers: updatedService.providers || [],
+        provider: updatedService.provider || (updatedService.providers && updatedService.providers.length > 0 ? updatedService.providers[0] : null)
+      } : service;
+    }));
+    closeServiceCostProviderModal();
+  };
+
+  // Format providers display
+  const formatProvidersDisplay = (providers) => {
+    if (!providers || providers.length === 0) return 'None';
+    
+    const providerGroups = {};
+    providers.forEach(p => {
+      const providerName = p.name || p.providerId?.name || 'Unknown Provider';
+      providerGroups[providerName] = (providerGroups[providerName] || 0) + 1;
+    });
+    
+    return Object.entries(providerGroups)
+      .map(([name, count]) => count > 1 ? `${name} × ${count}` : name)
+      .join(', ');
+  };
+
+  const handleSubmit = async () => {
+    // Validate that all services have providers
+    const servicesWithoutProviders = serviceInstances.filter(service => 
+      (!service.providers || service.providers.length === 0) && !service.provider
+    );
+    
+    if (servicesWithoutProviders.length > 0) {
+      setError(`Please configure providers for all services. ${servicesWithoutProviders.length} service(s) still need provider configuration.`);
       return;
     }
 
@@ -282,95 +393,100 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
       setLoading(true);
       setError('');
 
-      // Check if currentServiceTemplate is a real ServiceTemplate or just a mock object from ServiceType
-      let actualServiceTemplate = currentServiceTemplate;
+      // Process and save each service
+      const savedServices = [];
       
-      // If this is a mock template created from ServiceType, create a real ServiceTemplate
-      if (currentServiceTemplate.isMockTemplate) {
-        // This is a mock template created from ServiceType, need to find or create real ServiceTemplate
-        console.log('Detected ServiceType-based template, finding or creating ServiceTemplate...');
+      for (const service of serviceInstances) {
+        let actualServiceTemplate = service.template;
         
-        // Try to find existing ServiceTemplate with this name
-        const existingTemplate = serviceTemplates.find(t => t.name === currentServiceTemplate.name);
-        
-        if (existingTemplate) {
-          actualServiceTemplate = existingTemplate;
-        } else {
-          // Create a new ServiceTemplate
-          console.log('Creating new ServiceTemplate...');
-          const createTemplateResponse = await api.post('/api/service-templates', {
-            name: currentServiceTemplate.name,
-            description: serviceInfo,
-            category: 'Other',
-            serviceType: currentServiceTemplate.serviceType
-          });
+        // If this is a mock template, try to find or create a real ServiceTemplate
+        if (actualServiceTemplate.isMockTemplate) {
+          const existingTemplate = serviceTemplates.find(t => t.name === actualServiceTemplate.name);
           
-          if (createTemplateResponse.data.success) {
-            actualServiceTemplate = createTemplateResponse.data.data.serviceTemplate;
-            // Add to local list for future use
-            setServiceTemplates(prev => [...prev, actualServiceTemplate]);
+          if (existingTemplate) {
+            actualServiceTemplate = existingTemplate;
           } else {
-            throw new Error('Failed to create service template');
+            // Create a new ServiceTemplate
+            const createTemplateResponse = await api.post('/api/service-templates', {
+              name: actualServiceTemplate.name,
+              description: service.serviceInfo,
+              category: 'Other',
+              serviceType: actualServiceTemplate.serviceType
+            });
+            
+            if (createTemplateResponse.data.success) {
+              actualServiceTemplate = createTemplateResponse.data.data.serviceTemplate;
+              setServiceTemplates(prev => [...prev, actualServiceTemplate]);
+            } else {
+              throw new Error(`Failed to create service template for ${actualServiceTemplate.name}`);
+            }
           }
         }
-      }
 
-      // Calculate cost in USD
-      let costInUSD = parseFloat(serviceCost);
-      let originalCurrency = serviceCurrency;
-      let originalAmount = parseFloat(serviceCost);
-      let exchangeRate = null;
+        // Calculate cost - use service cost (already in USD)
+        const costInUSD = parseFloat(service.cost) || 0;
 
-      if (serviceCurrency !== 'USD') {
-        exchangeRate = parseFloat(serviceExchangeRate);
-        costInUSD = originalAmount / exchangeRate;
-      }
+        // Format providers array for backend
+        const formattedProviders = (service.providers || []).map(provider => {
+          // If provider already has the correct structure, use it
+          if (provider.providerId && provider.costProvider !== undefined) {
+            return {
+              providerId: provider.providerId._id || provider.providerId,
+              costProvider: provider.costProvider || 0,
+              currency: provider.currency || 'USD',
+              commissionRate: provider.commissionRate || 0
+            };
+          }
+          
+          // Otherwise, it's a Provider object
+          return {
+            providerId: provider._id,
+            costProvider: 0, // Individual provider cost can be set later
+            currency: service.currency || 'USD',
+            commissionRate: 0
+          };
+        });
 
-      // Format providers array for backend
-      const formattedProviders = selectedProviders.map(provider => ({
-        providerId: provider._id,
-        costProvider: costInUSD, // Use actual provider cost in USD
-        currency: 'USD', // Always store provider costs in USD
-        commissionRate: 0
-      }));
+        const serviceData = {
+          serviceTemplateId: actualServiceTemplate._id,
+          serviceName: service.serviceInfo,
+          serviceInfo: service.serviceInfo,
+          checkIn: service.checkIn,
+          checkOut: service.checkOut,
+          cost: costInUSD,
+          costProvider: costInUSD,
+          currency: service.currency || 'USD',
+          providerId: service.providers && service.providers.length > 0 
+            ? (service.providers[0]._id || service.providers[0].providerId?._id) 
+            : null,
+          providers: formattedProviders,
+          notes: service.destination?.city ? `${service.destination.city}, ${service.destination.country || ''}` : service.serviceInfo,
+          destination: service.destination || {},
+          serviceDates: {
+            startDate: service.checkIn,
+            endDate: service.checkOut
+          }
+        };
 
-      const serviceData = {
-        serviceTemplateId: actualServiceTemplate._id,
-        serviceName: serviceInfo,
-        serviceInfo: serviceInfo, // Add serviceInfo for compatibility
-        checkIn: serviceDates.checkIn,
-        checkOut: serviceDates.checkOut,
-        cost: costInUSD, // Always store in USD
-        costProvider: costInUSD, // Add costProvider for compatibility
-        currency: 'USD', // Always store as USD in database
-        originalCurrency: originalCurrency, // Keep track of original currency
-        originalAmount: originalAmount, // Keep track of original amount
-        exchangeRate: exchangeRate, // Store exchange rate used for conversion
-        providerId: selectedProviders[0]?._id, // Keep first provider for backward compatibility
-        providers: formattedProviders, // Include multiple providers
-        notes: `${destination.city}, ${destination.country}`,
-        destination: destination,
-        serviceDates: {
-          startDate: serviceDates.checkIn,
-          endDate: serviceDates.checkOut
+        console.log('Adding service with data:', serviceData);
+
+        const response = await api.post(`/api/sales/${saleId}/services-from-template`, serviceData);
+        
+        if (response.data.success) {
+          savedServices.push(response.data.data.service);
+          console.log('Service added successfully:', response.data.data.service);
+        } else {
+          throw new Error(response.data.message || `Failed to add service: ${service.serviceInfo}`);
         }
-      };
-
-      console.log('Adding service with data:', serviceData);
-
-      const response = await api.post(`/api/sales/${saleId}/services-from-template`, serviceData);
-      
-      if (response.data.success) {
-        console.log('Service added successfully:', response.data.data.service);
-        onServiceAdded(response.data.data.service);
-        onClose();
-        resetForm();
-      } else {
-        throw new Error(response.data.message || 'Failed to add service');
       }
+
+      // Notify parent about all added services
+      savedServices.forEach(service => onServiceAdded(service));
+      onClose();
+      resetForm();
     } catch (error) {
-      console.error('Failed to add service:', error);
-      setError(error.response?.data?.message || 'Failed to add service');
+      console.error('Failed to add services:', error);
+      setError(error.response?.data?.message || 'Failed to add services');
     } finally {
       setLoading(false);
     }
@@ -573,194 +689,103 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
           </div>
         );
 
-      case 3: // Step 5: Service Cost & Provider
+      case 3: // Step 3: Service Cost & Provider
         return (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <h3 className="text-lg font-medium text-dark-100">Service Cost & Provider</h3>
-            <p className="text-sm text-dark-400">Set the cost and select providers for this service</p>
+            <p className="text-sm text-dark-400">Set the cost and select providers for each service</p>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-dark-200 mb-2">
-                  Amount *
-                </label>
-                <input
-                  type="number"
-                  value={serviceCost}
-                  onChange={(e) => setServiceCost(e.target.value)}
-                  className="input-field"
-                  placeholder="0.00"
-                  min="0"
-                  step="0.01"
-                  required
-                />
+            {/* Multiple Services Configuration */}
+            {serviceInstances.length === 0 ? (
+              <div className="text-center py-8 text-dark-400">
+                <p>No services to configure. Please go back and select service types.</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-dark-200 mb-2">
-                  Currency
-                </label>
-                <select
-                  value={serviceCurrency}
-                  onChange={(e) => setServiceCurrency(e.target.value)}
-                  className="input-field"
-                >
-                  <option value="USD">USD</option>
-                  <option value="ARS">ARS</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Exchange Rate for non-USD currencies */}
-            {serviceCurrency !== 'USD' && (
-              <div>
-                <label className="block text-sm font-medium text-dark-200 mb-2">
-                  Exchange Rate to USD *
-                </label>
-                <input
-                  type="number"
-                  value={serviceExchangeRate}
-                  onChange={(e) => setServiceExchangeRate(e.target.value)}
-                  className="input-field"
-                  placeholder="e.g., 1000 for 1000 ARS = 1 USD"
-                  step="0.01"
-                  required
-                />
-                {convertedAmount && (
-                  <p className="text-sm text-primary-400 mt-1">
-                    Converted to USD: ${convertedAmount.toFixed(2)}
-                  </p>
-                )}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-dark-200 mb-2">
-                Search Providers
-              </label>
-              <input
-                type="text"
-                value={providerSearch}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setProviderSearch(value);
-                  
-                  // Clear existing timeout
-                  if (searchTimeout) {
-                    clearTimeout(searchTimeout);
-                  }
-                  
-                  // Set new timeout for debounced search
-                  const newTimeout = setTimeout(() => {
-                    fetchProviders();
-                  }, 300);
-                  setSearchTimeout(newTimeout);
-                }}
-                className="input-field"
-                placeholder="Search providers..."
-              />
-            </div>
-
-            <div className="max-h-48 overflow-y-auto space-y-2">
-              {providerLoading ? (
-                <div className="text-center py-4 text-dark-400">Loading providers...</div>
-              ) : (
-                providers.map((provider) => {
-                  const isSelected = selectedProviders.some(p => p._id === provider._id);
-                  const selectionCount = selectedProviders.filter(p => p._id === provider._id).length;
-                  const canSelectMore = selectedProviders.length < 7;
-                  
-                  return (
-                    <div
-                      key={provider._id}
-                      onClick={() => canSelectMore && handleProviderToggle(provider)}
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                        isSelected
-                          ? 'border-primary-500 bg-primary-500/10'
-                          : canSelectMore 
-                            ? 'border-dark-600 hover:border-primary-500 hover:bg-primary-500/10'
-                            : 'opacity-50 cursor-not-allowed'
-                      }`}
+            ) : (
+              serviceInstances.map((service, index) => {
+                return (
+                  <div key={service.id || service._id || index} className="bg-dark-800/50 border border-white/10 rounded-lg p-6">
+                    <div 
+                      className="flex items-center justify-between cursor-pointer hover:bg-dark-700/30 rounded-lg p-4 transition-colors"
+                      onClick={() => openServiceCostProviderModal(service)}
                     >
-                      <div className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => canSelectMore && handleProviderToggle(provider)}
-                          disabled={!canSelectMore}
-                          className="w-4 h-4 text-primary-600 bg-dark-800 border-white/20 rounded focus:ring-primary-500 focus:ring-2 disabled:opacity-50"
-                        />
-                        <div className="flex-1">
-                          <h4 className="font-medium text-dark-100">{provider.name}</h4>
-                          <p className="text-sm text-dark-400">{provider.email}</p>
-                          {selectionCount > 0 && (
-                            <div className="flex items-center space-x-2 mt-1">
-                              <span className="text-xs text-primary-400 bg-primary-500/20 px-2 py-1 rounded">
-                                Selected: {selectionCount}/7
-                              </span>
+                      <div className="flex-1">
+                        <h4 className="text-lg font-medium text-dark-100">
+                          {index + 1}. {service.serviceName || service.serviceInfo || service.templateName || 'Service'}
+                        </h4>
+                        <div className="mt-2 flex items-center space-x-4">
+                          {/* Display cost if set and greater than 0 */}
+                          {service.cost > 0 && (
+                            <div className="text-sm text-primary-400">
+                              Cost: {service.currency === 'USD' ? 'U$' : service.currency === 'ARS' ? 'AR$' : service.currency} {service.cost}
+                            </div>
+                          )}
+                          {/* Display providers with quantities if providers selected */}
+                          {service.providers && service.providers.length > 0 && (
+                            <div className="text-sm text-primary-400">
+                              Providers: {formatProvidersDisplay(service.providers)}
+                            </div>
+                          )}
+                          {service.provider && !service.providers && (
+                            <div className="text-sm text-primary-400">
+                              Provider: {service.provider.name}
+                            </div>
+                          )}
+                          {/* Show status if no cost or providers set */}
+                          {(!service.cost || service.cost <= 0) && (!service.providers || service.providers.length === 0) && !service.provider && (
+                            <div className="text-sm text-dark-400">
+                              Click to set cost and select providers
                             </div>
                           )}
                         </div>
-                        {!canSelectMore && !isSelected && (
-                          <span className="text-xs text-red-400 bg-red-500/20 px-2 py-1 rounded">
-                            Max reached (7/7)
-                          </span>
-                        )}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <svg className="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
                       </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
-            
-            {selectedProviders.length > 0 && (
-              <div className="mt-4 p-3 bg-primary-500/10 border border-primary-500/30 rounded-lg">
-                <h4 className="text-sm font-medium text-primary-400 mb-2">
-                  Selected Providers ({selectedProviders.length})
-                </h4>
-                <div className="space-y-1">
-                  {(() => {
-                    // Group providers by name and count occurrences
-                    const providerGroups = {};
-                    selectedProviders.forEach(provider => {
-                      const providerName = provider.name;
-                      providerGroups[providerName] = (providerGroups[providerName] || 0) + 1;
-                    });
-                    
-                    // Format as "Provider 1, Provider 2 * 2, Provider 3"
-                    return Object.entries(providerGroups)
-                      .map(([name, count]) => count > 1 ? `${name} * ${count}` : name)
-                      .map((displayName, index) => (
-                        <div key={index} className="text-sm text-dark-200">
-                          • {displayName}
-                        </div>
-                      ));
-                  })()}
-                </div>
-              </div>
+                  </div>
+                );
+              })
             )}
           </div>
         );
 
-      case 4: // Step 6: Edit Services (Review)
+      case 4: // Step 4: Review Services
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-dark-100">Review Service</h3>
-            <p className="text-sm text-dark-400">Review the service details before adding</p>
+            <h3 className="text-lg font-medium text-dark-100">Review Services</h3>
+            <p className="text-sm text-dark-400">Review all service details before adding</p>
             
-            <div className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-4">
-              <h4 className="font-medium text-dark-100 mb-3">Service Summary</h4>
-              <div className="space-y-2 text-sm">
-                <div><span className="text-primary-400">Template:</span> {currentServiceTemplate?.name}</div>
-                <div><span className="text-primary-400">Details:</span> {serviceInfo}</div>
-                <div><span className="text-primary-400">Dates:</span> {serviceDates.checkIn} to {serviceDates.checkOut}</div>
-                <div><span className="text-primary-400">City:</span> {destination.city || 'Not set'}</div>
-                <div><span className="text-primary-400">Cost:</span> {getCurrencySymbol(serviceCurrency)} {serviceCost}</div>
-                {convertedAmount && serviceCurrency !== 'USD' && (
-                  <div><span className="text-primary-400">USD Equivalent:</span> ${convertedAmount.toFixed(2)}</div>
-                )}
-                <div><span className="text-primary-400">Provider(s):</span> {selectedProviders.map(p => p.name).join(', ')}</div>
+            {serviceInstances.length === 0 ? (
+              <div className="text-center py-8 text-dark-400">
+                <p>No services to review. Please go back and configure services.</p>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-4">
+                {serviceInstances.map((service, index) => (
+                  <div key={service.id || service._id || index} className="bg-primary-500/10 border border-primary-500/30 rounded-lg p-4">
+                    <h4 className="font-medium text-dark-100 mb-3">
+                      {index + 1}. {service.serviceName || service.serviceInfo || service.templateName || 'Service'}
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div><span className="text-primary-400">Template:</span> {service.templateName || service.template?.name || 'N/A'}</div>
+                      <div><span className="text-primary-400">Details:</span> {service.serviceInfo || service.serviceName}</div>
+                      <div><span className="text-primary-400">Dates:</span> {service.checkIn || 'Not set'} to {service.checkOut || 'Not set'}</div>
+                      <div><span className="text-primary-400">City:</span> {service.destination?.city || 'Not set'}</div>
+                      <div><span className="text-primary-400">Cost:</span> {getCurrencySymbol(service.currency || 'USD')} {service.cost || 0}</div>
+                      <div><span className="text-primary-400">Provider(s):</span> {
+                        service.providers && service.providers.length > 0
+                          ? formatProvidersDisplay(service.providers)
+                          : service.provider
+                          ? service.provider.name
+                          : 'None'
+                      }</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         );
 
@@ -857,6 +882,20 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
         }}
         serviceType={selectedServiceType}
         onServiceAdded={handleServiceAdded}
+      />
+      
+      {/* Service Cost & Provider Modal */}
+      <ServiceCostProviderModal
+        isOpen={showServiceCostProviderModal}
+        onClose={closeServiceCostProviderModal}
+        service={selectedServiceForModal}
+        onSave={saveServiceCostAndProviders}
+        availableProviders={providers}
+        onProviderSearch={handleProviderSearch}
+        globalCurrency={serviceCurrency}
+        currencyLocked={false}
+        getGlobalProviderCount={getGlobalProviderCount}
+        serviceId={selectedServiceForModal?.id}
       />
     </div>
   );
