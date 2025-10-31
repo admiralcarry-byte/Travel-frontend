@@ -1,0 +1,78 @@
+/**
+ * Currency Protection CSS
+ * This file contains CSS rules to prevent browser translation of currency symbols and values
+ */
+
+/* Prevent translation of currency symbols and values */
+.currency-symbol,
+.currency-value,
+.currency-display,
+[data-currency],
+[translate="no"] {
+  /* Ensure translate="no" is respected */
+  translate: no !important;
+}
+
+/* Additional protection for common currency patterns */
+.currency-symbol::before,
+.currency-symbol::after,
+.currency-value::before,
+.currency-value::after {
+  translate: no !important;
+}
+
+/* Protect currency symbols in specific contexts */
+.text-currency,
+.font-currency,
+.currency-text {
+  translate: no !important;
+}
+
+/* Ensure currency symbols in tables are protected */
+table .currency-symbol,
+table .currency-value,
+table [translate="no"] {
+  translate: no !important;
+}
+
+/* Protect currency in tooltips and modals */
+.tooltip .currency-symbol,
+.tooltip .currency-value,
+.modal .currency-symbol,
+.modal .currency-value {
+  translate: no !important;
+}
+
+/* Additional protection for dynamic content */
+.currency-dynamic,
+[data-currency-symbol],
+[data-currency-value] {
+  translate: no !important;
+}
+
+/* Ensure currency symbols in cards and components are protected */
+.card .currency-symbol,
+.card .currency-value,
+.component .currency-symbol,
+.component .currency-value {
+  translate: no !important;
+}
+
+/* Global protection for any element containing currency symbols */
+*:has(.currency-symbol),
+*:has(.currency-value),
+*:has([translate="no"]) {
+  /* This ensures parent elements don't interfere with currency translation protection */
+}
+
+/* Specific protection for common currency symbols */
+*[class*="currency"] {
+  translate: no !important;
+}
+
+/* Protection for elements that might contain currency data */
+[data-testid*="currency"],
+[data-testid*="price"],
+[data-testid*="amount"] {
+  translate: no !important;
+}
