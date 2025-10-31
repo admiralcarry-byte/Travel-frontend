@@ -156,6 +156,8 @@ const SaleEdit = () => {
           return {
             id: service._id || service.serviceId?._id || `instance_${index}`, // Use actual database ID
             templateId: service.serviceTemplateId || service.serviceId,
+            serviceTemplateId: service.serviceTemplateId ? (service.serviceTemplateId._id || service.serviceTemplateId) : null, // Store serviceTemplateId separately
+            serviceId: service.serviceId && !service.serviceTemplateId ? (service.serviceId._id || service.serviceId) : null, // Store serviceId separately if no template
             templateName: service.serviceTemplateId?.name || service.serviceId?.name || service.serviceName || service.serviceId?.destino || 'Unknown Service',
             templateCategory: service.serviceTemplateId?.category || service.serviceId?.typeId?.name || service.serviceId?.type || 'General',
             serviceInfo: service.serviceName || 'Unknown Service',
@@ -553,8 +555,7 @@ const SaleEdit = () => {
           });
         }
         
-        return {
-          serviceId: instance.templateId,
+        const serviceData = {
           serviceName: instance.serviceInfo,
           priceClient: instance.cost,
           costProvider: instance.cost, // Use the stored cost value directly
@@ -568,6 +569,18 @@ const SaleEdit = () => {
           providers: formattedProviders, // Include properly formatted providers array
           notes: instance.serviceDescription || `${instance.templateName || 'Service'} - ${instance.serviceInfo}`
         };
+        
+        // Include serviceTemplateId if it exists, otherwise include serviceId
+        if (instance.serviceTemplateId) {
+          serviceData.serviceTemplateId = instance.serviceTemplateId;
+        } else if (instance.serviceId) {
+          serviceData.serviceId = instance.serviceId;
+        } else if (instance.templateId) {
+          // Fallback: use templateId (could be either serviceTemplate or service)
+          serviceData.serviceId = instance.templateId;
+        }
+        
+        return serviceData;
       });
       
       // Update passenger prices with the single price per passenger
@@ -697,6 +710,8 @@ const SaleEdit = () => {
     const transformedService = {
       id: newService._id || Date.now(), // Use MongoDB _id or generate a temporary one
       templateId: newService.serviceTemplateId?._id,
+      serviceTemplateId: newService.serviceTemplateId?._id || null,
+      serviceId: null,
       templateName: newService.serviceTemplateId?.name || 'Unknown Template',
       templateCategory: newService.serviceTemplateId?.category || 'Other',
       serviceInfo: newService.serviceName,

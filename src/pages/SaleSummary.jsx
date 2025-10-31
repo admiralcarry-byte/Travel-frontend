@@ -942,9 +942,15 @@ const SaleSummary = () => {
                       // Extract service type
                       if (serviceSale.serviceTypeName) {
                         serviceType = serviceSale.serviceTypeName;
-                      } else if (serviceSale.serviceTemplateId && typeof serviceSale.serviceTemplateId === 'object') {
+                      } else if (serviceSale.serviceTemplateId) {
                         // Check serviceTemplateId first (for services added via new flow)
-                        serviceType = serviceSale.serviceTemplateId.name || serviceSale.serviceTemplateId.category || 'Unknown Type';
+                        if (typeof serviceSale.serviceTemplateId === 'object') {
+                          serviceType = serviceSale.serviceTemplateId.name || serviceSale.serviceTemplateId.category || serviceSale.serviceTemplateId.serviceType?.name || 'Unknown Type';
+                        } else {
+                          // serviceTemplateId is a string ID - we'll need to get the name from the populated data
+                          // If not populated, keep as unknown for now
+                          serviceType = 'Unknown Type';
+                        }
                       } else if (serviceSale.serviceId && typeof serviceSale.serviceId === 'object') {
                         serviceType = serviceSale.serviceId.typeId?.name || serviceSale.serviceId.category || serviceSale.serviceId.type || 'Unknown Type';
                       }
@@ -1128,29 +1134,37 @@ const SaleSummary = () => {
                       // Handle multiple providers per service (prioritize this over single provider)
                       if (serviceSale.providers && serviceSale.providers.length > 0) {
                         serviceSale.providers.forEach((provider, providerIndex) => {
-                          // Create a unique identifier for the provider
-                          const providerKey = provider.providerId?._id || provider.providerId || provider._id || `${serviceIndex}-${providerIndex}`;
+                          // Create a unique identifier for the provider that includes service context
+                          // This ensures each provider-service combination is tracked separately
+                          const providerId = provider.providerId?._id || provider.providerId || provider._id;
+                          const providerKey = `${providerId || 'unknown'}-${serviceIndex}-${providerIndex}`;
 
                           if (!providerDataMap.has(providerKey)) {
-                            // First time seeing this provider - initialize with base data
+                            // First time seeing this provider-service combination - initialize with base data
                             providerDataMap.set(providerKey, {
                               ...provider,
                               uniqueKey: providerKey,
                               serviceIndex,
                               providerIndex,
-                              allDocuments: [], // Array to collect all documents
+                              allDocuments: [], // Array to collect all documents for this specific provider instance
                               services: [] // Array to track which services this provider appears in
                             });
                           }
 
-                          // Add documents from this service to the provider's document collection
+                          // Add documents from this specific provider instance to its document collection
                           const providerData = providerDataMap.get(providerKey);
-                          // Documents can be in provider.documents or provider.providerId.documents
+                          // Documents should be specific to this provider instance in this service
                           const documentsToAdd = provider.documents || provider.providerId?.documents || [];
                           if (documentsToAdd && documentsToAdd.length > 0) {
                             // Ensure we're adding document objects with proper structure
                             const validDocuments = documentsToAdd.filter(doc => doc && (doc.url || doc.filename || doc.name));
-                            providerData.allDocuments.push(...validDocuments);
+                            // Only add documents that aren't already in the collection (avoid duplicates)
+                            validDocuments.forEach(doc => {
+                              const docUrl = doc.url || doc.filename || doc.name;
+                              if (!providerData.allDocuments.some(existing => (existing.url || existing.filename || existing.name) === docUrl)) {
+                                providerData.allDocuments.push(doc);
+                              }
+                            });
                           }
                           providerData.services.push({
                             serviceIndex,
