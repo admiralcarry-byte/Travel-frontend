@@ -485,7 +485,7 @@ const ServiceTemplateInstanceEditor = ({
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="text-lg font-bold text-primary-400 bg-primary-500/20 px-3 py-2 rounded inline-block">
-            {instance.templateCategory}
+            {instance.templateName || instance.templateCategory || 'Service'}
           </div>
         </div>
         <button
@@ -508,6 +508,13 @@ const ServiceTemplateInstanceEditor = ({
           cleanDescription = cleanDescription.replace(/^Service: undefined - /, '');
           cleanDescription = cleanDescription.replace(/^undefinedundefinedService: undefined - /, '');
           cleanDescription = cleanDescription.replace(/^undefined/, '');
+          // Remove city/country info if it's at the end (format: "description, city, country" or just "description, city")
+          // This regex removes ", city" or ", city, country" from the end
+          cleanDescription = cleanDescription.replace(/,\s*[^,]+(,\s*[^,]+)?$/, '');
+          // Also remove standalone city names if the description is just a city name
+          if (cleanDescription && instance.destination?.city && cleanDescription.trim() === instance.destination.city.trim()) {
+            cleanDescription = 'No description';
+          }
           // Show only the clean description, not the formatted string with category
           return cleanDescription;
         })())}

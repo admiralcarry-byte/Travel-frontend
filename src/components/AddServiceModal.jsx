@@ -460,7 +460,8 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
             ? (service.providers[0]._id || service.providers[0].providerId?._id) 
             : null,
           providers: formattedProviders,
-          notes: service.destination?.city ? `${service.destination.city}, ${service.destination.country || ''}` : service.serviceInfo,
+          // Store service description in notes without city information (city is stored separately in destination)
+          notes: service.serviceInfo || '',
           destination: service.destination || {},
           serviceDates: {
             startDate: service.checkIn,
