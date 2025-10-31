@@ -272,10 +272,20 @@ const ServiceCostProviderModal = ({
 
   // Open file functionality
   const handleOpenFile = (file) => {
-    const url = URL.createObjectURL(file.file);
-    window.open(url, '_blank');
-    // Clean up the URL after a delay
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    // If file has a URL (uploaded file from server), open it directly
+    if (file.url) {
+      window.open(file.url, '_blank');
+    } 
+    // If file has a file object (local file before upload), create object URL
+    else if (file.file) {
+      const url = URL.createObjectURL(file.file);
+      window.open(url, '_blank');
+      // Clean up the URL after a delay
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } else {
+      console.error('File has no URL or file object:', file);
+      toast.error('Unable to open file: file data is missing');
+    }
   };
 
   // Format file size
@@ -600,38 +610,58 @@ const ServiceCostProviderModal = ({
                       <div className="flex items-center space-x-3 flex-1">
                         {/* File Icon */}
                         <div className="flex-shrink-0">
-                          {file.type.startsWith('image/') ? (
-                            <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          ) : file.type.includes('pdf') ? (
-                            <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                            </svg>
-                          ) : file.type.includes('word') || file.type.includes('document') ? (
-                            <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          ) : file.type.includes('sheet') || file.type.includes('excel') ? (
-                            <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          ) : (
-                            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          )}
+                          {(() => {
+                            // Use mimeType if available (for uploaded files), otherwise use type
+                            const fileType = file.mimeType || file.type || '';
+                            const fileName = file.name || file.filename || '';
+                            
+                            if (fileType.startsWith('image/')) {
+                              return (
+                                <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                              );
+                            } else if (fileType.includes('pdf') || fileName.toLowerCase().endsWith('.pdf')) {
+                              return (
+                                <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                              );
+                            } else if (fileType.includes('word') || fileType.includes('document') || fileName.toLowerCase().match(/\.(doc|docx)$/)) {
+                              return (
+                                <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              );
+                            } else if (fileType.includes('sheet') || fileType.includes('excel') || fileName.toLowerCase().match(/\.(xls|xlsx)$/)) {
+                              return (
+                                <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              );
+                            } else {
+                              return (
+                                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              );
+                            }
+                          })()}
                         </div>
 
                         {/* File Info */}
                         <div className="flex-1 min-w-0">
                           <h4 className="text-sm font-medium text-dark-100 truncate">
-                            {file.name}
+                            {file.name || file.filename || 'Unknown file'}
                           </h4>
                           <div className="flex items-center space-x-4 text-xs text-dark-400">
                             <span>{formatFileSize(file.size)}</span>
-                            <span>{new Date(file.uploadDate).toLocaleDateString()}</span>
-                            <span className="capitalize">{file.type.split('/')[1] || 'file'}</span>
+                            <span>{new Date(file.uploadDate || file.uploadedAt || Date.now()).toLocaleDateString()}</span>
+                            <span className="capitalize">
+                              {(file.mimeType || file.type || '').split('/')[1] || 
+                               (file.name || file.filename || '').split('.').pop() || 
+                               'file'}
+                            </span>
                           </div>
                         </div>
                       </div>

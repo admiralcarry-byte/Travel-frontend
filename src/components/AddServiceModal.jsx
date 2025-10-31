@@ -430,21 +430,45 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
         const formattedProviders = (service.providers || []).map(provider => {
           // If provider already has the correct structure, use it
           if (provider.providerId && provider.costProvider !== undefined) {
-            return {
+            const formattedProvider = {
               providerId: provider.providerId._id || provider.providerId,
               costProvider: provider.costProvider || 0,
               currency: provider.currency || 'USD',
               commissionRate: provider.commissionRate || 0
             };
+            
+            // Include documents if they exist
+            if (provider.documents && provider.documents.length > 0) {
+              formattedProvider.documents = provider.documents.map(doc => ({
+                filename: doc.filename || doc.name || 'Unknown',
+                url: doc.url || '',
+                type: doc.type || 'other',
+                uploadedAt: doc.uploadDate || doc.uploadedAt || new Date()
+              }));
+            }
+            
+            return formattedProvider;
           }
           
           // Otherwise, it's a Provider object
-          return {
+          const formattedProvider = {
             providerId: provider._id,
-            costProvider: 0, // Individual provider cost can be set later
+            costProvider: provider.costProvider || 0,
             currency: service.currency || 'USD',
             commissionRate: 0
           };
+          
+          // Include documents if they exist
+          if (provider.documents && provider.documents.length > 0) {
+            formattedProvider.documents = provider.documents.map(doc => ({
+              filename: doc.filename || doc.name || 'Unknown',
+              url: doc.url || '',
+              type: doc.type || 'other',
+              uploadedAt: doc.uploadDate || doc.uploadedAt || new Date()
+            }));
+          }
+          
+          return formattedProvider;
         });
 
         const serviceData = {

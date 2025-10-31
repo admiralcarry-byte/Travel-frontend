@@ -25,20 +25,31 @@ const ProviderCard = ({ provider, serviceIndex, providerIndex }) => {
       let providerName = 'Unknown Provider';
 
       if (provider.providerId && typeof provider.providerId === 'object') {
-        // Provider is populated from database
-        providerName = provider.providerId.name || 'Unknown Provider';
+        // Provider is populated from database (from providers array structure)
+        providerName = provider.providerId.name || provider.providerId.destino || 'Unknown Provider';
       } else if (provider.name) {
-        // Provider name is directly available
+        // Provider name is directly available (already extracted)
         providerName = provider.name;
+      } else if (typeof provider === 'object' && provider._id) {
+        // Provider object might have name directly
+        providerName = provider.name || 'Unknown Provider';
       }
 
+      // Extract documents - check multiple possible locations
+      let documents = [];
+      if (provider.documents && provider.documents.length > 0) {
+        documents = provider.documents;
+      } else if (provider.allDocuments && provider.allDocuments.length > 0) {
+        documents = provider.allDocuments;
+      }
+      
       const providerDetails = {
         name: providerName,
         costProvider: provider.costProvider !== undefined && provider.costProvider !== null ? provider.costProvider : null,
         currency: provider.currency || sale.saleCurrency,
         startDate: provider.startDate || provider.serviceDates?.startDate || null,
         endDate: provider.endDate || provider.serviceDates?.endDate || null,
-        documents: provider.documents || []
+        documents: documents
       };
 
       console.log('ProviderCard - Processed provider details:', providerDetails);
@@ -931,6 +942,9 @@ const SaleSummary = () => {
                       // Extract service type
                       if (serviceSale.serviceTypeName) {
                         serviceType = serviceSale.serviceTypeName;
+                      } else if (serviceSale.serviceTemplateId && typeof serviceSale.serviceTemplateId === 'object') {
+                        // Check serviceTemplateId first (for services added via new flow)
+                        serviceType = serviceSale.serviceTemplateId.name || serviceSale.serviceTemplateId.category || 'Unknown Type';
                       } else if (serviceSale.serviceId && typeof serviceSale.serviceId === 'object') {
                         serviceType = serviceSale.serviceId.typeId?.name || serviceSale.serviceId.category || serviceSale.serviceId.type || 'Unknown Type';
                       }
@@ -1131,8 +1145,12 @@ const SaleSummary = () => {
 
                           // Add documents from this service to the provider's document collection
                           const providerData = providerDataMap.get(providerKey);
-                          if (provider.documents && provider.documents.length > 0) {
-                            providerData.allDocuments.push(...provider.documents);
+                          // Documents can be in provider.documents or provider.providerId.documents
+                          const documentsToAdd = provider.documents || provider.providerId?.documents || [];
+                          if (documentsToAdd && documentsToAdd.length > 0) {
+                            // Ensure we're adding document objects with proper structure
+                            const validDocuments = documentsToAdd.filter(doc => doc && (doc.url || doc.filename || doc.name));
+                            providerData.allDocuments.push(...validDocuments);
                           }
                           providerData.services.push({
                             serviceIndex,
@@ -1171,10 +1189,15 @@ const SaleSummary = () => {
                     });
 
                     // Convert map to array and update documents property
-                    allProviders.push(...Array.from(providerDataMap.values()).map(provider => ({
-                      ...provider,
-                      documents: provider.allDocuments // Use aggregated documents
-                    })));
+                    allProviders.push(...Array.from(providerDataMap.values()).map(provider => {
+                      const providerObj = {
+                        ...provider,
+                        documents: provider.allDocuments || [] // Use aggregated documents
+                      };
+                      console.log(`🔍 Provider ${provider.uniqueKey} - Documents count:`, providerObj.documents.length);
+                      console.log(`🔍 Provider ${provider.uniqueKey} - Documents:`, providerObj.documents);
+                      return providerObj;
+                    }));
 
                     // Render each unique provider only once
                     return allProviders.map((provider) => (
