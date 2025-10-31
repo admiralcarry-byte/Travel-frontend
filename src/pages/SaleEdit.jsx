@@ -156,8 +156,8 @@ const SaleEdit = () => {
           return {
             id: service._id || service.serviceId?._id || `instance_${index}`, // Use actual database ID
             templateId: service.serviceTemplateId || service.serviceId,
-            templateName: service.serviceId?.name || service.serviceName || service.serviceId?.destino || 'Unknown Service',
-            templateCategory: service.serviceId?.typeId?.name || service.serviceId?.type || 'General',
+            templateName: service.serviceTemplateId?.name || service.serviceId?.name || service.serviceName || service.serviceId?.destino || 'Unknown Service',
+            templateCategory: service.serviceTemplateId?.category || service.serviceId?.typeId?.name || service.serviceId?.type || 'General',
             serviceInfo: service.serviceName || 'Unknown Service',
             serviceDescription: service.notes || service.serviceId?.description || '',
             checkIn: service.serviceDates?.startDate ? new Date(service.serviceDates.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -678,6 +678,21 @@ const SaleEdit = () => {
   };
 
   const handleServiceAdded = (newService) => {
+    // Extract provider objects from the backend structure (same logic as fetchSale)
+    let providers = [];
+    if (newService.providers && newService.providers.length > 0) {
+      providers = newService.providers.map((p) => {
+        const providerObj = p.providerId || p;
+        return {
+          ...providerObj,
+          documents: p.documents || [],
+          costProvider: p.costProvider !== null && p.costProvider !== undefined ? p.costProvider : (providerObj.costProvider || 0)
+        };
+      }).filter(Boolean);
+    } else if (newService.providerId) {
+      providers = [newService.providerId];
+    }
+    
     // Transform the service data to match ServiceTemplateInstanceEditor expectations
     const transformedService = {
       id: newService._id || Date.now(), // Use MongoDB _id or generate a temporary one
@@ -686,14 +701,14 @@ const SaleEdit = () => {
       templateCategory: newService.serviceTemplateId?.category || 'Other',
       serviceInfo: newService.serviceName,
       serviceDescription: newService.notes,
-      cost: newService.priceClient,
-      currency: newService.currency,
+      cost: newService.costProvider || newService.priceClient || 0,
+      costProvider: newService.costProvider || newService.priceClient || 0,
+      currency: newService.currency || 'USD',
       checkIn: newService.serviceDates?.startDate,
       checkOut: newService.serviceDates?.endDate,
-      provider: {
-        _id: newService.providerId?._id,
-        name: newService.providerId?.name || 'Unknown Provider'
-      },
+      provider: providers.length > 0 ? providers[0] : (newService.providerId || null),
+      providers: providers,
+      providersData: newService.providers || [],
       destination: newService.destination || {
         city: 'Unknown',
         country: 'Unknown'
