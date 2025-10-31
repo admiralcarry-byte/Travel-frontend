@@ -128,6 +128,25 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
 
   const handleNext = () => {
     // Validate current step before proceeding
+    if (currentStep === 1) {
+      // Step 1: Validate that at least one service is added
+      if (serviceCards.length === 0) {
+        setError('Please add at least one service type before proceeding');
+        return;
+      }
+      
+      // For now, we'll use the first service card's data
+      // TODO: Support multiple services in a single submission
+      const firstServiceCard = serviceCards[0];
+      // Create a mock template object for the first service
+      const mockTemplate = {
+        _id: firstServiceCard.serviceTypeId,
+        name: firstServiceCard.serviceTypeName
+      };
+      setCurrentServiceTemplate(mockTemplate);
+      setServiceInfo(firstServiceCard.serviceDescription);
+    }
+    
     if (currentStep === 3) {
       // Service Cost step validation
       // Allow cost of 0 as valid - cost is optional and defaults to 0
