@@ -126,7 +126,7 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     // Validate current step before proceeding
     if (currentStep === 1) {
       // Step 1: Validate that at least one service is added
@@ -138,13 +138,41 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
       // For now, we'll use the first service card's data
       // TODO: Support multiple services in a single submission
       const firstServiceCard = serviceCards[0];
-      // Create a mock template object for the first service
-      const mockTemplate = {
-        _id: firstServiceCard.serviceTypeId,
-        name: firstServiceCard.serviceTypeName
-      };
-      setCurrentServiceTemplate(mockTemplate);
-      setServiceInfo(firstServiceCard.serviceDescription);
+      
+      // Find or create a ServiceTemplate for this ServiceType
+      try {
+        // First, try to find an existing ServiceTemplate that uses this ServiceType
+        const existingTemplate = serviceTemplates.find(t => t.serviceType === firstServiceCard.serviceTypeId);
+        
+        if (existingTemplate) {
+          // Use the existing template
+          setCurrentServiceTemplate(existingTemplate);
+        } else {
+          // Need to find if a template exists with this service type name
+          // Check if any template has the same name as the service type
+          const templateByName = serviceTemplates.find(t => t.name.toLowerCase() === firstServiceCard.serviceTypeName.toLowerCase());
+          
+          if (templateByName) {
+            setCurrentServiceTemplate(templateByName);
+          } else {
+            // Create a mock template object - the backend will handle service type conversion
+            const mockTemplate = {
+              _id: firstServiceCard.serviceTypeId,
+              name: firstServiceCard.serviceTypeName,
+              serviceType: firstServiceCard.serviceTypeId,
+              category: 'Other',
+              isMockTemplate: true // Flag to identify mock templates
+            };
+            setCurrentServiceTemplate(mockTemplate);
+          }
+        }
+        
+        setServiceInfo(firstServiceCard.serviceDescription);
+      } catch (error) {
+        console.error('Error processing service template:', error);
+        setError('Failed to process service template');
+        return;
+      }
     }
     
     if (currentStep === 3) {
@@ -246,6 +274,39 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
       setLoading(true);
       setError('');
 
+      // Check if currentServiceTemplate is a real ServiceTemplate or just a mock object from ServiceType
+      let actualServiceTemplate = currentServiceTemplate;
+      
+      // If this is a mock template created from ServiceType, create a real ServiceTemplate
+      if (currentServiceTemplate.isMockTemplate) {
+        // This is a mock template created from ServiceType, need to find or create real ServiceTemplate
+        console.log('Detected ServiceType-based template, finding or creating ServiceTemplate...');
+        
+        // Try to find existing ServiceTemplate with this name
+        const existingTemplate = serviceTemplates.find(t => t.name === currentServiceTemplate.name);
+        
+        if (existingTemplate) {
+          actualServiceTemplate = existingTemplate;
+        } else {
+          // Create a new ServiceTemplate
+          console.log('Creating new ServiceTemplate...');
+          const createTemplateResponse = await api.post('/api/service-templates', {
+            name: currentServiceTemplate.name,
+            description: serviceInfo,
+            category: 'Other',
+            serviceType: currentServiceTemplate.serviceType
+          });
+          
+          if (createTemplateResponse.data.success) {
+            actualServiceTemplate = createTemplateResponse.data.data.serviceTemplate;
+            // Add to local list for future use
+            setServiceTemplates(prev => [...prev, actualServiceTemplate]);
+          } else {
+            throw new Error('Failed to create service template');
+          }
+        }
+      }
+
       // Calculate cost in USD
       let costInUSD = parseFloat(serviceCost);
       let originalCurrency = serviceCurrency;
@@ -266,7 +327,7 @@ const AddServiceModal = ({ isOpen, onClose, onServiceAdded, saleId, existingServ
       }));
 
       const serviceData = {
-        serviceTemplateId: currentServiceTemplate._id,
+        serviceTemplateId: actualServiceTemplate._id,
         serviceName: serviceInfo,
         serviceInfo: serviceInfo, // Add serviceInfo for compatibility
         checkIn: serviceDates.checkIn,
